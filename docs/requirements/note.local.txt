@@ -1,0 +1,37 @@
+# Bright room
+Một ứng dụng giúp cho quá trình photo development, dựa trên lightroom. Lightroom classic clone + agent để chỉnh ảnh. 
+Giúp cho xử lí raw processing, color grading, local adjustment...
+Đặc biệt cần trong quá trình blend màu, tạo mood cho ảnh = color grading + tone mapping. 
+Không phải là ứng dụng chỉnh sửa ảnh, phá ảnh như Photoshop. Enhance, not alter. Giữ nguyên chi tiết, không sửa vật thể, chỉ làm ảnh đẹp hơn, artistic nhưng vẫn authentic. Không phải là Inpainting, chỉnh sửa ảnh.
+=> Giao diện và các phím tắt, mọi thứ phải giống y đúc lightroom classic. Các góc border radius. 
+# Các features: 
++ Import một ảnh: raw, jpg, png, ... => Xem thông tin các ảnh đó. => Xem được cái overal hitogram
++ Tab Develop: Tất cả những tab của lighroom trong tab development đều có. 
++ Có MCP server. Claude code kết nối vào MCP. Dựa trên đầu ra của bức ảnh sẽ tự làm luôn chỉnh ảnh để tạo ra output tốt nhất. Có thể yêu cầu AI agent copy style của một bức ảnh hoặc xử lí ảnh để có thể có một ảnh tốt, nghệ thuật
++ Phải track được quá trình sửa ảnh để có thể undo/redo. Không sửa file gốc. => Giữ được ảnh nguyên bản. 
++ Có phải 10 templates các style ảnh khác nhau để người dùng chọn
++ Chiến lược agent chỉnh ảnh phải tốt: React, phân tích ảnh, lên plan rồi evaluate như thế nào.
++ Có thể setup: Dangerously skip permissions, lúc agent chỉnh ảnh, nhìn nó như một người đang chỉnh ảnh. Có mouse hover đi kèm hoặc thao tác agent đang chỉnh ảnh. 
+
+
+## Tech Stack
+Electron        
+  ├── React, Vite, TypeScript + Shadcn/ui + Tailwind CSS       → UI panels, sliders                                                               
+  ├── WebGL (tự viết shader) → xử lý màu real-time                                                              
+  ├── Canvas 2D + OpenCV.js  → Heal brush hoặc tự viết được thì tốt                                                                   
+  ├── Zustand                → state management                                                                 
+  └── Claude code         → Claude code gọi mcp server hoặc connect như thế nào đó cho app
+
+## UI
++ color: #000000, xám; #929292, xám ở sidebar: #505050, #222222, white: #f2f2f2
++ 
+
+# Inspired
++ Lightroom
++ Pencil design tool
++ RapidRAW: https://github.com/CyberTimon/RapidRAW
+
+## License
+AGPL-3.0 license hoặc GPL-3.0 license để người khác khi distrubute app phải open source code. Nhắc tên đã fork ra vậy á. 
+
+

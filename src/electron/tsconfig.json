@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "strict": true,
+    "target": "esnext",
+    "module": "nodenext",
+    "outDir": "../../dist-electron",
+    "skipLibCheck": true,
+    "types": ["../../types"]
+  }
+}
