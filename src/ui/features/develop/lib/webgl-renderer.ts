@@ -289,10 +289,10 @@ export class WebGLRenderer {
     this.vao = vao;
   }
 
-  loadImage(image: HTMLImageElement): void {
+  loadImage(image: HTMLImageElement | HTMLCanvasElement): void {
     const gl = this.gl;
-    this.imgW = image.naturalWidth;
-    this.imgH = image.naturalHeight;
+    this.imgW = image instanceof HTMLImageElement ? image.naturalWidth  : image.width;
+    this.imgH = image instanceof HTMLImageElement ? image.naturalHeight : image.height;
     const w = this.imgW;
     const h = this.imgH;
 
@@ -409,16 +409,18 @@ export class WebGLRenderer {
    * canvas and returns a data URL. Safe to call from any context.
    */
   static exportDataUrl(
-    image: HTMLImageElement,
+    image: HTMLImageElement | HTMLCanvasElement,
     adjustments: Adjustments,
     mimeType: string,
     quality: number, // 0–1
     targetW?: number,
     targetH?: number,
   ): string {
+    const srcW = image instanceof HTMLImageElement ? image.naturalWidth  : image.width;
+    const srcH = image instanceof HTMLImageElement ? image.naturalHeight : image.height;
     const canvas = document.createElement('canvas');
-    canvas.width  = targetW ?? image.naturalWidth;
-    canvas.height = targetH ?? image.naturalHeight;
+    canvas.width  = targetW ?? srcW;
+    canvas.height = targetH ?? srcH;
 
     const renderer = new WebGLRenderer();
     renderer.init(canvas, { preserveDrawingBuffer: true });
