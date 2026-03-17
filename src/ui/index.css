@@ -124,6 +124,9 @@
 body {
   margin: 0;
   overflow: hidden;
+  background: #1a1a1a;
+  font-family: 'Inter Variable', system-ui, sans-serif;
+  font-size: 11px;
 }
 
 h1,
