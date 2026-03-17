@@ -11,6 +11,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "shadcn:add": "node scripts/add-shadcn.js",
     "transpile:electron": "tsc --project src/electron/tsconfig.json",
     "build:all": "pnpm transpile:electron && pnpm build && electron-builder",
     "dist:mac": "pnpm transpile:electron && pnpm build && electron-builder --mac --arm64",
@@ -46,6 +47,7 @@
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
     "npm-run-all": "^4.1.5",
+    "prettier": "3.8.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.0"
