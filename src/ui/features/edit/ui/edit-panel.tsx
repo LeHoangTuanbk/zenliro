@@ -18,45 +18,46 @@ const SECTIONS: Section[] = [
   {
     title: 'White Balance',
     sliders: [
-      { label: 'Temp',       name: 'temp',       min: -100, max: 100 },
-      { label: 'Tint',       name: 'tint',       min: -100, max: 100 },
+      { label: 'Temp', name: 'temp', min: -100, max: 100 },
+      { label: 'Tint', name: 'tint', min: -100, max: 100 },
     ],
   },
   {
     title: 'Light',
     sliders: [
-      { label: 'Exposure',   name: 'exposure',   min: -5,   max: 5,   step: 0.05 },
-      { label: 'Contrast',   name: 'contrast',   min: -100, max: 100 },
+      { label: 'Exposure', name: 'exposure', min: -5, max: 5, step: 0.05 },
+      { label: 'Contrast', name: 'contrast', min: -100, max: 100 },
       { label: 'Highlights', name: 'highlights', min: -100, max: 100 },
-      { label: 'Shadows',    name: 'shadows',    min: -100, max: 100 },
-      { label: 'Whites',     name: 'whites',     min: -100, max: 100 },
-      { label: 'Blacks',     name: 'blacks',     min: -100, max: 100 },
+      { label: 'Shadows', name: 'shadows', min: -100, max: 100 },
+      { label: 'Whites', name: 'whites', min: -100, max: 100 },
+      { label: 'Blacks', name: 'blacks', min: -100, max: 100 },
     ],
   },
   {
     title: 'Presence',
     sliders: [
-      { label: 'Texture',    name: 'texture',    min: -100, max: 100 },
-      { label: 'Clarity',    name: 'clarity',    min: -100, max: 100 },
-      { label: 'Dehaze',     name: 'dehaze',     min: -100, max: 100 },
-      { label: 'Vibrance',   name: 'vibrance',   min: -100, max: 100 },
+      { label: 'Texture', name: 'texture', min: -100, max: 100 },
+      { label: 'Clarity', name: 'clarity', min: -100, max: 100 },
+      { label: 'Dehaze', name: 'dehaze', min: -100, max: 100 },
+      { label: 'Vibrance', name: 'vibrance', min: -100, max: 100 },
       { label: 'Saturation', name: 'saturation', min: -100, max: 100 },
     ],
   },
 ];
 
-export function DevelopPanel() {
+export function EditPanel() {
   const { adjustments, setAdjustment, resetAdjustment, resetAll } = useAdjustmentsStore();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  const toggle = (title: string) =>
-    setCollapsed((prev) => ({ ...prev, [title]: !prev[title] }));
+  const toggle = (title: string) => setCollapsed((prev) => ({ ...prev, [title]: !prev[title] }));
 
   return (
     <div className="flex flex-col">
       {/* Panel header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#3a3a3a]">
-        <span className="text-[11px] font-semibold text-[#f2f2f2] uppercase tracking-[0.8px]">Basic</span>
+        <span className="text-[11px] font-semibold text-[#f2f2f2] uppercase tracking-[0.8px]">
+          Basic
+        </span>
         <button
           className="border border-[#3a3a3a] text-[#929292] rounded-[2px] px-2 py-0.5 text-[10px] bg-transparent cursor-pointer hover:text-[#f2f2f2] hover:border-[#555]"
           onClick={resetAll}
