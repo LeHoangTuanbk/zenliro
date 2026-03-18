@@ -116,19 +116,17 @@
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
 }
 
 body {
   margin: 0;
+  overflow: hidden;
+  background: #1a1a1a;
+  font-family: 'Inter Variable', system-ui, sans-serif;
+  font-size: 11px;
 }
 
 h1,

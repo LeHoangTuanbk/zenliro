@@ -5,7 +5,7 @@
     "target": "esnext",
     "module": "nodenext",
     "outDir": "../../dist-electron",
-    "skipLibCheck": true,
-    "types": ["../../types"]
-  }
+    "skipLibCheck": true
+  },
+  "include": ["./**/*.ts", "./**/*.cts", "../../types.d.ts"]
 }
