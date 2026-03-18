@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ExportSettings } from '../ui/export-dialog';
+import type { ExportSettings } from '../export-dialog-container';
 
 interface ExportSettingsStore {
   settings: ExportSettings;

@@ -1,6 +1,6 @@
 import { useCallback, type RefObject } from 'react';
 import { useCropStore } from '@/features/develop/crop/store/crop-store';
-import type { ExportSettings } from '@features/export/ui/export-dialog';
+import type { ExportSettings } from '@/features/export/export-dialog-container';
 import type { ImageCanvasHandle } from '@widgets/image-canvas/ui/image-canvas';
 
 export function useExport(

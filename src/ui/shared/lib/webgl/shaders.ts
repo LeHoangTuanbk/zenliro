@@ -120,6 +120,21 @@ uniform float u_dehaze;
 uniform float u_vibrance;
 uniform float u_saturation;
 
+// Tone curve LUT (256x1 RGBA texture: R=combined_r, G=combined_g, B=combined_b)
+uniform sampler2D u_toneCurveLUT;
+
+// Color mixer (8 hue channels: Red, Orange, Yellow, Green, Aqua, Blue, Purple, Magenta)
+uniform float u_cmHue[8];
+uniform float u_cmSat[8];
+uniform float u_cmLum[8];
+
+// Color grading (hue 0-1, sat 0-1, lum -1 to 1 per range)
+uniform vec3 u_cgShadows;    // hue(0-1), sat(0-1), lum(-1..1)
+uniform vec3 u_cgMidtones;
+uniform vec3 u_cgHighlights;
+uniform float u_cgBlending;  // 0-1
+uniform float u_cgBalance;   // -1 to 1
+
 in vec2 v_texCoord;
 out vec4 fragColor;
 
@@ -161,6 +176,92 @@ vec3 hsl2rgb(vec3 hsl) {
   float q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
   float p = 2.0 * l - q;
   return vec3(hue2rgb(p, q, h + 1.0/3.0), hue2rgb(p, q, h), hue2rgb(p, q, h - 1.0/3.0));
+}
+
+vec3 applyToneCurve(vec3 color) {
+  float r = texture(u_toneCurveLUT, vec2(color.r, 0.5)).r;
+  float g = texture(u_toneCurveLUT, vec2(color.g, 0.5)).g;
+  float b = texture(u_toneCurveLUT, vec2(color.b, 0.5)).b;
+  return vec3(r, g, b);
+}
+
+float hueDist(float h1, float h2) {
+  float d = abs(h1 - h2);
+  return d > 0.5 ? 1.0 - d : d;
+}
+
+vec3 applyColorMixer(vec3 rgb) {
+  vec3 hsl = rgb2hsl(rgb);
+  float h = hsl.x;
+  // Hue centers: Red=0, Orange=30, Yellow=60, Green=120, Aqua=180, Blue=225, Purple=270, Magenta=315 (degrees / 360)
+  float centers[8];
+  centers[0] =   0.0 / 360.0;
+  centers[1] =  30.0 / 360.0;
+  centers[2] =  60.0 / 360.0;
+  centers[3] = 120.0 / 360.0;
+  centers[4] = 180.0 / 360.0;
+  centers[5] = 225.0 / 360.0;
+  centers[6] = 270.0 / 360.0;
+  centers[7] = 315.0 / 360.0;
+  float width = 30.0 / 360.0;
+
+  float hueAdj = 0.0;
+  float satAdj = 0.0;
+  float lumAdj = 0.0;
+  float totalW = 0.0;
+  for (int i = 0; i < 8; i++) {
+    float dist = hueDist(h, centers[i]);
+    float w = max(0.0, 1.0 - dist / width);
+    w = w * w;
+    hueAdj += w * u_cmHue[i];
+    satAdj += w * u_cmSat[i];
+    lumAdj += w * u_cmLum[i];
+    totalW += w;
+  }
+  if (totalW > 0.001) {
+    hsl.x = fract(hsl.x + hueAdj / totalW);
+    hsl.y = clamp(hsl.y * (1.0 + satAdj / totalW), 0.0, 1.0);
+    hsl.z = clamp(hsl.z + lumAdj / totalW * 0.5, 0.0, 1.0);
+  }
+  return hsl2rgb(hsl);
+}
+
+vec3 applyColorGrading(vec3 rgb) {
+  float lm = luma(rgb);
+  float blend = mix(0.3, 0.7, u_cgBlending);
+  float bal = u_cgBalance * 0.3;
+
+  float wS = clamp((0.5 - lm + bal) / blend, 0.0, 1.0);
+  wS = wS * wS * (3.0 - 2.0 * wS);
+  float wH = clamp((lm - 0.5 + bal) / blend, 0.0, 1.0);
+  wH = wH * wH * (3.0 - 2.0 * wH);
+  float wM = clamp(1.0 - abs(lm - 0.5 - bal) / blend, 0.0, 1.0);
+  wM = wM * wM * (3.0 - 2.0 * wM);
+  float total = wS + wM + wH;
+  if (total < 0.001) return rgb;
+  wS /= total; wM /= total; wH /= total;
+
+  vec3 hsl = rgb2hsl(rgb);
+
+  if (u_cgShadows.y > 0.001) {
+    hsl.x = fract(hsl.x + (u_cgShadows.x - hsl.x) * u_cgShadows.y * wS);
+    hsl.y = clamp(hsl.y + u_cgShadows.y * wS * 0.5, 0.0, 1.0);
+  }
+  hsl.z = clamp(hsl.z + u_cgShadows.z * wS, 0.0, 1.0);
+
+  if (u_cgMidtones.y > 0.001) {
+    hsl.x = fract(hsl.x + (u_cgMidtones.x - hsl.x) * u_cgMidtones.y * wM);
+    hsl.y = clamp(hsl.y + u_cgMidtones.y * wM * 0.5, 0.0, 1.0);
+  }
+  hsl.z = clamp(hsl.z + u_cgMidtones.z * wM, 0.0, 1.0);
+
+  if (u_cgHighlights.y > 0.001) {
+    hsl.x = fract(hsl.x + (u_cgHighlights.x - hsl.x) * u_cgHighlights.y * wH);
+    hsl.y = clamp(hsl.y + u_cgHighlights.y * wH * 0.5, 0.0, 1.0);
+  }
+  hsl.z = clamp(hsl.z + u_cgHighlights.z * wH, 0.0, 1.0);
+
+  return hsl2rgb(hsl);
 }
 
 void main() {
@@ -280,6 +381,15 @@ void main() {
     hsl.y = clamp(hsl.y + (u_vibrance / 100.0) * protect * 0.65, 0.0, 1.0);
     color = hsl2rgb(hsl);
   }
+
+  // ── TONE CURVE ─────────────────────────────────────────────────────────
+  color = applyToneCurve(color);
+
+  // ── COLOR MIXER ────────────────────────────────────────────────────────
+  color = applyColorMixer(color);
+
+  // ── COLOR GRADING ───────────────────────────────────────────────────────
+  color = applyColorGrading(color);
 
   fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }`;

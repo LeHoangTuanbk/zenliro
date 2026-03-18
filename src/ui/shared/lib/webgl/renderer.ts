@@ -17,6 +17,7 @@ export class WebGLRenderer {
   private largeBlurTex!: WebGLTexture;
   private largeBlurTmpTex!: WebGLTexture;
   private healTex!: WebGLTexture;
+  private toneCurveLUTTex!: WebGLTexture;
 
   private smallBlurHFBO!: WebGLFramebuffer;
   private smallBlurFBO!: WebGLFramebuffer;
@@ -54,6 +55,36 @@ export class WebGLRenderer {
     }
     gl.bindVertexArray(null);
     this.vao = vao;
+
+    // Create identity LUT texture (256x1 RGBA)
+    const identity = new Uint8Array(256 * 4);
+    for (let i = 0; i < 256; i++) {
+      identity[i * 4 + 0] = i; // R
+      identity[i * 4 + 1] = i; // G
+      identity[i * 4 + 2] = i; // B
+      identity[i * 4 + 3] = 255;
+    }
+    this.toneCurveLUTTex = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, this.toneCurveLUTTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, identity);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+
+    // Initialize color mixer uniforms to zero
+    gl.useProgram(this.mainProg);
+    const zeroArr = new Float32Array(8);
+    gl.uniform1fv(gl.getUniformLocation(this.mainProg, 'u_cmHue'), zeroArr);
+    gl.uniform1fv(gl.getUniformLocation(this.mainProg, 'u_cmSat'), zeroArr);
+    gl.uniform1fv(gl.getUniformLocation(this.mainProg, 'u_cmLum'), zeroArr);
+    gl.uniform3f(gl.getUniformLocation(this.mainProg, 'u_cgShadows'), 0, 0, 0);
+    gl.uniform3f(gl.getUniformLocation(this.mainProg, 'u_cgMidtones'), 0, 0, 0);
+    gl.uniform3f(gl.getUniformLocation(this.mainProg, 'u_cgHighlights'), 0, 0, 0);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_cgBlending'), 0.5);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_cgBalance'), 0);
+    gl.useProgram(null);
   }
 
   loadImage(image: HTMLImageElement | HTMLCanvasElement): void {
@@ -94,6 +125,59 @@ export class WebGLRenderer {
   }
   get isReady() {
     return this.ready;
+  }
+
+  setToneCurveLUT(rData: Uint8Array, gData: Uint8Array, bData: Uint8Array): void {
+    const gl = this.gl;
+    if (!gl || !this.toneCurveLUTTex) return;
+    const rgba = new Uint8Array(256 * 4);
+    for (let i = 0; i < 256; i++) {
+      rgba[i * 4 + 0] = rData[i];
+      rgba[i * 4 + 1] = gData[i];
+      rgba[i * 4 + 2] = bData[i];
+      rgba[i * 4 + 3] = 255;
+    }
+    gl.bindTexture(gl.TEXTURE_2D, this.toneCurveLUTTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+  }
+
+  setColorMixer(hue: number[], sat: number[], lum: number[]): void {
+    const gl = this.gl;
+    if (!gl) return;
+    gl.useProgram(this.mainProg);
+    gl.uniform1fv(
+      gl.getUniformLocation(this.mainProg, 'u_cmHue'),
+      new Float32Array(hue.map((v) => v / 180)),
+    );
+    gl.uniform1fv(
+      gl.getUniformLocation(this.mainProg, 'u_cmSat'),
+      new Float32Array(sat.map((v) => v / 100)),
+    );
+    gl.uniform1fv(
+      gl.getUniformLocation(this.mainProg, 'u_cmLum'),
+      new Float32Array(lum.map((v) => v / 100)),
+    );
+    gl.useProgram(null);
+  }
+
+  setColorGrading(
+    shadows: [number, number, number],
+    midtones: [number, number, number],
+    highlights: [number, number, number],
+    blending: number,
+    balance: number,
+  ): void {
+    const gl = this.gl;
+    if (!gl) return;
+    gl.useProgram(this.mainProg);
+    const u = (n: string) => gl.getUniformLocation(this.mainProg, n);
+    gl.uniform3f(u('u_cgShadows'), ...shadows);
+    gl.uniform3f(u('u_cgMidtones'), ...midtones);
+    gl.uniform3f(u('u_cgHighlights'), ...highlights);
+    gl.uniform1f(u('u_cgBlending'), blending);
+    gl.uniform1f(u('u_cgBalance'), balance);
+    gl.useProgram(null);
   }
 
   private runHealPass(): WebGLTexture | null {
@@ -188,6 +272,10 @@ export class WebGLRenderer {
     gl.activeTexture(gl.TEXTURE2);
     gl.bindTexture(gl.TEXTURE_2D, this.largeBlurTex);
     gl.uniform1i(u('u_largeBlur'), 2);
+
+    gl.activeTexture(gl.TEXTURE3);
+    gl.bindTexture(gl.TEXTURE_2D, this.toneCurveLUTTex);
+    gl.uniform1i(u('u_toneCurveLUT'), 3);
 
     const crop = this.cropData;
     gl.uniform2f(u('u_cropOrigin'), crop ? crop.rect.x : 0, crop ? crop.rect.y : 0);

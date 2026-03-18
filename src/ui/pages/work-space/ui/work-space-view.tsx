@@ -4,7 +4,7 @@ import { LibraryContainer } from '@features/library';
 import { EditPanel, ToolStrip } from '@/features/develop/edit';
 import { HealPanel } from '@/features/develop/heal/ui/heal-panel';
 import { CropPanel } from '@/features/develop/crop/ui/crop-panel';
-import { ExportDialog, type ExportSettings } from '@features/export/ui/export-dialog';
+import { ExportDialog, type ExportSettings } from '@/features/export/export-dialog-container';
 import { Histogram } from '@features/histogram/ui/histogram';
 import type { HealSpot } from '@/features/develop/heal/store/types';
 import { ActiveTool } from '@features/develop/const';
