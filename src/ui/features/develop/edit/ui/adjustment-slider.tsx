@@ -80,7 +80,7 @@ export function AdjustmentSlider({
       {/* Label + value */}
       <div className="flex justify-between items-baseline">
         <span
-          className={`text-[10.5px] cursor-default select-none ${isModified ? 'text-[#f2f2f2]' : 'text-[#929292]'}`}
+          className={`text-[10.5px] cursor-default select-none ${isModified ? 'text-br-text' : 'text-br-muted'}`}
           onDoubleClick={() => onReset(name)}
           title="Double-click to reset"
         >
@@ -90,8 +90,8 @@ export function AdjustmentSlider({
         {editing ? (
           <input
             ref={inputRef}
-            className={`text-[10px] font-[tabular-nums] w-10 text-right bg-[#3a3a3a] border border-[#4d9fec] rounded-[2px] px-[3px] outline-none h-4 font-sans ${
-              isModified ? 'text-[#c8a96e]' : 'text-[#f2f2f2]'
+            className={`text-[10px] font-[tabular-nums] w-10 text-right bg-br-elevated border border-br-accent rounded-[2px] px-[3px] outline-none h-4 font-sans ${
+              isModified ? 'text-br-warm' : 'text-br-text'
             }`}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -101,8 +101,8 @@ export function AdjustmentSlider({
           />
         ) : (
           <span
-            className={`text-[10px] font-[tabular-nums] min-w-[34px] text-right cursor-text rounded-[2px] px-[2px] py-[1px] hover:bg-[#333] ${
-              isModified ? 'text-[#c8a96e]' : 'text-[#505050] hover:text-[#f2f2f2]'
+            className={`text-[10px] font-[tabular-nums] min-w-[34px] text-right cursor-text rounded-[2px] px-[2px] py-[1px] hover:bg-br-hover ${
+              isModified ? 'text-br-warm' : 'text-br-dim hover:text-br-text'
             }`}
             onClick={handleValueClick}
             title="Click to edit, ↑↓ to step"
@@ -114,13 +114,13 @@ export function AdjustmentSlider({
 
       {/* Track */}
       <div className="relative h-[14px] cursor-pointer" onDoubleClick={() => onReset(name)}>
-        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[3px] bg-[#3a3a3a] rounded-[1px] pointer-events-none hover:bg-[#444]">
+        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[3px] bg-br-elevated rounded-[1px] pointer-events-none hover:bg-br-border-hover">
           {/* Center mark */}
-          <div className="absolute left-1/2 -top-[1px] w-px h-[5px] bg-[#555] -translate-x-1/2" />
+          <div className="absolute left-1/2 -top-[1px] w-px h-[5px] bg-br-mark -translate-x-1/2" />
           {/* Fill */}
           {value !== 0 && (
             <div
-              className="absolute top-0 h-full bg-[#4d9fec] opacity-70 rounded-[1px]"
+              className="absolute top-0 h-full bg-br-accent opacity-70 rounded-[1px]"
               style={
                 value > 0
                   ? { left: '50%', width: `${pct - 50}%` }

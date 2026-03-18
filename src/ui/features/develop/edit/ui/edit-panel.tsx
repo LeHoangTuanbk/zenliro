@@ -12,12 +12,12 @@ export function EditPanel() {
   return (
     <div className="flex flex-col">
       {/* Panel header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-[#3a3a3a]">
-        <span className="text-[11px] font-semibold text-[#f2f2f2] uppercase tracking-[0.8px]">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-br-elevated">
+        <span className="text-[11px] font-semibold text-br-text uppercase tracking-[0.8px]">
           Basic
         </span>
         <button
-          className="border border-[#3a3a3a] text-[#929292] rounded-[2px] px-2 py-0.5 text-[10px] bg-transparent cursor-pointer hover:text-[#f2f2f2] hover:border-[#555]"
+          className="border border-br-elevated text-br-muted rounded-[2px] px-2 py-0.5 text-[10px] bg-transparent cursor-pointer hover:text-br-text hover:border-br-mark"
           onClick={resetAll}
           title="Reset all"
         >
@@ -26,15 +26,15 @@ export function EditPanel() {
       </div>
 
       {SECTIONS.map((section) => (
-        <div key={section.title} className="border-b border-[#3a3a3a]">
+        <div key={section.title} className="border-b border-br-elevated">
           <button
-            className="flex items-center gap-1.5 w-full px-3 py-[7px] bg-[#272727] border-none cursor-pointer hover:bg-[#2e2e2e] font-sans"
+            className="flex items-center gap-1.5 w-full px-3 py-[7px] bg-br-section border-none cursor-pointer hover:bg-br-section-hover font-sans"
             onClick={() => toggle(section.title)}
           >
-            <span className="text-[8px] text-[#505050] w-2.5">
+            <span className="text-[8px] text-br-dim w-2.5">
               {collapsed[section.title] ? '▶' : '▼'}
             </span>
-            <span className="text-[11px] font-semibold text-[#929292] uppercase tracking-[0.6px]">
+            <span className="text-[11px] font-semibold text-br-muted uppercase tracking-[0.6px]">
               {section.title}
             </span>
           </button>

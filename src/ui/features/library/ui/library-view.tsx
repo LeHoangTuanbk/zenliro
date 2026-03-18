@@ -14,23 +14,23 @@ export function LibraryView({
   onOpenDevelop,
 }: LibraryViewProps) {
   return (
-    <div className="flex flex-col w-full h-full bg-[#1a1a1a]">
+    <div className="flex flex-col w-full h-full bg-br-bg">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-[#1a1a1a] border-b border-black flex-shrink-0">
+      <div className="flex items-center gap-2 px-4 py-2 bg-br-bg border-b border-black flex-shrink-0">
         <button
           onClick={onImport}
-          className="px-3 py-1.5 text-[11px] text-white bg-[#3d6fa5] rounded-[3px] cursor-pointer hover:bg-[#4d9fec] transition-colors"
+          className="px-3 py-1.5 text-[11px] text-white bg-br-accent-dark rounded-[3px] cursor-pointer hover:bg-br-accent transition-colors"
         >
           + Import
         </button>
-        <span className="text-[10px] text-[#505050]">
+        <span className="text-[10px] text-br-dim">
           {photos.length} {photos.length === 1 ? 'photo' : 'photos'}
         </span>
       </div>
 
       {/* Grid */}
       {photos.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-[#505050] select-none">
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-br-dim select-none">
           <svg
             width="56"
             height="56"
@@ -46,7 +46,7 @@ export function LibraryView({
           <p className="text-[13px]">No photos yet</p>
           <button
             onClick={onImport}
-            className="px-5 py-2 text-[12px] text-white bg-[#3d6fa5] rounded-[3px] cursor-pointer hover:bg-[#4d9fec] transition-colors"
+            className="px-5 py-2 text-[12px] text-white bg-br-accent-dark rounded-[3px] cursor-pointer hover:bg-br-accent transition-colors"
           >
             Import Photos
           </button>
@@ -59,20 +59,20 @@ export function LibraryView({
                 key={p.id}
                 onClick={() => onSelect(p.id)}
                 onDoubleClick={() => onOpenDevelop(p.id)}
-                className={`group relative bg-[#111] rounded-[2px] overflow-hidden cursor-pointer border-2 transition-colors text-left ${
+                className={`group relative bg-br-bg-deep rounded-[2px] overflow-hidden cursor-pointer border-2 transition-colors text-left ${
                   p.id === selectedId
-                    ? 'border-[#4d9fec]'
-                    : 'border-transparent hover:border-[#444]'
+                    ? 'border-br-accent'
+                    : 'border-transparent hover:border-br-border-hover'
                 }`}
                 title={`${p.fileName} — double-click to edit`}
               >
                 <img
                   src={p.dataUrl}
                   alt={p.fileName}
-                  className="w-full aspect-[3/2] object-cover block"
+                  className="w-full aspect-3/2 object-cover block"
                 />
-                <div className="px-1.5 py-1 bg-[#111]">
-                  <p className="text-[9px] text-[#505050] truncate">{p.fileName}</p>
+                <div className="px-1.5 py-1 bg-br-bg-deep">
+                  <p className="text-[9px] text-br-dim truncate">{p.fileName}</p>
                 </div>
                 {/* Edit hint overlay */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
