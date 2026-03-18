@@ -1,7 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { WebGLRenderer } from '../../../features/develop/lib/webgl-renderer';
-import type { SpotGPUData } from '../../../features/develop/lib/webgl-renderer';
-import { useAdjustmentsStore } from '../../../features/develop/model/adjustments-store';
+import { WebGLRenderer } from '../../../features/edit/lib/webgl-renderer';
+import type { SpotGPUData } from '../../../features/edit/lib/webgl-renderer';
+import { useAdjustmentsStore } from '../../../features/edit/model/adjustments-store';
 import { HealEngine } from '../../../features/heal/lib/heal-engine';
 import { HealOverlay } from '../../../features/heal/ui/heal-overlay';
 import type { HealMode, HealSpot } from '../../../features/heal/model/types';
@@ -14,21 +14,21 @@ import type { CropState } from '../../../features/crop/model/types';
 function readExifOrientationFromBuffer(buf: ArrayBuffer): number {
   try {
     const view = new DataView(buf);
-    const len  = Math.min(buf.byteLength, 65536);
+    const len = Math.min(buf.byteLength, 65536);
     let off = 2; // skip SOI marker
     while (off + 4 < len) {
-      if (view.getUint8(off) !== 0xFF) break;
+      if (view.getUint8(off) !== 0xff) break;
       const marker = view.getUint8(off + 1);
       const segLen = view.getUint16(off + 2);
-      if (marker === 0xE1 && segLen >= 8) {
+      if (marker === 0xe1 && segLen >= 8) {
         // Check "Exif\0\0"
         if (view.getUint32(off + 4) === 0x45786966 && view.getUint16(off + 8) === 0) {
           const tiff = off + 10;
-          const le   = view.getUint8(tiff) === 0x49;
-          const ifdOff  = view.getUint32(tiff + 4, le);
+          const le = view.getUint8(tiff) === 0x49;
+          const ifdOff = view.getUint32(tiff + 4, le);
           const entries = view.getUint16(tiff + ifdOff, le);
           for (let i = 0; i < entries; i++) {
-            const ep  = tiff + ifdOff + 2 + i * 12;
+            const ep = tiff + ifdOff + 2 + i * 12;
             const tag = view.getUint16(ep, le);
             if (tag === 0x0112) return view.getUint16(ep + 8, le);
           }
@@ -36,7 +36,9 @@ function readExifOrientationFromBuffer(buf: ArrayBuffer): number {
       }
       off += 2 + segLen;
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return 1;
 }
 
@@ -55,17 +57,31 @@ function drawBitmapWithOrientation(
   const swap = orientation >= 5 && orientation <= 8;
   const cw = swap ? bh : bw;
   const ch = swap ? bw : bh;
-  ctx.canvas.width  = cw;
+  ctx.canvas.width = cw;
   ctx.canvas.height = ch;
   ctx.save();
   switch (orientation) {
-    case 2: ctx.transform(-1, 0,  0,  1,  bw,  0); break;
-    case 3: ctx.transform(-1, 0,  0, -1,  bw, bh); break;
-    case 4: ctx.transform( 1, 0,  0, -1,   0, bh); break;
-    case 5: ctx.transform( 0, 1,  1,  0,   0,  0); break;
-    case 6: ctx.transform( 0, 1, -1,  0,  bh,  0); break;
-    case 7: ctx.transform( 0,-1, -1,  0,  bh, bw); break;
-    case 8: ctx.transform( 0,-1,  1,  0,   0, bw); break;
+    case 2:
+      ctx.transform(-1, 0, 0, 1, bw, 0);
+      break;
+    case 3:
+      ctx.transform(-1, 0, 0, -1, bw, bh);
+      break;
+    case 4:
+      ctx.transform(1, 0, 0, -1, 0, bh);
+      break;
+    case 5:
+      ctx.transform(0, 1, 1, 0, 0, 0);
+      break;
+    case 6:
+      ctx.transform(0, 1, -1, 0, bh, 0);
+      break;
+    case 7:
+      ctx.transform(0, -1, -1, 0, bh, bw);
+      break;
+    case 8:
+      ctx.transform(0, -1, 1, 0, 0, bw);
+      break;
   }
   ctx.drawImage(bmp, 0, 0);
   ctx.restore();
@@ -74,12 +90,12 @@ function drawBitmapWithOrientation(
 
 /** Convert a data-URL to an ArrayBuffer (sync, slices first 64 KB). */
 function dataUrlToPartialBuffer(dataUrl: string): ArrayBuffer {
-  const b64   = dataUrl.split(',')[1];
+  const b64 = dataUrl.split(',')[1];
   // 64 KB binary → ceil(65536 * 4/3) base64 chars
   const slice = b64.slice(0, 87382);
-  const bin   = atob(slice);
-  const buf   = new ArrayBuffer(bin.length);
-  const u8    = new Uint8Array(buf);
+  const bin = atob(slice);
+  const buf = new ArrayBuffer(bin.length);
+  const u8 = new Uint8Array(buf);
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
   return buf;
 }
@@ -103,7 +119,7 @@ export interface CropInteractionProps {
 export interface HealInteractionProps {
   spots: HealSpot[];
   selectedSpotId: string | null;
-  brushSizePx: number;   // brush radius in screen pixels
+  brushSizePx: number; // brush radius in screen pixels
   activeMode: HealMode;
   feather: number;
   opacity: number;
@@ -120,7 +136,7 @@ interface Props {
   healSpots?: HealSpot[];
   healInteractionProps?: HealInteractionProps;
   cropInteractionProps?: CropInteractionProps; // editing mode — shows overlay, full image in WebGL
-  confirmedCropState?: CropState | null;        // applied to WebGL when NOT in crop edit mode
+  confirmedCropState?: CropState | null; // applied to WebGL when NOT in crop edit mode
   hideOverlay?: boolean;
   onImageLoaded?: (w: number, h: number) => void;
 }
@@ -129,28 +145,43 @@ const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 16;
 
 export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
-  ({ dataUrl, healSpots = [], healInteractionProps, cropInteractionProps, confirmedCropState, hideOverlay = false, onImageLoaded }, ref) => {
-    const containerRef   = useRef<HTMLDivElement>(null);
-    const canvasRef      = useRef<HTMLCanvasElement>(null);
-    const rendererRef    = useRef<WebGLRenderer | null>(null);
+  (
+    {
+      dataUrl,
+      healSpots = [],
+      healInteractionProps,
+      cropInteractionProps,
+      confirmedCropState,
+      hideOverlay = false,
+      onImageLoaded,
+    },
+    ref,
+  ) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const rendererRef = useRef<WebGLRenderer | null>(null);
     const originalImgRef = useRef<HTMLCanvasElement | null>(null);
-    const imageDataRef   = useRef<ImageData | null>(null);  // cached full-res pixel data
-    const gpuSpotsRef    = useRef<SpotGPUData[]>([]);        // latest computed GPU data
+    const imageDataRef = useRef<ImageData | null>(null); // cached full-res pixel data
+    const gpuSpotsRef = useRef<SpotGPUData[]>([]); // latest computed GPU data
     const [canvasDims, setCanvasDims] = useState({ w: 0, h: 0 });
     const adjustments = useAdjustmentsStore((s) => s.adjustments);
 
     // ── View state (zoom + pan) ────────────────────────────────────────────
-    const [zoom, setZoom]       = useState(1);
-    const [pan, setPan]         = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [pan, setPan] = useState({ x: 0, y: 0 });
     const [isSpaceDown, setIsSpaceDown] = useState(false);
-    const [isPanning, setIsPanning]     = useState(false);
+    const [isPanning, setIsPanning] = useState(false);
     const isSpaceDownRef = useRef(false);
-    const panStartRef    = useRef<{ mx: number; my: number; px: number; py: number } | null>(null);
+    const panStartRef = useRef<{ mx: number; my: number; px: number; py: number } | null>(null);
     // Keep latest zoom/pan in refs so event handler closures stay fresh
     const zoomRef = useRef(zoom);
-    const panRef  = useRef(pan);
-    useEffect(() => { zoomRef.current = zoom; }, [zoom]);
-    useEffect(() => { panRef.current  = pan;  }, [pan]);
+    const panRef = useRef(pan);
+    useEffect(() => {
+      zoomRef.current = zoom;
+    }, [zoom]);
+    useEffect(() => {
+      panRef.current = pan;
+    }, [pan]);
 
     // ── Export ─────────────────────────────────────────────────────────────
     useImperativeHandle(ref, () => ({
@@ -158,15 +189,24 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
         const img = originalImgRef.current;
         if (!img) return null;
         const adj = useAdjustmentsStore.getState().adjustments;
-        return WebGLRenderer.exportDataUrl(img, adj, mimeType, quality, targetW, targetH, gpuSpotsRef.current, crop);
+        return WebGLRenderer.exportDataUrl(
+          img,
+          adj,
+          mimeType,
+          quality,
+          targetW,
+          targetH,
+          gpuSpotsRef.current,
+          crop,
+        );
       },
     }));
 
     // ── Helpers ────────────────────────────────────────────────────────────
     function renderToCanvas() {
-      const canvas   = canvasRef.current;
+      const canvas = canvasRef.current;
       const renderer = rendererRef.current;
-      const img      = originalImgRef.current;
+      const img = originalImgRef.current;
       if (!canvas || !renderer || !img) return;
       try {
         renderer.render(canvas, useAdjustmentsStore.getState().adjustments);
@@ -177,8 +217,8 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
 
     function computeAndUploadSpots(spots: HealSpot[]) {
       const renderer = rendererRef.current;
-      const imgData  = imageDataRef.current;
-      const src      = originalImgRef.current;
+      const imgData = imageDataRef.current;
+      const src = originalImgRef.current;
       if (!renderer || !imgData || !src) return;
 
       const w = src.width;
@@ -200,7 +240,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
 
     // ── Init WebGL ─────────────────────────────────────────────────────────
     useEffect(() => {
-      const canvas   = canvasRef.current!;
+      const canvas = canvasRef.current!;
       const renderer = new WebGLRenderer();
       try {
         renderer.init(canvas);
@@ -208,7 +248,10 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
       } catch (err) {
         console.error('[WebGL] init failed:', err);
       }
-      return () => { renderer.dispose(); rendererRef.current = null; };
+      return () => {
+        renderer.dispose();
+        rendererRef.current = null;
+      };
     }, []);
 
     // ── Load image ─────────────────────────────────────────────────────────
@@ -219,46 +262,52 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
       (async () => {
         try {
           // Parse EXIF from raw bytes — before any browser auto-correction
-          const exifBuf    = dataUrlToPartialBuffer(dataUrl);
+          const exifBuf = dataUrlToPartialBuffer(dataUrl);
           const orientation = readExifOrientationFromBuffer(exifBuf);
 
           // createImageBitmap with imageOrientation:'none' gives us raw pixels
           // with NO browser-applied EXIF rotation — we apply it ourselves below.
           const mimeType = dataUrl.split(';')[0].slice(5) || 'image/jpeg';
-          const b64  = dataUrl.split(',')[1];
-          const bin  = atob(b64);
+          const b64 = dataUrl.split(',')[1];
+          const bin = atob(b64);
           const bytes = new Uint8Array(bin.length);
           for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
           const blob = new Blob([bytes], { type: mimeType });
-          const bmp  = await createImageBitmap(blob, { imageOrientation: 'none' });
+          const bmp = await createImageBitmap(blob, { imageOrientation: 'none' });
 
-          if (cancelled) { bmp.close(); return; }
+          if (cancelled) {
+            bmp.close();
+            return;
+          }
 
-          const canvas    = canvasRef.current;
+          const canvas = canvasRef.current;
           const container = containerRef.current;
-          if (!canvas || !container || !rendererRef.current) { bmp.close(); return; }
+          if (!canvas || !container || !rendererRef.current) {
+            bmp.close();
+            return;
+          }
 
           // Draw with EXIF correction onto a temp canvas
-          const tmp   = document.createElement('canvas');
+          const tmp = document.createElement('canvas');
           const ctx2d = tmp.getContext('2d')!;
           const { w: imgW, h: imgH } = drawBitmapWithOrientation(ctx2d, bmp, orientation);
           bmp.close();
 
           onImageLoaded?.(imgW, imgH);
 
-          const cw = container.clientWidth  || 800;
+          const cw = container.clientWidth || 800;
           const ch = container.clientHeight || 600;
           const scale = Math.min(cw / imgW, ch / imgH, 1);
-          canvas.width  = Math.max(1, Math.round(imgW * scale));
+          canvas.width = Math.max(1, Math.round(imgW * scale));
           canvas.height = Math.max(1, Math.round(imgH * scale));
           setCanvasDims({ w: canvas.width, h: canvas.height });
 
           setZoom(1);
           setPan({ x: 0, y: 0 });
 
-          imageDataRef.current  = ctx2d.getImageData(0, 0, imgW, imgH);
+          imageDataRef.current = ctx2d.getImageData(0, 0, imgW, imgH);
           originalImgRef.current = tmp;
-          gpuSpotsRef.current   = [];
+          gpuSpotsRef.current = [];
 
           rendererRef.current!.loadImage(tmp);
           rendererRef.current!.setHealSpots([]);
@@ -269,7 +318,9 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
         }
       })();
 
-      return () => { cancelled = true; };
+      return () => {
+        cancelled = true;
+      };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [dataUrl]);
 
@@ -293,11 +344,14 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
 
     // ── Re-render develop adjustments ──────────────────────────────────────
     useEffect(() => {
-      const canvas   = canvasRef.current;
+      const canvas = canvasRef.current;
       const renderer = rendererRef.current;
       if (!canvas || !renderer) return;
-      try { renderer.render(canvas, adjustments); }
-      catch (err) { console.error('[WebGL] render failed:', err); }
+      try {
+        renderer.render(canvas, adjustments);
+      } catch (err) {
+        console.error('[WebGL] render failed:', err);
+      }
     }, [adjustments]);
 
     // ── Zoom: Cmd/Ctrl + scroll ────────────────────────────────────────────
@@ -311,13 +365,13 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
 
         const rect = container.getBoundingClientRect();
         // Mouse offset from container center (the natural anchor of the flex layout)
-        const Dx = e.clientX - rect.left  - rect.width  / 2;
-        const Dy = e.clientY - rect.top   - rect.height / 2;
+        const Dx = e.clientX - rect.left - rect.width / 2;
+        const Dy = e.clientY - rect.top - rect.height / 2;
 
         const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
         const oldZoom = zoomRef.current;
         const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, oldZoom * factor));
-        const ratio   = newZoom / oldZoom;
+        const ratio = newZoom / oldZoom;
 
         setZoom(newZoom);
         setPan((p) => ({
@@ -358,10 +412,10 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
       };
 
       window.addEventListener('keydown', onKeyDown);
-      window.addEventListener('keyup',   onKeyUp);
+      window.addEventListener('keyup', onKeyUp);
       return () => {
         window.removeEventListener('keydown', onKeyDown);
-        window.removeEventListener('keyup',   onKeyUp);
+        window.removeEventListener('keyup', onKeyUp);
       };
     }, []);
 
@@ -379,17 +433,22 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
         }
       };
       window.addEventListener('mousemove', onMove);
-      window.addEventListener('mouseup',   onUp);
+      window.addEventListener('mouseup', onUp);
       return () => {
         window.removeEventListener('mousemove', onMove);
-        window.removeEventListener('mouseup',   onUp);
+        window.removeEventListener('mouseup', onUp);
       };
     }, []);
 
     const handleContainerMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
       if (!isSpaceDownRef.current || e.button !== 0) return;
       e.preventDefault();
-      panStartRef.current = { mx: e.clientX, my: e.clientY, px: panRef.current.x, py: panRef.current.y };
+      panStartRef.current = {
+        mx: e.clientX,
+        my: e.clientY,
+        px: panRef.current.x,
+        py: panRef.current.y,
+      };
       setIsPanning(true);
     };
 
@@ -397,7 +456,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
     const handleOverlayAddSpot = useCallback(
       (normX: number, normY: number) => {
         if (!healInteractionProps) return;
-        const src     = originalImgRef.current;
+        const src = originalImgRef.current;
         const imgData = imageDataRef.current;
         if (!src || !imgData) return;
 
@@ -443,12 +502,12 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
         <div
           className="relative shadow-[0_4px_32px_rgba(0,0,0,0.6)]"
           style={{
-            width:           canvasDims.w || undefined,
-            height:          canvasDims.h || undefined,
-            display:         dataUrl ? 'block' : 'none',
-            transform:       `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+            width: canvasDims.w || undefined,
+            height: canvasDims.h || undefined,
+            display: dataUrl ? 'block' : 'none',
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: 'center center',
-            willChange:      'transform',
+            willChange: 'transform',
           }}
         >
           <canvas ref={canvasRef} className="block" />
@@ -488,7 +547,14 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
 
         {!dataUrl && (
           <div className="flex flex-col items-center gap-3 text-[#505050] select-none">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <svg
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            >
               <rect x="3" y="3" width="18" height="18" rx="2" />
               <circle cx="8.5" cy="8.5" r="1.5" />
               <polyline points="21 15 16 10 5 21" />

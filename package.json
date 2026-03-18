@@ -10,6 +10,7 @@
     "dev:electron": "pnpm transpile:electron; cross-env NODE_ENV=development electron .",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "ts-check": "tsc --noEmit",
     "preview": "vite preview",
     "shadcn:add": "node scripts/add-shadcn.js",
     "transpile:electron": "tsc --project src/electron/tsconfig.json",
