@@ -135,6 +135,17 @@ uniform vec3 u_cgHighlights;
 uniform float u_cgBlending;  // 0-1
 uniform float u_cgBalance;   // -1 to 1
 
+// Effects — vignette
+uniform float u_vigAmount;     // -1 to 1
+uniform float u_vigMidpoint;   // 0 to 1
+uniform float u_vigRoundness;  // -1 to 1
+uniform float u_vigFeather;    // 0 to 1
+uniform float u_vigHighlights; // 0 to 1
+// Effects — grain
+uniform float u_grainAmount;   // 0 to 1
+uniform float u_grainSize;     // 0 to 1
+uniform float u_grainRoughness;// 0 to 1
+
 in vec2 v_texCoord;
 out vec4 fragColor;
 
@@ -264,6 +275,52 @@ vec3 applyColorGrading(vec3 rgb) {
   return hsl2rgb(hsl);
 }
 
+vec3 applyVignette(vec3 color, vec2 uv) {
+  if (abs(u_vigAmount) < 0.001) return color;
+  vec2 d = uv - 0.5;
+  // Roundness: 1 = circular, 0 = rectangular
+  float rnd = clamp(u_vigRoundness * 0.5 + 0.5, 0.0, 1.0);
+  float distCircle = length(d * vec2(1.0, u_imgAspect > 1.0 ? u_imgAspect : 1.0) * vec2(u_imgAspect > 1.0 ? 1.0 : 1.0 / u_imgAspect, 1.0));
+  float distRect   = max(abs(d.x), abs(d.y)) * 1.415;
+  float dist = mix(distRect, distCircle, rnd);
+
+  float mid     = mix(0.1, 0.85, u_vigMidpoint);
+  float feather = mix(0.03, 0.6, u_vigFeather);
+  float mask    = smoothstep(mid - feather * 0.5, mid + feather * 0.5, dist);
+
+  if (u_vigAmount < 0.0) {
+    float strength  = -u_vigAmount * mask;
+    float lumC      = luma(color);
+    float hiProtect = mix(1.0, max(0.0, 1.0 - lumC * lumC), u_vigHighlights);
+    color = mix(color, color * (1.0 - strength * 0.8), hiProtect);
+  } else {
+    color = mix(color, min(vec3(1.0), color + 0.5), u_vigAmount * mask);
+  }
+  return color;
+}
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(127.1, 311.7));
+  p += dot(p, p + 19.19);
+  return fract(p.x * p.y);
+}
+
+vec3 applyGrain(vec3 color, vec2 uv) {
+  if (u_grainAmount < 0.001) return color;
+  float pixelSize = mix(1.0, 5.0, u_grainSize);
+  vec2 cell = floor(uv * 2048.0 / pixelSize);
+  float n = hash21(cell) * 2.0 - 1.0;
+  // Roughness: shapes the distribution (low = smoother gaussian-like, high = harsh)
+  float rgh = mix(0.3, 1.0, u_grainRoughness);
+  n = sign(n) * pow(abs(n), 1.0 - rgh * 0.6);
+  float strength = u_grainAmount * 0.12;
+  // Less grain in shadows & highlights (luminance-weighted like Lightroom)
+  float lum2 = luma(color);
+  float lumWeight = 1.0 - (lum2 * lum2 + (1.0 - lum2) * (1.0 - lum2)) * 0.3;
+  color += n * strength * lumWeight;
+  return color;
+}
+
 void main() {
   vec2 uv = v_texCoord;
 
@@ -390,6 +447,12 @@ void main() {
 
   // ── COLOR GRADING ───────────────────────────────────────────────────────
   color = applyColorGrading(color);
+
+  // ── VIGNETTE ────────────────────────────────────────────────────────────
+  color = applyVignette(color, uv);
+
+  // ── GRAIN ───────────────────────────────────────────────────────────────
+  color = applyGrain(color, uv);
 
   fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }`;
