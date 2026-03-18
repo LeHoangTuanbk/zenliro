@@ -1,5 +1,5 @@
 import { useEffectsStore } from '../model/effects-store';
-import { BrButton } from '@/shared/ui/base';
+import { BrButton, ClickableValue } from '@/shared/ui/base';
 
 type SliderRowProps = {
   label: string;
@@ -47,9 +47,7 @@ function SliderRow({ label, value, min, max, onChange, onDoubleClick }: SliderRo
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0"
         />
       </div>
-      <span className="w-[30px] text-right text-[10px] text-br-dim tabular-nums flex-shrink-0">
-        {value > 0 && min < 0 ? `+${value}` : value}
-      </span>
+      <ClickableValue value={value} min={min} max={max} onChange={onChange} />
     </div>
   );
 }

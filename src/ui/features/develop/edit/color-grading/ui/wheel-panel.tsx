@@ -1,5 +1,6 @@
 import { ColorWheel } from './color-wheel';
 import type { WheelState, GradingRange } from '../store/types';
+import { ClickableValue } from '@/shared/ui/base';
 
 type Props = {
   label: string;
@@ -47,9 +48,12 @@ export function WheelPanel({ label, range, wheel, size, onChange, onReset }: Pro
           style={{ accentColor: 'var(--color-br-accent)' }}
           onDoubleClick={() => onChange(range, { lum: 0 })}
         />
-        <span className="text-[9px] text-br-dim w-5 text-right tabular-nums flex-shrink-0">
-          {wheel.lum > 0 ? `+${wheel.lum}` : wheel.lum}
-        </span>
+        <ClickableValue
+          value={wheel.lum}
+          min={-100}
+          max={100}
+          onChange={(v) => onChange(range, { lum: v })}
+        />
       </div>
     </div>
   );

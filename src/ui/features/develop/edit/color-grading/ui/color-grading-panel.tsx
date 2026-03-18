@@ -3,6 +3,7 @@ import { useColorGradingStore } from '../store/color-grading-store';
 import { WheelPanel } from './wheel-panel';
 import type { GradingRange, WheelState } from '../store/types';
 import { defaultWheel } from '../store/types';
+import { ClickableValue } from '@/shared/ui/base';
 
 type ViewMode = 'all' | 'midtones' | 'shadows' | 'highlights';
 
@@ -127,9 +128,7 @@ export function ColorGradingPanel() {
               className="flex-1 h-[3px] cursor-pointer min-w-0"
               style={{ accentColor: 'var(--color-br-accent)' }}
             />
-            <span className="text-[10px] text-br-dim w-7 text-right tabular-nums flex-shrink-0">
-              {value > 0 ? `+${value}` : value}
-            </span>
+            <ClickableValue value={value} min={min} max={max} onChange={fn} />
           </div>
         ))}
       </div>

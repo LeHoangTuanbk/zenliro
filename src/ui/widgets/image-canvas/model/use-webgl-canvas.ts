@@ -8,7 +8,7 @@ import { generateLUT, combineLUTs } from '@/features/develop/edit/tone-curve';
 import { useColorMixerStore } from '@/features/develop/edit/color-mixer';
 import type { HslChannel } from '@/features/develop/edit/color-mixer';
 import { useColorGradingStore } from '@/features/develop/edit/color-grading';
-import { useEffectsStore } from '@/features/develop/effects';
+import { useEffectsStore } from '@/features/develop/edit/effects';
 import {
   dataUrlToBlob,
   dataUrlToPartialBuffer,

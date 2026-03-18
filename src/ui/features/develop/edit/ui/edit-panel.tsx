@@ -5,7 +5,7 @@ import { SECTIONS } from '../const/section';
 import { ToneCurvePanel } from '@/features/develop/edit/tone-curve';
 import { ColorMixerPanel } from '@/features/develop/edit/color-mixer';
 import { ColorGradingPanel } from '@/features/develop/edit/color-grading';
-import { EffectsPanel } from '@/features/develop/effects';
+import { EffectsPanel } from '@/features/develop/edit/effects';
 import { BrButton } from '@/shared/ui/base';
 
 type ExtraSection = { title: string; node: React.ReactNode };
@@ -30,7 +30,9 @@ export function EditPanel() {
         <span className="text-[11px] font-semibold text-br-text uppercase tracking-[0.8px]">
           Basic
         </span>
-        <BrButton onClick={resetAll} title="Reset all">Reset</BrButton>
+        <BrButton onClick={resetAll} title="Reset all">
+          Reset
+        </BrButton>
       </div>
 
       {SECTIONS.map((section) => (

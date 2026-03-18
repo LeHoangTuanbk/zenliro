@@ -1,5 +1,6 @@
 import type { ColorMode, HslChannel, ChannelValues } from '../store/types';
 import { HSL_CHANNELS, CHANNEL_COLORS } from '../store/types';
+import { ClickableValue } from '@/shared/ui/base';
 
 type Props = {
   mode: ColorMode;
@@ -46,11 +47,12 @@ export function MixerSliders({ mode, values, onValueChange }: Props) {
                   {ch}
                 </span>
               </div>
-              <span
-                className={`text-[10px] font-[tabular-nums] min-w-[32px] text-right ${isModified ? 'text-br-warm' : 'text-br-dim'}`}
-              >
-                {value > 0 ? `+${value}` : value}
-              </span>
+              <ClickableValue
+                value={value}
+                min={min}
+                max={max}
+                onChange={(v) => onValueChange(mode, ch, v)}
+              />
             </div>
             <div className="relative h-[14px]" onDoubleClick={() => onValueChange(mode, ch, 0)}>
               <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[3px] bg-br-elevated rounded-[1px]">
