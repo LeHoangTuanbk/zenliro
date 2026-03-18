@@ -1,5 +1,5 @@
-import type { Adjustments } from '@features/edit/model/adjustments-store';
-import type { CropState } from '@features/crop/model/types';
+import type { Adjustments } from '@/features/develop/edit/model/adjustments-store';
+import type { CropState } from '@/features/develop/crop/model/types';
 import type { SpotGPUData } from './types';
 import { linkProgram, createTexture, createFBO } from './gl-utils';
 import { VERT_SRC, BLUR_FRAG_SRC, HEAL_FRAG_SRC, MAIN_FRAG_SRC } from './shaders';
@@ -60,7 +60,8 @@ export class WebGLRenderer {
     const gl = this.gl;
     this.imgW = image instanceof HTMLImageElement ? image.naturalWidth : image.width;
     this.imgH = image instanceof HTMLImageElement ? image.naturalHeight : image.height;
-    const w = this.imgW, h = this.imgH;
+    const w = this.imgW,
+      h = this.imgH;
 
     if (!this.imageTex) this.imageTex = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, this.imageTex);
@@ -73,21 +74,27 @@ export class WebGLRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
     this.smallBlurTmpTex = createTexture(gl, w, h);
-    this.smallBlurTex    = createTexture(gl, w, h);
+    this.smallBlurTex = createTexture(gl, w, h);
     this.largeBlurTmpTex = createTexture(gl, w, h);
-    this.largeBlurTex    = createTexture(gl, w, h);
-    this.smallBlurHFBO   = createFBO(gl, this.smallBlurTmpTex);
-    this.smallBlurFBO    = createFBO(gl, this.smallBlurTex);
-    this.largeBlurHFBO   = createFBO(gl, this.largeBlurTmpTex);
-    this.largeBlurFBO    = createFBO(gl, this.largeBlurTex);
-    this.healTex  = createTexture(gl, w, h);
-    this.healFBO  = createFBO(gl, this.healTex);
+    this.largeBlurTex = createTexture(gl, w, h);
+    this.smallBlurHFBO = createFBO(gl, this.smallBlurTmpTex);
+    this.smallBlurFBO = createFBO(gl, this.smallBlurTex);
+    this.largeBlurHFBO = createFBO(gl, this.largeBlurTmpTex);
+    this.largeBlurFBO = createFBO(gl, this.largeBlurTex);
+    this.healTex = createTexture(gl, w, h);
+    this.healFBO = createFBO(gl, this.healTex);
     this.ready = true;
   }
 
-  setHealSpots(spots: SpotGPUData[]): void { this.spotsData = spots.slice(0, 32); }
-  setCropState(crop: CropState | null): void { this.cropData = crop; }
-  get isReady() { return this.ready; }
+  setHealSpots(spots: SpotGPUData[]): void {
+    this.spotsData = spots.slice(0, 32);
+  }
+  setCropState(crop: CropState | null): void {
+    this.cropData = crop;
+  }
+  get isReady() {
+    return this.ready;
+  }
 
   private runHealPass(): WebGLTexture | null {
     if (this.spotsData.length === 0) return null;
@@ -108,18 +115,24 @@ export class WebGLRenderer {
 
     const dstSrc = new Float32Array(MAX * 4);
     const params = new Float32Array(MAX * 4);
-    const color  = new Float32Array(MAX * 4);
+    const color = new Float32Array(MAX * 4);
     for (let i = 0; i < count; i++) {
-      const s = this.spotsData[i], b = i * 4;
-      dstSrc[b]     = s.dst.x; dstSrc[b + 1] = 1 - s.dst.y;
-      dstSrc[b + 2] = s.src.x; dstSrc[b + 3] = 1 - s.src.y;
-      params[b]     = s.radius; params[b + 1] = s.feather;
-      params[b + 2] = s.opacity; params[b + 3] = s.mode;
-      color[b]  = s.colorData[0]; color[b + 1] = s.colorData[1];
+      const s = this.spotsData[i],
+        b = i * 4;
+      dstSrc[b] = s.dst.x;
+      dstSrc[b + 1] = 1 - s.dst.y;
+      dstSrc[b + 2] = s.src.x;
+      dstSrc[b + 3] = 1 - s.src.y;
+      params[b] = s.radius;
+      params[b + 1] = s.feather;
+      params[b + 2] = s.opacity;
+      params[b + 3] = s.mode;
+      color[b] = s.colorData[0];
+      color[b + 1] = s.colorData[1];
       color[b + 2] = s.colorData[2];
     }
-    gl.uniform4fv(gl.getUniformLocation(this.healProg, 'u_dstSrc'),    dstSrc);
-    gl.uniform4fv(gl.getUniformLocation(this.healProg, 'u_params'),    params);
+    gl.uniform4fv(gl.getUniformLocation(this.healProg, 'u_dstSrc'), dstSrc);
+    gl.uniform4fv(gl.getUniformLocation(this.healProg, 'u_params'), params);
     gl.uniform4fv(gl.getUniformLocation(this.healProg, 'u_colorData'), color);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     gl.bindVertexArray(null);
@@ -137,19 +150,25 @@ export class WebGLRenderer {
     // Blur passes
     gl.useProgram(this.blurProg);
     const uStep = gl.getUniformLocation(this.blurProg, 'u_step');
-    const uSrc  = gl.getUniformLocation(this.blurProg, 'u_src');
+    const uSrc = gl.getUniformLocation(this.blurProg, 'u_src');
     const runBlur = (
-      srcTex: WebGLTexture, hFBO: WebGLFramebuffer, vFBO: WebGLFramebuffer,
-      hTmpTex: WebGLTexture, stepScale: number,
+      srcTex: WebGLTexture,
+      hFBO: WebGLFramebuffer,
+      vFBO: WebGLFramebuffer,
+      hTmpTex: WebGLTexture,
+      stepScale: number,
     ) => {
       gl.viewport(0, 0, this.imgW, this.imgH);
       gl.bindFramebuffer(gl.FRAMEBUFFER, hFBO);
       gl.uniform2f(uStep, stepScale / this.imgW, 0);
-      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, srcTex);
-      gl.uniform1i(uSrc, 0); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, srcTex);
+      gl.uniform1i(uSrc, 0);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       gl.bindFramebuffer(gl.FRAMEBUFFER, vFBO);
       gl.uniform2f(uStep, 0, stepScale / this.imgH);
-      gl.bindTexture(gl.TEXTURE_2D, hTmpTex); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.bindTexture(gl.TEXTURE_2D, hTmpTex);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };
     runBlur(activeImageTex, this.smallBlurHFBO, this.smallBlurFBO, this.smallBlurTmpTex, 2.0);
     runBlur(activeImageTex, this.largeBlurHFBO, this.largeBlurFBO, this.largeBlurTmpTex, 18.0);
@@ -160,30 +179,39 @@ export class WebGLRenderer {
     gl.useProgram(this.mainProg);
     const u = (n: string) => gl.getUniformLocation(this.mainProg, n);
 
-    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, activeImageTex); gl.uniform1i(u('u_image'), 0);
-    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, this.smallBlurTex); gl.uniform1i(u('u_smallBlur'), 1);
-    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, this.largeBlurTex); gl.uniform1i(u('u_largeBlur'), 2);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, activeImageTex);
+    gl.uniform1i(u('u_image'), 0);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, this.smallBlurTex);
+    gl.uniform1i(u('u_smallBlur'), 1);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, this.largeBlurTex);
+    gl.uniform1i(u('u_largeBlur'), 2);
 
     const crop = this.cropData;
     gl.uniform2f(u('u_cropOrigin'), crop ? crop.rect.x : 0, crop ? crop.rect.y : 0);
-    gl.uniform2f(u('u_cropSize'),   crop ? crop.rect.w : 1, crop ? crop.rect.h : 1);
-    gl.uniform1f(u('u_rotation'),   crop ? ((crop.rotationSteps * 90 + crop.rotation) * Math.PI) / 180 : 0);
-    gl.uniform1f(u('u_flipH'),      crop?.flipH ? 1 : 0);
-    gl.uniform1f(u('u_flipV'),      crop?.flipV ? 1 : 0);
-    gl.uniform1f(u('u_imgAspect'),  this.imgW / this.imgH);
+    gl.uniform2f(u('u_cropSize'), crop ? crop.rect.w : 1, crop ? crop.rect.h : 1);
+    gl.uniform1f(
+      u('u_rotation'),
+      crop ? ((crop.rotationSteps * 90 + crop.rotation) * Math.PI) / 180 : 0,
+    );
+    gl.uniform1f(u('u_flipH'), crop?.flipH ? 1 : 0);
+    gl.uniform1f(u('u_flipV'), crop?.flipV ? 1 : 0);
+    gl.uniform1f(u('u_imgAspect'), this.imgW / this.imgH);
 
-    gl.uniform1f(u('u_temp'),       adjustments.temp);
-    gl.uniform1f(u('u_tint'),       adjustments.tint);
-    gl.uniform1f(u('u_exposure'),   adjustments.exposure);
-    gl.uniform1f(u('u_contrast'),   adjustments.contrast);
+    gl.uniform1f(u('u_temp'), adjustments.temp);
+    gl.uniform1f(u('u_tint'), adjustments.tint);
+    gl.uniform1f(u('u_exposure'), adjustments.exposure);
+    gl.uniform1f(u('u_contrast'), adjustments.contrast);
     gl.uniform1f(u('u_highlights'), adjustments.highlights);
-    gl.uniform1f(u('u_shadows'),    adjustments.shadows);
-    gl.uniform1f(u('u_whites'),     adjustments.whites);
-    gl.uniform1f(u('u_blacks'),     adjustments.blacks);
-    gl.uniform1f(u('u_texture'),    adjustments.texture);
-    gl.uniform1f(u('u_clarity'),    adjustments.clarity);
-    gl.uniform1f(u('u_dehaze'),     adjustments.dehaze);
-    gl.uniform1f(u('u_vibrance'),   adjustments.vibrance);
+    gl.uniform1f(u('u_shadows'), adjustments.shadows);
+    gl.uniform1f(u('u_whites'), adjustments.whites);
+    gl.uniform1f(u('u_blacks'), adjustments.blacks);
+    gl.uniform1f(u('u_texture'), adjustments.texture);
+    gl.uniform1f(u('u_clarity'), adjustments.clarity);
+    gl.uniform1f(u('u_dehaze'), adjustments.dehaze);
+    gl.uniform1f(u('u_vibrance'), adjustments.vibrance);
     gl.uniform1f(u('u_saturation'), adjustments.saturation);
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -195,13 +223,16 @@ export class WebGLRenderer {
     if (!this.ready) return null;
     const gl = this.gl;
     const canvas = gl.canvas as HTMLCanvasElement;
-    const w = canvas.width, h = canvas.height;
+    const w = canvas.width,
+      h = canvas.height;
     const data = new Uint8ClampedArray(w * h * 4);
     gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, data);
     return { data, width: w, height: h };
   }
 
-  dispose(): void { this.ready = false; }
+  dispose(): void {
+    this.ready = false;
+  }
 
   static exportDataUrl(
     image: HTMLImageElement | HTMLCanvasElement,
@@ -213,7 +244,7 @@ export class WebGLRenderer {
     spots?: SpotGPUData[],
     crop?: CropState | null,
   ): string {
-    const srcW = image instanceof HTMLImageElement ? image.naturalWidth  : image.width;
+    const srcW = image instanceof HTMLImageElement ? image.naturalWidth : image.width;
     const srcH = image instanceof HTMLImageElement ? image.naturalHeight : image.height;
     const cropW = crop ? Math.round(srcW * crop.rect.w) : srcW;
     const cropH = crop ? Math.round(srcH * crop.rect.h) : srcH;
@@ -222,7 +253,8 @@ export class WebGLRenderer {
     const outH = targetH ?? (stepsOdd ? cropW : cropH);
 
     const canvas = document.createElement('canvas');
-    canvas.width = outW; canvas.height = outH;
+    canvas.width = outW;
+    canvas.height = outH;
     const renderer = new WebGLRenderer();
     renderer.init(canvas, { preserveDrawingBuffer: true });
     renderer.loadImage(image);

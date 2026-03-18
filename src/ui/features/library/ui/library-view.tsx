@@ -1,12 +1,18 @@
-interface LibraryViewProps {
+type LibraryViewProps = {
   photos: ImportedPhoto[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onImport: () => void;
   onOpenDevelop: (id: string) => void;
-}
+};
 
-export function LibraryView({ photos, selectedId, onSelect, onImport, onOpenDevelop }: LibraryViewProps) {
+export function LibraryView({
+  photos,
+  selectedId,
+  onSelect,
+  onImport,
+  onOpenDevelop,
+}: LibraryViewProps) {
   return (
     <div className="flex flex-col w-full h-full bg-[#1a1a1a]">
       {/* Toolbar */}
@@ -25,7 +31,14 @@ export function LibraryView({ photos, selectedId, onSelect, onImport, onOpenDeve
       {/* Grid */}
       {photos.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 text-[#505050] select-none">
-          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1">
+          <svg
+            width="56"
+            height="56"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+          >
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <circle cx="8.5" cy="8.5" r="1.5" />
             <polyline points="21 15 16 10 5 21" />
@@ -47,7 +60,9 @@ export function LibraryView({ photos, selectedId, onSelect, onImport, onOpenDeve
                 onClick={() => onSelect(p.id)}
                 onDoubleClick={() => onOpenDevelop(p.id)}
                 className={`group relative bg-[#111] rounded-[2px] overflow-hidden cursor-pointer border-2 transition-colors text-left ${
-                  p.id === selectedId ? 'border-[#4d9fec]' : 'border-transparent hover:border-[#444]'
+                  p.id === selectedId
+                    ? 'border-[#4d9fec]'
+                    : 'border-transparent hover:border-[#444]'
                 }`}
                 title={`${p.fileName} — double-click to edit`}
               >

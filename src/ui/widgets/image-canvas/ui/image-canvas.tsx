@@ -1,12 +1,12 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { WebGLRenderer } from '@shared/lib/webgl';
 import type { SpotGPUData } from '@shared/lib/webgl';
-import { useAdjustmentsStore } from '@features/edit/model/adjustments-store';
-import { HealEngine } from '@features/heal/lib/heal-engine';
-import { HealOverlay } from '@features/heal/ui/heal-overlay';
-import type { HealMode, HealSpot } from '@features/heal/model/types';
-import { CropOverlay } from '@features/crop/ui/crop-overlay';
-import type { CropState } from '@features/crop/model/types';
+import { useAdjustmentsStore } from '@/features/develop/edit/model/adjustments-store';
+import { HealEngine } from '@/features/develop/heal/lib/heal-engine';
+import { HealOverlay } from '@/features/develop/heal/ui/heal-overlay';
+import type { HealMode, HealSpot } from '@/features/develop/heal/model/types';
+import { CropOverlay } from '@/features/develop/crop/ui/crop-overlay';
+import type { CropState } from '@/features/develop/crop/model/types';
 
 // ── EXIF / orientation helpers ─────────────────────────────────────────────────
 

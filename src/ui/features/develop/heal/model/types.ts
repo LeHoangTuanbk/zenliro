@@ -1,5 +1,4 @@
 export type HealMode = 'heal' | 'clone' | 'fill';
-export type ActiveTool = 'edit' | 'heal' | 'crop';
 
 export interface HealSpot {
   id: string;
