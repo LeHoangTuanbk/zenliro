@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { useCatalogStore } from '../store/catalog-store';
-import { useAdjustmentsStore, DEFAULT_ADJUSTMENTS } from '@features/develop/edit/store/adjustments-store';
+import { useAdjustmentsStore, DEFAULT_ADJUSTMENTS, type Adjustments } from '@features/develop/edit/store/adjustments-store';
 import { useColorMixerStore } from '@features/develop/edit/color-mixer/store/color-mixer-store';
 import { defaultChannelValues } from '@features/develop/edit/color-mixer/store/types';
 import { useColorGradingStore } from '@features/develop/edit/color-grading/store/color-grading-store';
 import { defaultWheel } from '@features/develop/edit/color-grading/store/types';
-import { useEffectsStore } from '@features/develop/edit/effects/model/effects-store';
+import { useEffectsStore, type EffectsState } from '@features/develop/edit/effects/model/effects-store';
 import { useToneCurveStore } from '@features/develop/edit/tone-curve/store/tone-curve-store';
 import {
   defaultCurvePoints,
@@ -67,7 +67,7 @@ function captureEdits(photoId: string): PhotoEdits {
 
 function applyEdits(photoId: string, edits: PhotoEdits) {
   useAdjustmentsStore.setState({
-    adjustments: { ...DEFAULT_ADJUSTMENTS, ...(edits.adjustments as never) },
+    adjustments: { ...DEFAULT_ADJUSTMENTS, ...(edits.adjustments as Partial<Adjustments>) },
   });
 
   const mixer = edits.colorMixer;
@@ -86,7 +86,7 @@ function applyEdits(photoId: string, edits: PhotoEdits) {
     balance: cg.balance ?? 0,
   });
 
-  useEffectsStore.setState({ ...(edits.effects as never) });
+  useEffectsStore.setState(edits.effects as EffectsState);
 
   useToneCurveStore.setState({
     points: { ...defaultCurvePoints(), ...edits.toneCurve.points } as never,
