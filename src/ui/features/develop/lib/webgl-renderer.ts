@@ -1,4 +1,5 @@
 import type { Adjustments } from '../model/adjustments-store';
+import type { CropState } from '../../crop/model/types';
 
 export interface SpotGPUData {
   dst: { x: number; y: number };
@@ -120,6 +121,14 @@ uniform sampler2D u_image;
 uniform sampler2D u_smallBlur;
 uniform sampler2D u_largeBlur;
 
+// Crop & rotate
+uniform vec2  u_cropOrigin;  // (rect.x, rect.y) normalized
+uniform vec2  u_cropSize;    // (rect.w, rect.h) normalized
+uniform float u_rotation;    // radians (straighten + 90° steps)
+uniform float u_flipH;       // 1.0 = flip horizontally
+uniform float u_flipV;       // 1.0 = flip vertically
+uniform float u_imgAspect;   // imgW / imgH
+
 uniform float u_temp;
 uniform float u_tint;
 uniform float u_exposure;
@@ -179,7 +188,33 @@ vec3 hsl2rgb(vec3 hsl) {
 
 void main() {
   vec2 uv = v_texCoord;
-  vec3 color = texture(u_image, uv).rgb;
+
+  // ── CROP & ROTATE ─────────────────────────────────────────────────────
+  // Map canvas UV → crop-rect UV → rotated image UV
+  vec2 imageUV = u_cropOrigin + uv * u_cropSize;
+
+  if (u_rotation != 0.0) {
+    vec2 center = u_cropOrigin + u_cropSize * 0.5;
+    vec2 d = imageUV - center;
+    // Aspect-correct rotation (work in square-normalised space)
+    d.x *= u_imgAspect;
+    float cosR = cos(-u_rotation);
+    float sinR = sin(-u_rotation);
+    vec2 rd = vec2(cosR * d.x - sinR * d.y, sinR * d.x + cosR * d.y);
+    rd.x /= u_imgAspect;
+    imageUV = center + rd;
+  }
+
+  // Flip (applied in image space after rotation)
+  if (u_flipH > 0.5) imageUV.x = 1.0 - imageUV.x;
+  if (u_flipV > 0.5) imageUV.y = 1.0 - imageUV.y;
+
+  if (imageUV.x < 0.0 || imageUV.x > 1.0 || imageUV.y < 0.0 || imageUV.y > 1.0) {
+    fragColor = vec4(0.078, 0.078, 0.078, 1.0); // match app bg color
+    return;
+  }
+
+  vec3 color = texture(u_image, imageUV).rgb;
 
   // ── WHITE BALANCE ────────────────────────────────────────────────────
   float t = u_temp / 100.0;
@@ -242,7 +277,7 @@ void main() {
 
   // ── CLARITY (midtone local contrast, large blur) ──────────────────────
   if (abs(u_clarity) > 0.5) {
-    vec3 lb = texture(u_largeBlur, uv).rgb;
+    vec3 lb = texture(u_largeBlur, v_texCoord).rgb;
     lum = luma(color);
     // Bell mask: strongest at midtones (lum ≈ 0.5)
     float mask = 1.0 - abs(lum * 2.0 - 1.0);
@@ -252,13 +287,13 @@ void main() {
 
   // ── TEXTURE (fine detail, small blur) ─────────────────────────────────
   if (abs(u_texture) > 0.5) {
-    vec3 sb = texture(u_smallBlur, uv).rgb;
+    vec3 sb = texture(u_smallBlur, v_texCoord).rgb;
     color += (color - sb) * (u_texture / 100.0) * 0.9;
   }
 
   // ── DEHAZE (simplified: local contrast + desaturation of haze) ────────
   if (abs(u_dehaze) > 0.5) {
-    vec3 lb = texture(u_largeBlur, uv).rgb;
+    vec3 lb = texture(u_largeBlur, v_texCoord).rgb;
     float d = u_dehaze / 100.0;
     color -= d * 0.04;
     color += (color - lb) * d * 0.6;
@@ -351,6 +386,7 @@ export class WebGLRenderer {
   private imgH = 0;
   private ready = false;
   private spotsData: SpotGPUData[] = [];
+  private cropData: CropState | null = null;
 
   init(canvas: HTMLCanvasElement, opts: { preserveDrawingBuffer?: boolean } = {}): void {
     const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: opts.preserveDrawingBuffer ?? false });
@@ -424,6 +460,10 @@ export class WebGLRenderer {
 
   setHealSpots(spots: SpotGPUData[]): void {
     this.spotsData = spots.slice(0, 32);
+  }
+
+  setCropState(crop: CropState | null): void {
+    this.cropData = crop;
   }
 
   private runHealPass(): WebGLTexture | null {
@@ -545,6 +585,25 @@ export class WebGLRenderer {
     gl.bindTexture(gl.TEXTURE_2D, this.largeBlurTex);
     gl.uniform1i(u('u_largeBlur'), 2);
 
+    // ── Crop uniforms ────────────────────────────────────────────────────
+    const crop = this.cropData;
+    if (crop) {
+      const totalRad = ((crop.rotationSteps * 90 + crop.rotation) * Math.PI) / 180;
+      gl.uniform2f(u('u_cropOrigin'), crop.rect.x, crop.rect.y);
+      gl.uniform2f(u('u_cropSize'),   crop.rect.w, crop.rect.h);
+      gl.uniform1f(u('u_rotation'),   totalRad);
+      gl.uniform1f(u('u_flipH'),      crop.flipH ? 1.0 : 0.0);
+      gl.uniform1f(u('u_flipV'),      crop.flipV ? 1.0 : 0.0);
+      gl.uniform1f(u('u_imgAspect'),  this.imgW / this.imgH);
+    } else {
+      gl.uniform2f(u('u_cropOrigin'), 0, 0);
+      gl.uniform2f(u('u_cropSize'),   1, 1);
+      gl.uniform1f(u('u_rotation'),   0);
+      gl.uniform1f(u('u_flipH'),      0);
+      gl.uniform1f(u('u_flipV'),      0);
+      gl.uniform1f(u('u_imgAspect'),  this.imgW / this.imgH);
+    }
+
     gl.uniform1f(u('u_temp'),        adjustments.temp);
     gl.uniform1f(u('u_tint'),        adjustments.tint);
     gl.uniform1f(u('u_exposure'),    adjustments.exposure);
@@ -581,17 +640,28 @@ export class WebGLRenderer {
     targetW?: number,
     targetH?: number,
     spots?: SpotGPUData[],
+    crop?: CropState | null,
   ): string {
     const srcW = image instanceof HTMLImageElement ? image.naturalWidth  : image.width;
     const srcH = image instanceof HTMLImageElement ? image.naturalHeight : image.height;
+
+    // Compute cropped output dimensions
+    const cropW = crop ? Math.round(srcW * crop.rect.w) : srcW;
+    const cropH = crop ? Math.round(srcH * crop.rect.h) : srcH;
+    // 90°/270° steps swap dimensions
+    const stepsOdd = crop ? Math.abs(crop.rotationSteps % 2) === 1 : false;
+    const outW = targetW ?? (stepsOdd ? cropH : cropW);
+    const outH = targetH ?? (stepsOdd ? cropW : cropH);
+
     const canvas = document.createElement('canvas');
-    canvas.width  = targetW ?? srcW;
-    canvas.height = targetH ?? srcH;
+    canvas.width  = outW;
+    canvas.height = outH;
 
     const renderer = new WebGLRenderer();
     renderer.init(canvas, { preserveDrawingBuffer: true });
     renderer.loadImage(image);
     if (spots?.length) renderer.setHealSpots(spots);
+    if (crop) renderer.setCropState(crop);
     renderer.render(canvas, adjustments);
     const dataUrl = canvas.toDataURL(mimeType, quality);
     renderer.dispose();
