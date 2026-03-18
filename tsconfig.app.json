@@ -25,7 +25,12 @@
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/ui/*"]
+      "@/*": ["./src/ui/*"],
+      "@shared/*": ["./src/ui/shared/*"],
+      "@features/*": ["./src/ui/features/*"],
+      "@widgets/*": ["./src/ui/widgets/*"],
+      "@pages/*": ["./src/ui/pages/*"],
+      "@entities/*": ["./src/ui/entities/*"]
     }
   },
   "include": ["src"],

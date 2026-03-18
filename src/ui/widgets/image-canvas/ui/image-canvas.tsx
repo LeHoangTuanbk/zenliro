@@ -1,12 +1,12 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { WebGLRenderer } from '../../../features/edit/lib/webgl-renderer';
-import type { SpotGPUData } from '../../../features/edit/lib/webgl-renderer';
-import { useAdjustmentsStore } from '../../../features/edit/model/adjustments-store';
-import { HealEngine } from '../../../features/heal/lib/heal-engine';
-import { HealOverlay } from '../../../features/heal/ui/heal-overlay';
-import type { HealMode, HealSpot } from '../../../features/heal/model/types';
-import { CropOverlay } from '../../../features/crop/ui/crop-overlay';
-import type { CropState } from '../../../features/crop/model/types';
+import { WebGLRenderer } from '@shared/lib/webgl';
+import type { SpotGPUData } from '@shared/lib/webgl';
+import { useAdjustmentsStore } from '@features/edit/model/adjustments-store';
+import { HealEngine } from '@features/heal/lib/heal-engine';
+import { HealOverlay } from '@features/heal/ui/heal-overlay';
+import type { HealMode, HealSpot } from '@features/heal/model/types';
+import { CropOverlay } from '@features/crop/ui/crop-overlay';
+import type { CropState } from '@features/crop/model/types';
 
 // ── EXIF / orientation helpers ─────────────────────────────────────────────────
 
@@ -108,6 +108,7 @@ export interface ImageCanvasHandle {
     targetH?: number,
     crop?: CropState | null,
   ) => string | null;
+  getRenderedPixels: () => { data: Uint8ClampedArray; width: number; height: number } | null;
 }
 
 export interface CropInteractionProps {
@@ -200,6 +201,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
           crop,
         );
       },
+      getRenderedPixels: () => rendererRef.current?.readCurrentPixels() ?? null,
     }));
 
     // ── Helpers ────────────────────────────────────────────────────────────

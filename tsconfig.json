@@ -1,13 +1,14 @@
 {
   "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/ui/*"]
+      "@/*": ["./src/ui/*"],
+      "@shared/*": ["./src/ui/shared/*"],
+      "@features/*": ["./src/ui/features/*"],
+      "@widgets/*": ["./src/ui/widgets/*"],
+      "@pages/*": ["./src/ui/pages/*"]
     }
   }
 }
