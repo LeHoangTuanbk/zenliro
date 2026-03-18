@@ -5,6 +5,8 @@ import { useAdjustmentsStore } from '../../../features/develop/model/adjustments
 import { HealEngine } from '../../../features/heal/lib/heal-engine';
 import { HealOverlay } from '../../../features/heal/ui/heal-overlay';
 import type { HealMode, HealSpot } from '../../../features/heal/model/types';
+import { CropOverlay } from '../../../features/crop/ui/crop-overlay';
+import type { CropState } from '../../../features/crop/model/types';
 
 // ── EXIF / orientation helpers ─────────────────────────────────────────────────
 
@@ -88,7 +90,14 @@ export interface ImageCanvasHandle {
     quality: number,
     targetW?: number,
     targetH?: number,
+    crop?: CropState | null,
   ) => string | null;
+}
+
+export interface CropInteractionProps {
+  cropState: CropState;
+  imageAspect: number;
+  onChange: (patch: Partial<CropState>) => void;
 }
 
 export interface HealInteractionProps {
@@ -110,6 +119,8 @@ interface Props {
   dataUrl: string | null;
   healSpots?: HealSpot[];
   healInteractionProps?: HealInteractionProps;
+  cropInteractionProps?: CropInteractionProps; // editing mode — shows overlay, full image in WebGL
+  confirmedCropState?: CropState | null;        // applied to WebGL when NOT in crop edit mode
   hideOverlay?: boolean;
   onImageLoaded?: (w: number, h: number) => void;
 }
@@ -118,7 +129,7 @@ const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 16;
 
 export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
-  ({ dataUrl, healSpots = [], healInteractionProps, hideOverlay = false, onImageLoaded }, ref) => {
+  ({ dataUrl, healSpots = [], healInteractionProps, cropInteractionProps, confirmedCropState, hideOverlay = false, onImageLoaded }, ref) => {
     const containerRef   = useRef<HTMLDivElement>(null);
     const canvasRef      = useRef<HTMLCanvasElement>(null);
     const rendererRef    = useRef<WebGLRenderer | null>(null);
@@ -143,11 +154,11 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
 
     // ── Export ─────────────────────────────────────────────────────────────
     useImperativeHandle(ref, () => ({
-      getExportDataUrl: (mimeType, quality, targetW, targetH) => {
+      getExportDataUrl: (mimeType, quality, targetW, targetH, crop) => {
         const img = originalImgRef.current;
         if (!img) return null;
         const adj = useAdjustmentsStore.getState().adjustments;
-        return WebGLRenderer.exportDataUrl(img, adj, mimeType, quality, targetW, targetH, gpuSpotsRef.current);
+        return WebGLRenderer.exportDataUrl(img, adj, mimeType, quality, targetW, targetH, gpuSpotsRef.current, crop);
       },
     }));
 
@@ -268,6 +279,17 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
       renderToCanvas();
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [healSpots]);
+
+    // ── Sync crop state to WebGL renderer ──────────────────────────────────
+    // While crop overlay is active, render full image (editing mode).
+    // Only apply the confirmed crop when NOT in edit mode.
+    useEffect(() => {
+      const renderer = rendererRef.current;
+      if (!renderer) return;
+      renderer.setCropState(cropInteractionProps ? null : (confirmedCropState ?? null));
+      renderToCanvas();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cropInteractionProps, confirmedCropState]);
 
     // ── Re-render develop adjustments ──────────────────────────────────────
     useEffect(() => {
@@ -405,6 +427,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
     );
 
     const showHeal = !!healInteractionProps && canvasDims.w > 0 && !hideOverlay;
+    const showCrop = !!cropInteractionProps && canvasDims.w > 0;
 
     // Cursor for the container
     const containerCursor = isPanning ? 'grabbing' : isSpaceDown ? 'grab' : 'default';
@@ -429,6 +452,18 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, Props>(
           }}
         >
           <canvas ref={canvasRef} className="block" />
+
+          {showCrop && (
+            <CropOverlay
+              canvasWidth={canvasDims.w}
+              canvasHeight={canvasDims.h}
+              cropState={cropInteractionProps!.cropState}
+              zoom={zoom}
+              imageAspect={cropInteractionProps!.imageAspect}
+              onChange={cropInteractionProps!.onChange}
+              style={isSpaceDown ? { pointerEvents: 'none' } : undefined}
+            />
+          )}
 
           {showHeal && (
             <HealOverlay

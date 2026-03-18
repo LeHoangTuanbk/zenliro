@@ -2,10 +2,12 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { ImageCanvas, type ImageCanvasHandle } from './widgets/image-canvas/ui/image-canvas';
 import { DevelopPanel } from './features/develop/ui/develop-panel';
 import { HealPanel } from './features/heal/ui/heal-panel';
+import { CropPanel } from './features/crop/ui/crop-panel';
 import { ExportDialog, type ExportSettings } from './features/export/ui/export-dialog';
 import { WebGLRenderer } from './features/develop/lib/webgl-renderer';
 import { useAdjustmentsStore } from './features/develop/model/adjustments-store';
 import { useHealStore } from './features/heal/model/heal-store';
+import { useCropStore } from './features/crop/model/crop-store';
 import type { ActiveTool, HealSpot } from './features/heal/model/types';
 import './app.css';
 
@@ -15,6 +17,7 @@ const EMPTY_SPOTS: HealSpot[] = [];
 const TOOLS: { id: ActiveTool; label: string }[] = [
   { id: 'develop', label: 'Develop' },
   { id: 'heal',    label: 'Heal' },
+  { id: 'crop',    label: 'Crop' },
 ];
 
 export default function App() {
@@ -33,6 +36,13 @@ export default function App() {
   const healSpots  = useHealStore((s) => (selectedId && s.spotsByPhoto[selectedId]) || EMPTY_SPOTS);
   const previewOriginal = useHealStore((s) => s.previewOriginal);
   const { selectedSpotId, brushSizePx, activeMode, feather, opacity } = healStore;
+
+  // ── Crop store ─────────────────────────────────────────────────────────────
+  const cropStore = useCropStore();
+  const cropState = selectedId ? cropStore.getCrop(selectedId) : null;
+  const imageAspect = selected && selected.width && selected.height
+    ? selected.width / selected.height
+    : 1;
 
   // ── Import ─────────────────────────────────────────────────────────────────
   const handleImport = useCallback(async () => {
@@ -67,8 +77,9 @@ export default function App() {
       }
     }
 
+    const activeCrop = selectedId ? useCropStore.getState().getCrop(selectedId) : null;
     const dataUrl = canvasRef.current.getExportDataUrl(
-      settings.format, settings.quality / 100, exportW, exportH,
+      settings.format, settings.quality / 100, exportW, exportH, activeCrop,
     );
     if (!dataUrl) return;
 
@@ -86,6 +97,18 @@ export default function App() {
       p.id === selectedId ? { ...p, width: w, height: h } : p,
     ));
   }, [selectedId]);
+
+  // ── Crop interaction props ─────────────────────────────────────────────────
+  const cropInteractionProps = useMemo(() => {
+    if (activeTool !== 'crop' || !selectedId || !cropState) return undefined;
+    const pid = selectedId;
+    return {
+      cropState,
+      imageAspect,
+      onChange: (patch: Partial<typeof cropState>) => cropStore.setCrop(pid, patch),
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTool, selectedId, cropState, imageAspect]);
 
   // ── Heal interaction props ─────────────────────────────────────────────────
   const healInteractionProps = useMemo(() => {
@@ -174,6 +197,8 @@ export default function App() {
             healSpots={healSpots}
             hideOverlay={previewOriginal}
             healInteractionProps={healInteractionProps}
+            cropInteractionProps={cropInteractionProps}
+            confirmedCropState={activeTool !== 'crop' ? cropState : null}
             onImageLoaded={handleImageLoaded}
           />
         </main>
@@ -202,6 +227,7 @@ export default function App() {
           <div className="flex-1 overflow-y-auto scrollbar-thin">
             {activeTool === 'develop' && <DevelopPanel />}
             {activeTool === 'heal'    && <HealPanel photoId={selectedId} />}
+            {activeTool === 'crop'    && <CropPanel photoId={selectedId} imageAspect={imageAspect} onDone={() => setActiveTool('develop')} />}
           </div>
         </aside>
       </div>
