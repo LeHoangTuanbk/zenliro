@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from 'electron';
 import { ipcMainHandle, isDev, validateEventFrame } from './utils.js';
 import { getPreloadPath, getUIPath } from './path-resolver.js';
+import { registerCatalogHandlers } from './catalog.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -22,6 +23,8 @@ app.on('ready', () => {
   } else {
     mainWindow.loadFile(getUIPath());
   }
+
+  registerCatalogHandlers();
 
   // ── Import ────────────────────────────────────────────────────────────────
   ipcMainHandle('importPhotos', async () => {
@@ -128,17 +131,35 @@ app.on('ready', () => {
 });
 
 function handleCloseEvents(mainWindow: BrowserWindow) {
-  let willClose = false;
+  let quitting = false;
+
   mainWindow.on('close', (e) => {
-    if (willClose) return;
+    if (quitting) return;
+    // On macOS: hide window but keep dock icon so user can reopen
+    if (process.platform === 'darwin') {
+      e.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
+  // Clicking dock icon when window is hidden → show again
+  app.on('activate', () => {
+    if (!mainWindow.isVisible()) mainWindow.show();
+  });
+
+  // Before quitting: ask renderer to save, wait for ack (max 3s) then quit
+  app.on('before-quit', (e) => {
+    if (quitting) return;
     e.preventDefault();
-    mainWindow.hide();
-    if (app.dock) app.dock.hide();
-  });
-  app.on('before-quit', () => {
-    willClose = true;
-  });
-  mainWindow.on('show', () => {
-    willClose = false;
+    quitting = true;
+
+    const timeout = setTimeout(() => app.quit(), 3000);
+
+    ipcMain.once('app:save-done', () => {
+      clearTimeout(timeout);
+      app.quit();
+    });
+
+    mainWindow.webContents.send('app:request-save');
   });
 }
