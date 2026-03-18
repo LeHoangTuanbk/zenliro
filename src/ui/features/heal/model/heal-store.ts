@@ -4,10 +4,11 @@ import type { HealSpot, HealMode } from './types';
 interface HealState {
   spotsByPhoto: Record<string, HealSpot[]>;
   activeMode: HealMode;
-  brushRadius: number;  // normalized 0.01–0.25 (relative to image width)
-  feather: number;      // 0–100
-  opacity: number;      // 0–100
+  brushSizePx: number;      // brush radius in screen pixels (5–200)
+  feather: number;          // 0–100
+  opacity: number;          // 0–100
   selectedSpotId: string | null;
+  previewOriginal: boolean; // show before (no spots) when true
 }
 
 interface HealActions {
@@ -17,19 +18,21 @@ interface HealActions {
   removeSpot(photoId: string, id: string): void;
   clearAll(photoId: string): void;
   setActiveMode(mode: HealMode): void;
-  setBrushRadius(r: number): void;
+  setBrushSizePx(px: number): void;
   setFeather(f: number): void;
   setOpacity(o: number): void;
   setSelectedSpotId(id: string | null): void;
+  setPreviewOriginal(v: boolean): void;
 }
 
 export const useHealStore = create<HealState & HealActions>((set, get) => ({
   spotsByPhoto: {},
   activeMode: 'heal',
-  brushRadius: 0.05,
+  brushSizePx: 40,
   feather: 50,
   opacity: 100,
   selectedSpotId: null,
+  previewOriginal: false,
 
   getSpots: (photoId) => get().spotsByPhoto[photoId] ?? [],
 
@@ -67,8 +70,9 @@ export const useHealStore = create<HealState & HealActions>((set, get) => ({
     })),
 
   setActiveMode: (activeMode) => set({ activeMode }),
-  setBrushRadius: (brushRadius) => set({ brushRadius }),
+  setBrushSizePx: (brushSizePx) => set({ brushSizePx }),
   setFeather: (feather) => set({ feather }),
   setOpacity: (opacity) => set({ opacity }),
   setSelectedSpotId: (selectedSpotId) => set({ selectedSpotId }),
+  setPreviewOriginal: (previewOriginal) => set({ previewOriginal }),
 }));

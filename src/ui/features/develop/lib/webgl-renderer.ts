@@ -1,10 +1,22 @@
 import type { Adjustments } from '../model/adjustments-store';
 
+export interface SpotGPUData {
+  dst: { x: number; y: number };
+  src: { x: number; y: number };
+  radius: number;   // normalized (relative to imgW)
+  feather: number;  // 0–1
+  opacity: number;  // 0–1
+  mode: 0 | 1 | 2; // 0=heal, 1=clone, 2=fill
+  colorData: [number, number, number]; // 0–1 range (fill color or heal offset)
+}
+
 const VERT_SRC = /* glsl */ `#version 300 es
 in vec2 a_position;
 out vec2 v_texCoord;
 void main() {
-  v_texCoord = vec2(a_position.x * 0.5 + 0.5, 0.5 - a_position.y * 0.5);
+  // Standard OpenGL texcoords: y=0 at bottom, y=1 at top.
+  // We upload images with UNPACK_FLIP_Y so this matches image top-to-bottom.
+  v_texCoord = vec2(a_position.x * 0.5 + 0.5, a_position.y * 0.5 + 0.5);
   gl_Position = vec4(a_position, 0.0, 1.0);
 }`;
 
@@ -27,6 +39,78 @@ void main() {
     total += w;
   }
   fragColor = vec4(result / total, 1.0);
+}`;
+
+const HEAL_FRAG_SRC = /* glsl */ `#version 300 es
+precision highp float;
+
+#define MAX_SPOTS 32
+
+uniform sampler2D u_image;
+uniform int u_spotCount;
+uniform float u_hOverW;  // imgH / imgW for aspect-correct circular distance
+
+// Per-spot data (packed as vec4 arrays)
+uniform vec4 u_dstSrc[MAX_SPOTS];    // dst.xy, src.xy (normalized 0-1)
+uniform vec4 u_params[MAX_SPOTS];    // radius, feather, opacity, mode(0=heal 1=clone 2=fill)
+uniform vec4 u_colorData[MAX_SPOTS]; // rgb = fill color or heal color offset (0-1), w unused
+
+in vec2 v_texCoord;
+out vec4 fragColor;
+
+void main() {
+  vec3 color = texture(u_image, v_texCoord).rgb;
+
+  for (int i = 0; i < MAX_SPOTS; i++) {
+    if (i >= u_spotCount) break;
+
+    vec2  dst     = u_dstSrc[i].xy;
+    vec2  src     = u_dstSrc[i].zw;
+    float radius  = u_params[i].x;
+    float feather = u_params[i].y;
+    float opacity = u_params[i].z;
+    int   mode    = int(u_params[i].w + 0.5);
+
+    // Aspect-correct distance so radius is circular in pixel space
+    vec2  d    = v_texCoord - dst;
+    float dist = length(vec2(d.x, d.y * u_hOverW));
+    if (dist > radius) continue;
+
+    // Feather / alpha — fill uses Gaussian for zero-boundary smoothness;
+    // heal/clone use the classic smoothstep hard-radius approach.
+    float alpha;
+    if (mode == 2) {
+      // Gaussian: exp(-k * (dist/radius)²). k=3.5 → near-zero at edge, no visible ring.
+      float nd = dist / radius;
+      alpha = exp(-3.5 * nd * nd) * opacity;
+    } else {
+      float hardR = radius * (1.0 - feather);
+      float zone  = max(radius - hardR, 0.001);
+      float t     = clamp((dist - hardR) / zone, 0.0, 1.0);
+      alpha = (1.0 - t * t * (3.0 - 2.0 * t)) * opacity;
+    }
+    if (alpha <= 0.001) continue;
+
+    vec3 srcColor;
+    if (mode == 2) {
+      // Fill: blend toward surrounding skin tone color.
+      // Gaussian alpha provides smooth spatial falloff — no hard boundary.
+      srcColor = u_colorData[i].rgb;
+    } else {
+      // Heal or Clone: sample source texture with same offset
+      vec2 srcUV = clamp(src + d, vec2(0.0), vec2(1.0));
+      srcColor = texture(u_image, srcUV).rgb;
+      if (mode == 0) {
+        // Heal: add pre-computed color correction (stronger at center)
+        float hw = (1.0 - dist / radius) * 0.6 + 0.4;
+        srcColor = clamp(srcColor + u_colorData[i].rgb * hw, 0.0, 1.0);
+      }
+    }
+
+    color = mix(color, clamp(srcColor, 0.0, 1.0), alpha);
+  }
+
+  fragColor = vec4(color, 1.0);
 }`;
 
 const MAIN_FRAG_SRC = /* glsl */ `#version 300 es
@@ -245,6 +329,7 @@ export class WebGLRenderer {
   private gl!: WebGL2RenderingContext;
   private blurProg!: WebGLProgram;
   private mainProg!: WebGLProgram;
+  private healProg!: WebGLProgram;
   private vao!: WebGLVertexArrayObject;
 
   // textures
@@ -253,16 +338,19 @@ export class WebGLRenderer {
   private smallBlurTmpTex!: WebGLTexture;
   private largeBlurTex!: WebGLTexture;
   private largeBlurTmpTex!: WebGLTexture;
+  private healTex!:  WebGLTexture;
 
   // fbos
   private smallBlurHFBO!: WebGLFramebuffer;
   private smallBlurFBO!: WebGLFramebuffer;
   private largeBlurHFBO!: WebGLFramebuffer;
   private largeBlurFBO!: WebGLFramebuffer;
+  private healFBO!:  WebGLFramebuffer;
 
   private imgW = 0;
   private imgH = 0;
   private ready = false;
+  private spotsData: SpotGPUData[] = [];
 
   init(canvas: HTMLCanvasElement, opts: { preserveDrawingBuffer?: boolean } = {}): void {
     const gl = canvas.getContext('webgl2', { antialias: false, preserveDrawingBuffer: opts.preserveDrawingBuffer ?? false });
@@ -271,6 +359,7 @@ export class WebGLRenderer {
 
     this.blurProg = linkProgram(gl, VERT_SRC, BLUR_FRAG_SRC);
     this.mainProg = linkProgram(gl, VERT_SRC, MAIN_FRAG_SRC);
+    this.healProg = linkProgram(gl, VERT_SRC, HEAL_FRAG_SRC);
 
     // Full-screen quad
     const vao = gl.createVertexArray()!;
@@ -285,6 +374,10 @@ export class WebGLRenderer {
     const aPos2 = gl.getAttribLocation(this.mainProg, 'a_position');
     gl.enableVertexAttribArray(aPos2);
     gl.vertexAttribPointer(aPos2, 2, gl.FLOAT, false, 0, 0);
+    // bind same attrib for heal program
+    const aPos3 = gl.getAttribLocation(this.healProg, 'a_position');
+    gl.enableVertexAttribArray(aPos3);
+    gl.vertexAttribPointer(aPos3, 2, gl.FLOAT, false, 0, 0);
     gl.bindVertexArray(null);
     this.vao = vao;
   }
@@ -301,7 +394,11 @@ export class WebGLRenderer {
       this.imageTex = gl.createTexture()!;
     }
     gl.bindTexture(gl.TEXTURE_2D, this.imageTex);
+    // Flip Y on upload so texCoord.y=1 = top of image (standard OpenGL convention).
+    // This makes FBO output textures consistent with the source imageTex.
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -318,7 +415,73 @@ export class WebGLRenderer {
     this.largeBlurHFBO = createFBO(gl, this.largeBlurTmpTex);
     this.largeBlurFBO  = createFBO(gl, this.largeBlurTex);
 
+    // Heal texture + FBO
+    this.healTex = createTexture(gl, w, h);
+    this.healFBO = createFBO(gl, this.healTex);
+
     this.ready = true;
+  }
+
+  setHealSpots(spots: SpotGPUData[]): void {
+    this.spotsData = spots.slice(0, 32);
+  }
+
+  private runHealPass(): WebGLTexture | null {
+    if (this.spotsData.length === 0) return null;
+
+    const gl = this.gl;
+    const w = this.imgW;
+    const h = this.imgH;
+    const MAX_SPOTS = 32;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.healFBO);
+    gl.viewport(0, 0, w, h);
+
+    gl.bindVertexArray(this.vao);
+    gl.useProgram(this.healProg);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.imageTex);
+    gl.uniform1i(gl.getUniformLocation(this.healProg, 'u_image'), 0);
+
+    const count = this.spotsData.length;
+    gl.uniform1i(gl.getUniformLocation(this.healProg, 'u_spotCount'), count);
+    gl.uniform1f(gl.getUniformLocation(this.healProg, 'u_hOverW'), h / w);
+
+    // Build flat Float32Arrays for each uniform array (MAX_SPOTS * 4 floats each)
+    const dstSrcArr   = new Float32Array(MAX_SPOTS * 4);
+    const paramsArr   = new Float32Array(MAX_SPOTS * 4);
+    const colorArr    = new Float32Array(MAX_SPOTS * 4);
+
+    for (let i = 0; i < count; i++) {
+      const s = this.spotsData[i];
+      const base = i * 4;
+      // Spot coords use canvas convention (y=0=top); texcoords use y=0=bottom → flip y.
+      dstSrcArr[base]     = s.dst.x;
+      dstSrcArr[base + 1] = 1.0 - s.dst.y;
+      dstSrcArr[base + 2] = s.src.x;
+      dstSrcArr[base + 3] = 1.0 - s.src.y;
+
+      paramsArr[base]     = s.radius;
+      paramsArr[base + 1] = s.feather;
+      paramsArr[base + 2] = s.opacity;
+      paramsArr[base + 3] = s.mode;
+
+      colorArr[base]     = s.colorData[0];
+      colorArr[base + 1] = s.colorData[1];
+      colorArr[base + 2] = s.colorData[2];
+      colorArr[base + 3] = 0;
+    }
+
+    gl.uniform4fv(gl.getUniformLocation(this.healProg, 'u_dstSrc'),    dstSrcArr);
+    gl.uniform4fv(gl.getUniformLocation(this.healProg, 'u_params'),    paramsArr);
+    gl.uniform4fv(gl.getUniformLocation(this.healProg, 'u_colorData'), colorArr);
+
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.bindVertexArray(null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    return this.healTex;
   }
 
   render(canvas: HTMLCanvasElement, adjustments: Adjustments): void {
@@ -326,6 +489,8 @@ export class WebGLRenderer {
     const gl = this.gl;
     const w = this.imgW;
     const h = this.imgH;
+
+    const activeImageTex = this.runHealPass() ?? this.imageTex;
 
     gl.bindVertexArray(this.vao);
 
@@ -357,9 +522,9 @@ export class WebGLRenderer {
     };
 
     // Small blur: step=2 px (texture detail)
-    runBlur(this.imageTex, this.smallBlurHFBO, this.smallBlurFBO, this.smallBlurTmpTex, 2.0);
+    runBlur(activeImageTex, this.smallBlurHFBO, this.smallBlurFBO, this.smallBlurTmpTex, 2.0);
     // Large blur: step=18 px (clarity)
-    runBlur(this.imageTex, this.largeBlurHFBO, this.largeBlurFBO, this.largeBlurTmpTex, 18.0);
+    runBlur(activeImageTex, this.largeBlurHFBO, this.largeBlurFBO, this.largeBlurTmpTex, 18.0);
 
     // ── main pass ────────────────────────────────────────────────────────
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -369,7 +534,7 @@ export class WebGLRenderer {
     const u = (name: string) => gl.getUniformLocation(this.mainProg, name);
 
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.imageTex);
+    gl.bindTexture(gl.TEXTURE_2D, activeImageTex);
     gl.uniform1i(u('u_image'), 0);
 
     gl.activeTexture(gl.TEXTURE1);
@@ -415,6 +580,7 @@ export class WebGLRenderer {
     quality: number, // 0–1
     targetW?: number,
     targetH?: number,
+    spots?: SpotGPUData[],
   ): string {
     const srcW = image instanceof HTMLImageElement ? image.naturalWidth  : image.width;
     const srcH = image instanceof HTMLImageElement ? image.naturalHeight : image.height;
@@ -425,6 +591,7 @@ export class WebGLRenderer {
     const renderer = new WebGLRenderer();
     renderer.init(canvas, { preserveDrawingBuffer: true });
     renderer.loadImage(image);
+    if (spots?.length) renderer.setHealSpots(spots);
     renderer.render(canvas, adjustments);
     const dataUrl = canvas.toDataURL(mimeType, quality);
     renderer.dispose();

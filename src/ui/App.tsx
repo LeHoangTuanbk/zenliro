@@ -31,7 +31,8 @@ export default function App() {
   // Selector must return a stable reference when there are no spots for the photo,
   // otherwise Zustand triggers an infinite re-render loop.
   const healSpots  = useHealStore((s) => (selectedId && s.spotsByPhoto[selectedId]) || EMPTY_SPOTS);
-  const { selectedSpotId, brushRadius, activeMode, feather, opacity } = healStore;
+  const previewOriginal = useHealStore((s) => s.previewOriginal);
+  const { selectedSpotId, brushSizePx, activeMode, feather, opacity } = healStore;
 
   // ── Import ─────────────────────────────────────────────────────────────────
   const handleImport = useCallback(async () => {
@@ -91,23 +92,23 @@ export default function App() {
     if (activeTool !== 'heal' || !selectedId) return undefined;
     const pid = selectedId;
     return {
-      spots:               healSpots,
+      spots:             healSpots,
       selectedSpotId,
-      brushRadius,
+      brushSizePx,
       activeMode,
       feather,
       opacity,
-      onSpotAdded:         (spot: HealSpot) => healStore.addSpot(pid, spot),
-      onMoveSpotDst:       (id: string, nx: number, ny: number) =>
+      onSpotAdded:       (spot: HealSpot) => healStore.addSpot(pid, spot),
+      onMoveSpotDst:     (id: string, nx: number, ny: number) =>
         healStore.updateSpot(pid, id, { dst: { x: nx, y: ny } }),
-      onMoveSpotSrc:       (id: string, nx: number, ny: number) =>
+      onMoveSpotSrc:     (id: string, nx: number, ny: number) =>
         healStore.updateSpot(pid, id, { src: { x: nx, y: ny } }),
-      onSelectSpot:        healStore.setSelectedSpotId,
-      onDeleteSpot:        (id: string) => healStore.removeSpot(pid, id),
-      onBrushRadiusChange: healStore.setBrushRadius,
+      onSelectSpot:      healStore.setSelectedSpotId,
+      onDeleteSpot:      (id: string) => healStore.removeSpot(pid, id),
+      onBrushSizeChange: healStore.setBrushSizePx,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, selectedId, healSpots, selectedSpotId, brushRadius, activeMode, feather, opacity]);
+  }, [activeTool, selectedId, healSpots, selectedSpotId, brushSizePx, activeMode, feather, opacity]);
 
   return (
     <div className="flex flex-col w-full h-screen bg-[#1a1a1a] text-[#929292] font-sans text-[11px]">
@@ -171,6 +172,7 @@ export default function App() {
             ref={canvasRef}
             dataUrl={selected?.dataUrl ?? null}
             healSpots={healSpots}
+            hideOverlay={previewOriginal}
             healInteractionProps={healInteractionProps}
             onImageLoaded={handleImageLoaded}
           />

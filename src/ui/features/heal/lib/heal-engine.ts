@@ -7,107 +7,50 @@ import type { HealSpot } from '../model/types';
  *             luminosity/chrominance of the destination border — a simplified
  *             Poisson-blend approximation.
  * Clone mode: straight pixel copy with smooth feathering.
+ *
+ * NOTE: applySpots / applyOneSpot have been removed. GPU handles rendering
+ * now via WebGLRenderer heal pass. Only precomputeColorData and autoFindSource
+ * are used at runtime.
  */
 export class HealEngine {
   /**
-   * Apply all spots to a copy of imageData and return the result.
-   * Spots are applied in insertion order so earlier spots can be sources
-   * for later ones.
+   * Sample mean color of the annulus between innerR and outerR.
+   * Used by fill mode to read the skin/background color around a blemish.
    */
-  static applySpots(imageData: ImageData, spots: HealSpot[]): ImageData {
-    if (spots.length === 0) return imageData;
+  static sampleAnnulusMean(
+    data: Uint8ClampedArray,
+    cx: number,
+    cy: number,
+    innerR: number,
+    outerR: number,
+    w: number,
+    h: number,
+  ): { r: number; g: number; b: number } {
+    let rSum = 0, gSum = 0, bSum = 0, count = 0;
 
-    const result = new ImageData(
-      new Uint8ClampedArray(imageData.data),
-      imageData.width,
-      imageData.height,
-    );
-
-    for (const spot of spots) {
-      this.applyOneSpot(result, spot);
-    }
-
-    return result;
-  }
-
-  private static applyOneSpot(imageData: ImageData, spot: HealSpot): void {
-    const { width: w, height: h, data } = imageData;
-
-    const dstCx = Math.round(spot.dst.x * w);
-    const dstCy = Math.round(spot.dst.y * h);
-    const srcCx = Math.round(spot.src.x * w);
-    const srcCy = Math.round(spot.src.y * h);
-    const radius = Math.max(1, Math.round(spot.radius * w));
-    const opacityNorm = spot.opacity / 100;
-
-    if (radius < 1) return;
-
-    // feather zone: how much of the outer ring is blended
-    const hardRadius = radius * (1 - spot.feather / 100);
-    const featherZone = Math.max(radius - hardRadius, 0.001);
-
-    // Heal mode: compute color offset by comparing border mean colors
-    let dr = 0, dg = 0, db = 0;
-    if (spot.mode === 'heal') {
-      const dstMean = this.sampleBorderMean(data, dstCx, dstCy, radius, w, h);
-      const srcMean = this.sampleBorderMean(data, srcCx, srcCy, radius, w, h);
-      dr = dstMean.r - srcMean.r;
-      dg = dstMean.g - srcMean.g;
-      db = dstMean.b - srcMean.b;
-    }
-
-    const x0 = Math.max(0, dstCx - radius);
-    const x1 = Math.min(w - 1, dstCx + radius);
-    const y0 = Math.max(0, dstCy - radius);
-    const y1 = Math.min(h - 1, dstCy + radius);
+    const x0 = Math.max(0, Math.floor(cx - outerR));
+    const x1 = Math.min(w - 1, Math.ceil(cx + outerR));
+    const y0 = Math.max(0, Math.floor(cy - outerR));
+    const y1 = Math.min(h - 1, Math.ceil(cy + outerR));
 
     for (let py = y0; py <= y1; py++) {
       for (let px = x0; px <= x1; px++) {
-        const dx = px - dstCx;
-        const dy = py - dstCy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist > radius) continue;
-
-        // Smoothstep feather alpha
-        let alpha: number;
-        if (dist <= hardRadius) {
-          alpha = 1;
-        } else {
-          const t = (dist - hardRadius) / featherZone;
-          alpha = 1 - t * t * (3 - 2 * t); // smoothstep
-        }
-        alpha *= opacityNorm;
-        if (alpha <= 0) continue;
-
-        const spx = Math.max(0, Math.min(w - 1, Math.round(srcCx + dx)));
-        const spy = Math.max(0, Math.min(h - 1, Math.round(srcCy + dy)));
-
-        const dstIdx = (py * w + px) * 4;
-        const srcIdx = (spy * w + spx) * 4;
-
-        const origR = data[dstIdx];
-        const origG = data[dstIdx + 1];
-        const origB = data[dstIdx + 2];
-
-        // For heal: apply color correction with slight distance weighting
-        // (correction is stronger near the center, tapering toward zero at edge)
-        const healWeight = spot.mode === 'heal' ? (1 - dist / radius) * 0.6 + 0.4 : 0;
-        const srcR = data[srcIdx]     + dr * healWeight;
-        const srcG = data[srcIdx + 1] + dg * healWeight;
-        const srcB = data[srcIdx + 2] + db * healWeight;
-
-        data[dstIdx]     = Math.round(origR + (srcR - origR) * alpha);
-        data[dstIdx + 1] = Math.round(origG + (srcG - origG) * alpha);
-        data[dstIdx + 2] = Math.round(origB + (srcB - origB) * alpha);
-        // alpha channel unchanged
+        const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
+        if (dist < innerR || dist > outerR) continue;
+        const idx = (py * w + px) * 4;
+        rSum += data[idx]; gSum += data[idx + 1]; bSum += data[idx + 2];
+        count++;
       }
     }
+
+    if (count === 0) return { r: 128, g: 128, b: 128 };
+    return { r: rSum / count, g: gSum / count, b: bSum / count };
   }
 
   /**
    * Sample the mean color of the border annulus (75%–100% of radius).
    */
-  private static sampleBorderMean(
+  static sampleBorderMean(
     data: Uint8ClampedArray,
     cx: number,
     cy: number,
@@ -137,6 +80,45 @@ export class HealEngine {
 
     if (count === 0) return { r: 128, g: 128, b: 128 };
     return { r: rSum / count, g: gSum / count, b: bSum / count };
+  }
+
+  /**
+   * CPU pre-computation (O(perimeter)) for a single spot.
+   * Returns the colorData in 0-1 range to be uploaded as a GPU uniform.
+   * - fill: mean color of surrounding annulus (100-140% radius)
+   * - heal: color offset (dst border mean minus src border mean)
+   * - clone: [0,0,0] — GPU samples source directly
+   */
+  static precomputeColorData(
+    data: Uint8ClampedArray,
+    spot: HealSpot,
+    imgW: number,
+    imgH: number,
+  ): [number, number, number] {
+    const cx = Math.round(spot.dst.x * imgW);
+    const cy = Math.round(spot.dst.y * imgH);
+    const radius = Math.max(1, Math.round(spot.radius * imgW));
+
+    if (spot.mode === 'fill') {
+      // Sample only the immediate border (100–115% radius) for a tight local color match.
+      const outerR = Math.round(radius * 1.15);
+      const m = this.sampleAnnulusMean(data, cx, cy, radius, outerR, imgW, imgH);
+      return [m.r / 255, m.g / 255, m.b / 255];
+    }
+
+    if (spot.mode === 'heal') {
+      const scx = Math.round(spot.src.x * imgW);
+      const scy = Math.round(spot.src.y * imgH);
+      const dstM = this.sampleBorderMean(data, cx, cy, radius, imgW, imgH);
+      const srcM = this.sampleBorderMean(data, scx, scy, radius, imgW, imgH);
+      return [
+        (dstM.r - srcM.r) / 255,
+        (dstM.g - srcM.g) / 255,
+        (dstM.b - srcM.b) / 255,
+      ];
+    }
+
+    return [0, 0, 0];
   }
 
   /**

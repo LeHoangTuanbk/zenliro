@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HealSpot } from '../model/types';
+import type { HealMode, HealSpot } from '../model/types';
 
 interface DragState {
   type: 'idle' | 'dragging-dst' | 'dragging-src';
@@ -11,14 +11,16 @@ export interface HealOverlayProps {
   canvasHeight: number;
   spots: HealSpot[];
   selectedSpotId: string | null;
-  brushRadius: number;
-  activeMode: 'heal' | 'clone';
+  brushSizePx: number;   // brush radius in screen pixels
+  zoom: number;
+  activeMode: HealMode;
   onAddSpot: (normX: number, normY: number) => void;
   onMoveSpotDst: (id: string, normX: number, normY: number) => void;
   onMoveSpotSrc: (id: string, normX: number, normY: number) => void;
   onSelectSpot: (id: string | null) => void;
   onDeleteSpot: (id: string) => void;
-  onBrushRadiusChange: (r: number) => void;
+  onBrushSizeChange: (px: number) => void;
+  style?: React.CSSProperties;
 }
 
 const HIT_R_PX = 10; // px tolerance for clicking on a circle
@@ -28,14 +30,16 @@ export function HealOverlay({
   canvasHeight,
   spots,
   selectedSpotId,
-  brushRadius,
+  brushSizePx,
+  zoom,
   activeMode: _activeMode,
   onAddSpot,
   onMoveSpotDst,
   onMoveSpotSrc,
   onSelectSpot,
   onDeleteSpot,
-  onBrushRadiusChange,
+  onBrushSizeChange,
+  style,
 }: HealOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
@@ -61,26 +65,45 @@ export function HealOverlay({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Scale context so drawing coords stay in [0, canvasWidth] × [0, canvasHeight].
+    // Combined with the high-res intrinsic size (canvasWidth*zoom), this gives
+    // crisp rendering at any zoom level — no bilinear blur.
+    ctx.setTransform(zoom, 0, 0, zoom, 0, 0);
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-    const dispR = brushRadius * canvasWidth;
+
+    // invZ keeps strokes/dots at constant screen size regardless of zoom.
+    const invZ    = 1 / zoom;
+    // brushSizePx is in screen pixels. ÷zoom converts to CSS px in the overlay
+    // (parent CSS transform scale(zoom) will bring it back to brushSizePx screen px).
+    const dispR   = brushSizePx / zoom;
+    // Drop shadow makes circles visible on any background
+    const shadowBlur = 3 * invZ;
+    ctx.shadowColor   = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur    = shadowBlur;
+    const dotR    = 2.5 * invZ;
+    const cursorDotR = 2 * invZ;
 
     for (const spot of spots) {
       const dst = toCanvas(spot.dst.x, spot.dst.y);
       const src = toCanvas(spot.src.x, spot.src.y);
       const r = spot.radius * canvasWidth;
       const isSelected = spot.id === selectedSpotId;
-      const col = isSelected ? '#4d9fec' : 'rgba(255,255,255,0.85)';
-      const lw = isSelected ? 2 : 1.5;
+      const col = isSelected ? '#4d9fec' : '#ffffff';
+      const lw = (isSelected ? 2 : 1.5) * invZ;
 
-      // Connecting line
-      ctx.beginPath();
-      ctx.moveTo(dst.x, dst.y);
-      ctx.lineTo(src.x, src.y);
-      ctx.strokeStyle = isSelected ? 'rgba(77,159,236,0.6)' : 'rgba(255,255,255,0.35)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      const isFill = spot.mode === 'fill';
+
+      // Connecting line + src circle (not shown for fill mode)
+      if (!isFill) {
+        ctx.beginPath();
+        ctx.moveTo(dst.x, dst.y);
+        ctx.lineTo(src.x, src.y);
+        ctx.strokeStyle = isSelected ? 'rgba(77,159,236,0.9)' : 'rgba(255,255,255,0.7)';
+        ctx.lineWidth = invZ;
+        ctx.setLineDash([4 * invZ, 3 * invZ]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
 
       // Dst circle (solid)
       ctx.beginPath();
@@ -91,47 +114,49 @@ export function HealOverlay({
 
       // Dst center dot
       ctx.beginPath();
-      ctx.arc(dst.x, dst.y, 2.5, 0, Math.PI * 2);
+      ctx.arc(dst.x, dst.y, dotR, 0, Math.PI * 2);
       ctx.fillStyle = col;
       ctx.fill();
 
-      // Src circle (dashed)
-      ctx.beginPath();
-      ctx.arc(src.x, src.y, r, 0, Math.PI * 2);
-      ctx.strokeStyle = col;
-      ctx.lineWidth = lw;
-      ctx.setLineDash([4, 3]);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      if (!isFill) {
+        // Src circle (dashed)
+        ctx.beginPath();
+        ctx.arc(src.x, src.y, r, 0, Math.PI * 2);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = lw;
+        ctx.setLineDash([4 * invZ, 3 * invZ]);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-      // Arrow on src circle pointing toward dst
-      const angle = Math.atan2(dst.y - src.y, dst.x - src.x);
-      const ax = src.x + Math.cos(angle) * r;
-      const ay = src.y + Math.sin(angle) * r;
-      const al = Math.max(6, r * 0.35);
-      ctx.beginPath();
-      ctx.moveTo(ax - Math.cos(angle - 0.45) * al, ay - Math.sin(angle - 0.45) * al);
-      ctx.lineTo(ax, ay);
-      ctx.lineTo(ax - Math.cos(angle + 0.45) * al, ay - Math.sin(angle + 0.45) * al);
-      ctx.strokeStyle = col;
-      ctx.lineWidth = lw;
-      ctx.stroke();
+        // Arrow on src circle pointing toward dst
+        const angle = Math.atan2(dst.y - src.y, dst.x - src.x);
+        const ax = src.x + Math.cos(angle) * r;
+        const ay = src.y + Math.sin(angle) * r;
+        const al = Math.max(6 * invZ, r * 0.35);
+        ctx.beginPath();
+        ctx.moveTo(ax - Math.cos(angle - 0.45) * al, ay - Math.sin(angle - 0.45) * al);
+        ctx.lineTo(ax, ay);
+        ctx.lineTo(ax - Math.cos(angle + 0.45) * al, ay - Math.sin(angle + 0.45) * al);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = lw;
+        ctx.stroke();
+      }
     }
 
     // Cursor brush ring
     if (mousePos && dragRef.current.type === 'idle') {
       ctx.beginPath();
       ctx.arc(mousePos.x, mousePos.y, dispR, 0, Math.PI * 2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = invZ;
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.arc(mousePos.x, mousePos.y, 2, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.arc(mousePos.x, mousePos.y, cursorDotR, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
       ctx.fill();
     }
-  }, [spots, selectedSpotId, mousePos, brushRadius, canvasWidth, canvasHeight, toCanvas]);
+  }, [spots, selectedSpotId, mousePos, brushSizePx, zoom, canvasWidth, canvasHeight, toCanvas]);
 
   // ── Hit detection ─────────────────────────────────────────────────────────
   const findHit = useCallback(
@@ -221,9 +246,11 @@ export function HealOverlay({
   };
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    // Let Cmd/Ctrl+scroll pass through to the parent zoom handler
+    if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.005 : 0.005;
-    onBrushRadiusChange(Math.max(0.01, Math.min(0.25, brushRadius + delta)));
+    const delta = e.deltaY > 0 ? -3 : 3;
+    onBrushSizeChange(Math.max(5, Math.min(200, brushSizePx + delta)));
   };
 
   // Delete key
@@ -247,9 +274,9 @@ export function HealOverlay({
     <canvas
       ref={canvasRef}
       className="absolute inset-0"
-      width={canvasWidth}
-      height={canvasHeight}
-      style={{ cursor: 'none', touchAction: 'none' }}
+      width={Math.round(canvasWidth * zoom)}
+      height={Math.round(canvasHeight * zoom)}
+      style={{ cursor: 'none', touchAction: 'none', width: canvasWidth, height: canvasHeight, ...style }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
