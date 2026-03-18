@@ -1,0 +1,128 @@
+Catalog File (như Lightroom)
+
+  Lưu ở đâu?
+
+  ~/Library/Application Support/bright-room/
+    catalog.json         ← toàn bộ session data
+  Dùng app.getPath('userData') — Electron built-in, đúng convention của desktop app.
+
+  ---
+  Cái gì được lưu?
+
+  catalog.json
+  ├── version: 1
+  ├── session
+  │   ├── selectedId
+  │   └── activeView
+  ├── photos[]
+  │   ├── id
+  │   ├── filePath        ← đường dẫn gốc (không lưu dataUrl!)
+  │   ├── fileName
+  │   ├── width
+  │   └── height
+  └── edits
+      └── [photoId]
+          ├── adjustments
+          ├── toneCurve
+          ├── colorMixer
+          ├── colorGrading
+          ├── effects
+          ├── crop
+          └── healSpots
+
+  Điểm khác biệt quan trọng: lưu filePath thay vì dataUrl. Khi mở app, đọc file từ disk → convert thành dataUrl để hiển thị.
+
+  ---
+  Architecture
+
+  Main Process
+    electron/catalog.ts          IPC handlers
+      catalog:load  ────────────► đọc catalog.json → trả về JSON
+      catalog:save  ────────────► ghi catalog.json (debounced)
+      photo:loadFromPath ───────► đọc file ảnh → trả về dataUrl
+
+  Renderer
+    shared/services/catalog-service.ts   wrapper gọi IPC
+    pages/work-space/
+      store/catalog-store.ts             Zustand (in-memory) + auto-save
+      hook/use-photo-edits.ts            load/save edits khi đổi ảnh
+      hook/use-photos.ts                 sửa: restore từ catalog thay vì []
+
+  ---
+  Flow
+
+  Mở app:
+  main:ready
+    → catalog:load → đọc catalog.json
+    → restore photos list (filePath → load từ disk → dataUrl)
+    → restore selectedId, activeView
+    → load edits của selectedId vào các stores
+
+  User chỉnh slider:
+  Adjustment store thay đổi
+    → usePhotoEdits debounce 800ms
+    → saveSnapshot(selectedId) → catalog-store.edits[id] = snapshot
+    → catalog:save → ghi catalog.json
+
+  User đổi ảnh:
+  setSelectedId(newId)
+    → saveSnapshot(oldId)
+    → loadSnapshot(newId) hoặc load defaults
+    → catalog:save
+
+  User đóng app:
+  → catalog đã được auto-save liên tục → không cần làm gì thêm
+
+  ---
+  Files cần tạo/sửa
+
+  ┌────────────────────────────────────────────────────┬──────────────┬─────────────────────────────────────────────────┐
+  │                        File                        │     Loại     │                    Mục đích                     │
+  ├────────────────────────────────────────────────────┼──────────────┼─────────────────────────────────────────────────┤
+  │ electron/catalog.ts                                │ Main process │ Read/write catalog.json, load photo từ filePath │
+  ├────────────────────────────────────────────────────┼──────────────┼─────────────────────────────────────────────────┤
+  │ electron/main.ts                                   │ Sửa          │ Register IPC handlers mới                       │
+  ├────────────────────────────────────────────────────┼──────────────┼─────────────────────────────────────────────────┤
+  │ electron/preload.ts                                │ Sửa          │ Expose catalog.* và photo.loadFromPath          │
+  ├────────────────────────────────────────────────────┼──────────────┼─────────────────────────────────────────────────┤
+  │ src/ui/shared/services/catalog-service.ts          │ New          │ Wrap IPC calls                                  │
+  ├────────────────────────────────────────────────────┼──────────────┼─────────────────────────────────────────────────┤
+  │ src/ui/pages/work-space/store/catalog-store.ts     │ New          │ In-memory catalog state + auto-save             │
+  ├────────────────────────────────────────────────────┼──────────────┼─────────────────────────────────────────────────┤
+  │ src/ui/pages/work-space/store/photo-edits-store.ts │ New          │ Per-photo edit snapshots                        │
+  ├────────────────────────────────────────────────────┼──────────────┼─────────────────────────────────────────────────┤
+  │ src/ui/pages/work-space/hook/use-photo-edits.ts    │ New          │ Load/save khi selectedId đổi                    │
+  ├────────────────────────────────────────────────────┼──────────────┼─────────────────────────────────────────────────┤
+  │ src/ui/pages/work-space/hook/use-photos.ts         │ Sửa          │ Init từ catalog                                 │
+  ├────────────────────────────────────────────────────┼──────────────┼─────────────────────────────────────────────────┤
+  │ src/ui/pages/work-space/work-space-container.tsx   │ Sửa          │ Thêm usePhotoEdits                              │
+  └────────────────────────────────────────────────────┴──────────────┴─────────────────────────────────────────────────┘
+
+  ---
+  Edge cases
+
+  ┌──────────────────────┬──────────────────────────────────────────────────┐
+  │         Case         │                      Xử lý                       │
+  ├──────────────────────┼──────────────────────────────────────────────────┤
+  │ File ảnh bị xóa/move │ Hiển thị placeholder "File not found", giữ edits │
+  ├──────────────────────┼──────────────────────────────────────────────────┤
+  │ Catalog bị corrupt   │ Fallback về catalog rỗng, log error              │
+  ├──────────────────────┼──────────────────────────────────────────────────┤
+  │ Lần đầu mở app       │ Catalog không tồn tại → tạo mới, bắt đầu fresh   │
+
+
+Non-destructive editing — cốt lõi của app.
+
+  Ảnh gốc (disk)          Catalog (catalog.json)
+  /photos/sunset.jpg  ←── filePath reference
+                           edits: { exposure: +0.5, contrast: 20... }
+                           (chỉ lưu các thông số, không đụng file)
+
+  Ảnh gốc không bao giờ bị ghi. App chỉ:
+
+  1. Đọc file gốc để render preview qua WebGL
+  2. Lưu edits vào catalog.json riêng
+  3. Export — khi user bấm Export mới tạo file mới với edits được apply → save ra chỗ khác
+
+  Giống y Lightroom: .lrcat chỉ là file metadata/edits, ảnh gốc giữ nguyên 100%. User có thể reset về original bất cứ lúc nào vì edits chỉ là
+  số liệu trong catalog.

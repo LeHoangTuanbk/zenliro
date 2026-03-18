@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ImageCanvasHandle } from '@widgets/image-canvas/ui/image-canvas';
 import { WorkSpaceView } from './ui/work-space-view';
 import { ActiveTool } from '@features/develop/const';
@@ -7,11 +7,16 @@ import { useHistogram } from './hook/use-histogram';
 import { useHealInteraction } from './hook/use-heal-interaction';
 import { useCropInteraction } from './hook/use-crop-interaction';
 import { useExport } from './hook/use-export';
+import { usePhotoEdits } from './hook/use-photo-edits';
+import { useCatalogStore } from './store/catalog-store';
 
 export function WorkSpaceContainer() {
   const canvasRef = useRef<ImageCanvasHandle>(null);
   const [activeTool, setActiveTool] = useState<ActiveTool>(ActiveTool.Edit);
   const [showExport, setShowExport] = useState(false);
+
+  const initFromDisk = useCatalogStore((s) => s.initFromDisk);
+  useEffect(() => { initFromDisk(); }, [initFromDisk]);
 
   const {
     photos,
@@ -37,6 +42,7 @@ export function WorkSpaceContainer() {
     imageAspect,
   );
   const handleExport = useExport(selected, selectedId, canvasRef);
+  usePhotoEdits(selectedId);
 
   return (
     <WorkSpaceView
