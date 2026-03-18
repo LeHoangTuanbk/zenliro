@@ -1,3 +1,5 @@
+import { BrButton } from '@/shared/ui/base';
+
 type LibraryViewProps = {
   photos: ImportedPhoto[];
   selectedId: string | null;
@@ -17,12 +19,7 @@ export function LibraryView({
     <div className="flex flex-col w-full h-full bg-br-bg">
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-4 py-2 bg-br-bg border-b border-black flex-shrink-0">
-        <button
-          onClick={onImport}
-          className="px-3 py-1.5 text-[11px] text-white bg-br-accent-dark rounded-[3px] cursor-pointer hover:bg-br-accent transition-colors"
-        >
-          + Import
-        </button>
+        <BrButton variant="primary" size="md" onClick={onImport}>+ Import</BrButton>
         <span className="text-[10px] text-br-dim">
           {photos.length} {photos.length === 1 ? 'photo' : 'photos'}
         </span>
@@ -44,12 +41,9 @@ export function LibraryView({
             <polyline points="21 15 16 10 5 21" />
           </svg>
           <p className="text-[13px]">No photos yet</p>
-          <button
-            onClick={onImport}
-            className="px-5 py-2 text-[12px] text-white bg-br-accent-dark rounded-[3px] cursor-pointer hover:bg-br-accent transition-colors"
-          >
+          <BrButton variant="primary" size="md" className="px-5 py-2 text-[12px]" onClick={onImport}>
             Import Photos
-          </button>
+          </BrButton>
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4">

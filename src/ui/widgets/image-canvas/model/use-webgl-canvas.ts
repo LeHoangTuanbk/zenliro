@@ -3,6 +3,11 @@ import type { ForwardedRef, RefObject } from 'react';
 import { type SpotGPUData, WebGLRenderer } from '@shared/lib/webgl';
 import { useAdjustmentsStore } from '@/features/develop/edit';
 import { type HealSpot, HealEngine } from '@/features/develop/heal';
+import { useToneCurveStore } from '@/features/develop/edit/tone-curve';
+import { generateLUT, combineLUTs } from '@/features/develop/edit/tone-curve';
+import { useColorMixerStore } from '@/features/develop/edit/color-mixer';
+import type { HslChannel } from '@/features/develop/edit/color-mixer';
+import { useColorGradingStore } from '@/features/develop/edit/color-grading';
 import {
   dataUrlToBlob,
   dataUrlToPartialBuffer,
@@ -45,6 +50,16 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   const [canvasDims, setCanvasDims] = useState({ w: 0, h: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const adjustments = useAdjustmentsStore((s) => s.adjustments);
+  const toneCurvePoints = useToneCurveStore((s) => s.points);
+  const toneCurveParametric = useToneCurveStore((s) => s.parametric);
+  const colorMixerHue = useColorMixerStore((s) => s.hue);
+  const colorMixerSat = useColorMixerStore((s) => s.saturation);
+  const colorMixerLum = useColorMixerStore((s) => s.luminance);
+  const cgShadows = useColorGradingStore((s) => s.shadows);
+  const cgMidtones = useColorGradingStore((s) => s.midtones);
+  const cgHighlights = useColorGradingStore((s) => s.highlights);
+  const cgBlending = useColorGradingStore((s) => s.blending);
+  const cgBalance = useColorGradingStore((s) => s.balance);
 
   // ── Export handle ────────────────────────────────────────────────────────
   useImperativeHandle(ref, () => ({
@@ -124,11 +139,17 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
         const blob = dataUrlToBlob(dataUrl);
         const bmp = await createImageBitmap(blob, { imageOrientation: 'none' });
 
-        if (cancelled) { bmp.close(); return; }
+        if (cancelled) {
+          bmp.close();
+          return;
+        }
 
         const canvas = canvasRef.current;
         const container = containerRef.current;
-        if (!canvas || !container || !rendererRef.current) { bmp.close(); return; }
+        if (!canvas || !container || !rendererRef.current) {
+          bmp.close();
+          return;
+        }
 
         const tmp = document.createElement('canvas');
         const ctx2d = tmp.getContext('2d')!;
@@ -160,14 +181,16 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dataUrl]);
 
   useEffect(() => {
     computeAndUploadSpots(healSpots);
     renderToCanvas();
-  }, [healSpots]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [healSpots]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -184,6 +207,57 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       console.error('[WebGL] render failed:', err);
     }
   }, [adjustments]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    const { points } = useToneCurveStore.getState();
+    const rgbLut = generateLUT(points.rgb);
+    const rLut = combineLUTs(rgbLut, generateLUT(points.r));
+    const gLut = combineLUTs(rgbLut, generateLUT(points.g));
+    const bLut = combineLUTs(rgbLut, generateLUT(points.b));
+    renderer.setToneCurveLUT(rLut, gLut, bLut);
+    renderToCanvas();
+  }, [toneCurvePoints, toneCurveParametric]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    const channels: HslChannel[] = [
+      'red',
+      'orange',
+      'yellow',
+      'green',
+      'aqua',
+      'blue',
+      'purple',
+      'magenta',
+    ];
+    renderer.setColorMixer(
+      channels.map((c) => colorMixerHue[c]),
+      channels.map((c) => colorMixerSat[c]),
+      channels.map((c) => colorMixerLum[c]),
+    );
+    renderToCanvas();
+  }, [colorMixerHue, colorMixerSat, colorMixerLum]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    const toVec = (w: typeof cgShadows): [number, number, number] => [
+      w.hue / 360,
+      w.sat,
+      w.lum / 100,
+    ];
+    renderer.setColorGrading(
+      toVec(cgShadows),
+      toVec(cgMidtones),
+      toVec(cgHighlights),
+      cgBlending / 100,
+      cgBalance / 100,
+    );
+    renderToCanvas();
+  }, [cgShadows, cgMidtones, cgHighlights, cgBlending, cgBalance]);
 
   // ── Heal: add spot with auto-source ─────────────────────────────────────
   const handleOverlayAddSpot = useCallback(

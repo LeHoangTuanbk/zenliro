@@ -2,6 +2,18 @@ import { useState } from 'react';
 import { useAdjustmentsStore } from '../store/adjustments-store';
 import { AdjustmentSlider } from './adjustment-slider';
 import { SECTIONS } from '../const/section';
+import { ToneCurvePanel } from '@/features/develop/edit/tone-curve';
+import { ColorMixerPanel } from '@/features/develop/edit/color-mixer';
+import { ColorGradingPanel } from '@/features/develop/edit/color-grading';
+import { BrButton } from '@/shared/ui/base';
+
+type ExtraSection = { title: string; node: React.ReactNode };
+
+const EXTRA_SECTIONS: ExtraSection[] = [
+  { title: 'Tone Curve', node: <ToneCurvePanel /> },
+  { title: 'Color Mixer', node: <ColorMixerPanel /> },
+  { title: 'Color Grading', node: <ColorGradingPanel /> },
+];
 
 export function EditPanel() {
   const { adjustments, setAdjustment, resetAdjustment, resetAll } = useAdjustmentsStore();
@@ -16,13 +28,7 @@ export function EditPanel() {
         <span className="text-[11px] font-semibold text-br-text uppercase tracking-[0.8px]">
           Basic
         </span>
-        <button
-          className="border border-br-elevated text-br-muted rounded-[2px] px-2 py-0.5 text-[10px] bg-transparent cursor-pointer hover:text-br-text hover:border-br-mark"
-          onClick={resetAll}
-          title="Reset all"
-        >
-          Reset
-        </button>
+        <BrButton onClick={resetAll} title="Reset all">Reset</BrButton>
       </div>
 
       {SECTIONS.map((section) => (
@@ -56,6 +62,24 @@ export function EditPanel() {
               ))}
             </div>
           )}
+        </div>
+      ))}
+
+      {EXTRA_SECTIONS.map((section) => (
+        <div key={section.title} className="border-b border-br-elevated">
+          <button
+            className="flex items-center gap-1.5 w-full px-3 py-[7px] bg-br-section border-none cursor-pointer hover:bg-br-section-hover font-sans"
+            onClick={() => toggle(section.title)}
+          >
+            <span className="text-[8px] text-br-dim w-2.5">
+              {collapsed[section.title] ? '▶' : '▼'}
+            </span>
+            <span className="text-[11px] font-semibold text-br-muted uppercase tracking-[0.6px]">
+              {section.title}
+            </span>
+          </button>
+
+          {!collapsed[section.title] && <div className="bg-br-panel">{section.node}</div>}
         </div>
       ))}
     </div>
