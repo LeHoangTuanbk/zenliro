@@ -31,6 +31,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
       cropInteractionProps,
       confirmedCropState,
       onImageLoaded,
+      containerRef,
       zoomRef,
       onResetView: reset,
     });

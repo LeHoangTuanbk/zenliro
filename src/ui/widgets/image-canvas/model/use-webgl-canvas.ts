@@ -19,6 +19,7 @@ type Params = {
   cropInteractionProps?: CropInteractionProps;
   confirmedCropState?: CropState | null;
   onImageLoaded?: (w: number, h: number) => void;
+  containerRef: RefObject<HTMLElement | null>;
   zoomRef: RefObject<number>;
   onResetView: () => void;
 };
@@ -31,6 +32,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     cropInteractionProps,
     confirmedCropState,
     onImageLoaded,
+    containerRef,
     zoomRef,
     onResetView,
   } = params;
@@ -125,9 +127,8 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
         if (cancelled) { bmp.close(); return; }
 
         const canvas = canvasRef.current;
-        const container = canvas?.parentElement?.closest('[data-canvas-container]') as HTMLElement | null
-          ?? canvas?.parentElement;
-        if (!canvas || !rendererRef.current) { bmp.close(); return; }
+        const container = containerRef.current;
+        if (!canvas || !container || !rendererRef.current) { bmp.close(); return; }
 
         const tmp = document.createElement('canvas');
         const ctx2d = tmp.getContext('2d')!;
@@ -136,8 +137,8 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
 
         onImageLoaded?.(imgW, imgH);
 
-        const cw = container?.clientWidth || 800;
-        const ch = container?.clientHeight || 600;
+        const cw = container.clientWidth || 800;
+        const ch = container.clientHeight || 600;
         const scale = Math.min(cw / imgW, ch / imgH, 1);
         canvas.width = Math.max(1, Math.round(imgW * scale));
         canvas.height = Math.max(1, Math.round(imgH * scale));
