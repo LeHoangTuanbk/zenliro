@@ -84,6 +84,14 @@ export class WebGLRenderer {
     gl.uniform3f(gl.getUniformLocation(this.mainProg, 'u_cgHighlights'), 0, 0, 0);
     gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_cgBlending'), 0.5);
     gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_cgBalance'), 0);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_vigAmount'), 0);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_vigMidpoint'), 0.5);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_vigRoundness'), 0);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_vigFeather'), 0.5);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_vigHighlights'), 0);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_grainAmount'), 0);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_grainSize'), 0.25);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_grainRoughness'), 0.5);
     gl.useProgram(null);
   }
 
@@ -177,6 +185,26 @@ export class WebGLRenderer {
     gl.uniform3f(u('u_cgHighlights'), ...highlights);
     gl.uniform1f(u('u_cgBlending'), blending);
     gl.uniform1f(u('u_cgBalance'), balance);
+    gl.useProgram(null);
+  }
+
+  setEffects(
+    vigAmount: number, vigMidpoint: number, vigRoundness: number,
+    vigFeather: number, vigHighlights: number,
+    grainAmount: number, grainSize: number, grainRoughness: number,
+  ): void {
+    const gl = this.gl;
+    if (!gl) return;
+    gl.useProgram(this.mainProg);
+    const u = (n: string) => gl.getUniformLocation(this.mainProg, n);
+    gl.uniform1f(u('u_vigAmount'), vigAmount);
+    gl.uniform1f(u('u_vigMidpoint'), vigMidpoint);
+    gl.uniform1f(u('u_vigRoundness'), vigRoundness);
+    gl.uniform1f(u('u_vigFeather'), vigFeather);
+    gl.uniform1f(u('u_vigHighlights'), vigHighlights);
+    gl.uniform1f(u('u_grainAmount'), grainAmount);
+    gl.uniform1f(u('u_grainSize'), grainSize);
+    gl.uniform1f(u('u_grainRoughness'), grainRoughness);
     gl.useProgram(null);
   }
 

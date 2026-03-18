@@ -8,6 +8,7 @@ import { generateLUT, combineLUTs } from '@/features/develop/edit/tone-curve';
 import { useColorMixerStore } from '@/features/develop/edit/color-mixer';
 import type { HslChannel } from '@/features/develop/edit/color-mixer';
 import { useColorGradingStore } from '@/features/develop/edit/color-grading';
+import { useEffectsStore } from '@/features/develop/effects';
 import {
   dataUrlToBlob,
   dataUrlToPartialBuffer,
@@ -60,6 +61,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   const cgHighlights = useColorGradingStore((s) => s.highlights);
   const cgBlending = useColorGradingStore((s) => s.blending);
   const cgBalance = useColorGradingStore((s) => s.balance);
+  const effects = useEffectsStore();
 
   // ── Export handle ────────────────────────────────────────────────────────
   useImperativeHandle(ref, () => ({
@@ -258,6 +260,22 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     );
     renderToCanvas();
   }, [cgShadows, cgMidtones, cgHighlights, cgBlending, cgBalance]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    renderer.setEffects(
+      effects.vigAmount / 100,
+      effects.vigMidpoint / 100,
+      effects.vigRoundness / 100,
+      effects.vigFeather / 100,
+      effects.vigHighlights / 100,
+      effects.grainAmount / 100,
+      effects.grainSize / 100,
+      effects.grainRoughness / 100,
+    );
+    renderToCanvas();
+  }, [effects]);
 
   // ── Heal: add spot with auto-source ─────────────────────────────────────
   const handleOverlayAddSpot = useCallback(

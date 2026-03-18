@@ -5,6 +5,7 @@ import { SECTIONS } from '../const/section';
 import { ToneCurvePanel } from '@/features/develop/edit/tone-curve';
 import { ColorMixerPanel } from '@/features/develop/edit/color-mixer';
 import { ColorGradingPanel } from '@/features/develop/edit/color-grading';
+import { EffectsPanel } from '@/features/develop/effects';
 import { BrButton } from '@/shared/ui/base';
 
 type ExtraSection = { title: string; node: React.ReactNode };
@@ -13,6 +14,7 @@ const EXTRA_SECTIONS: ExtraSection[] = [
   { title: 'Tone Curve', node: <ToneCurvePanel /> },
   { title: 'Color Mixer', node: <ColorMixerPanel /> },
   { title: 'Color Grading', node: <ColorGradingPanel /> },
+  { title: 'Effects', node: <EffectsPanel /> },
 ];
 
 export function EditPanel() {
