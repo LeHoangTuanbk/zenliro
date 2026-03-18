@@ -1,62 +1,79 @@
 import { useCallback, useRef, useState } from 'react';
-import type { Adjustments } from '../model/adjustments-store';
-import { DEFAULT_ADJUSTMENTS } from '../model/adjustments-store';
+import type { Adjustments } from '../store/adjustments-store';
+import { DEFAULT_ADJUSTMENTS } from '../store/adjustments-store';
+import { clampStep } from '../lib/clamp-step';
+import { formatAdjustmentValue } from '@/shared/lib/format/';
 
-interface Props {
+type AdjustmentSliderProps = {
   label: string;
   name: keyof Adjustments;
   value: number;
   min: number;
   max: number;
   step?: number;
+  decimals?: number;
   onChange: (key: keyof Adjustments, value: number) => void;
   onReset: (key: keyof Adjustments) => void;
-}
+};
 
-function fmt(name: keyof Adjustments, v: number) {
-  return name === 'exposure' ? v.toFixed(2) : String(Math.round(v));
-}
-
-function clampStep(raw: number, min: number, max: number, step: number): number {
-  const snapped = Math.round(raw / step) * step;
-  return Math.min(max, Math.max(min, parseFloat(snapped.toFixed(10))));
-}
-
-export function AdjustmentSlider({ label, name, value, min, max, step = 1, onChange, onReset }: Props) {
+export function AdjustmentSlider({
+  label,
+  name,
+  value,
+  min,
+  max,
+  step = 1,
+  onChange,
+  onReset,
+  decimals,
+}: AdjustmentSliderProps) {
+  const d = decimals ?? (name === 'exposure' ? 2 : 0);
+  const fmt = (v: number) => formatAdjustmentValue(v, d);
   const pct = ((value - min) / (max - min)) * 100;
   const isModified = value !== DEFAULT_ADJUSTMENTS[name];
 
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState('');
+  const [draft, setDraft] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const commit = useCallback((raw: string) => {
-    const n = parseFloat(raw);
-    if (!isNaN(n)) onChange(name, clampStep(n, min, max, step));
-    setEditing(false);
-  }, [name, min, max, step, onChange]);
+  const commit = useCallback(
+    (raw: string) => {
+      const n = parseFloat(raw);
+      if (!isNaN(n)) onChange(name, clampStep(n, min, max, step));
+      setEditing(false);
+    },
+    [name, min, max, step, onChange],
+  );
 
   const handleValueClick = useCallback(() => {
-    setDraft(fmt(name, value));
+    setDraft(fmt(value));
     setEditing(true);
     setTimeout(() => inputRef.current?.select(), 0);
-  }, [name, value]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, d]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      commit(draft); e.preventDefault();
-    } else if (e.key === 'Escape') {
-      setEditing(false);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      const next = clampStep(value + step, min, max, step);
-      onChange(name, next); setDraft(fmt(name, next));
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      const next = clampStep(value - step, min, max, step);
-      onChange(name, next); setDraft(fmt(name, next));
-    }
-  }, [draft, name, value, min, max, step, onChange, commit]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        commit(draft);
+        e.preventDefault();
+      } else if (e.key === 'Escape') {
+        setEditing(false);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const next = clampStep(value + step, min, max, step);
+        onChange(name, next);
+        setDraft(fmt(next));
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = clampStep(value - step, min, max, step);
+        onChange(name, next);
+        setDraft(fmt(next));
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [draft, name, value, min, max, step, d, onChange, commit],
+  );
 
   return (
     <div className="flex flex-col gap-0.5 py-[3px]">
@@ -90,16 +107,13 @@ export function AdjustmentSlider({ label, name, value, min, max, step = 1, onCha
             onClick={handleValueClick}
             title="Click to edit, ↑↓ to step"
           >
-            {fmt(name, value)}
+            {fmt(value)}
           </span>
         )}
       </div>
 
       {/* Track */}
-      <div
-        className="relative h-[14px] cursor-pointer"
-        onDoubleClick={() => onReset(name)}
-      >
+      <div className="relative h-[14px] cursor-pointer" onDoubleClick={() => onReset(name)}>
         <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[3px] bg-[#3a3a3a] rounded-[1px] pointer-events-none hover:bg-[#444]">
           {/* Center mark */}
           <div className="absolute left-1/2 -top-[1px] w-px h-[5px] bg-[#555] -translate-x-1/2" />

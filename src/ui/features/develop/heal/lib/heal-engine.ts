@@ -1,4 +1,4 @@
-import type { HealSpot } from '../model/types';
+import type { HealSpot } from '../store/types';
 
 /**
  * Canvas 2D pixel-level heal/clone engine.
@@ -26,7 +26,10 @@ export class HealEngine {
     w: number,
     h: number,
   ): { r: number; g: number; b: number } {
-    let rSum = 0, gSum = 0, bSum = 0, count = 0;
+    let rSum = 0,
+      gSum = 0,
+      bSum = 0,
+      count = 0;
 
     const x0 = Math.max(0, Math.floor(cx - outerR));
     const x1 = Math.min(w - 1, Math.ceil(cx + outerR));
@@ -38,7 +41,9 @@ export class HealEngine {
         const dist = Math.sqrt((px - cx) ** 2 + (py - cy) ** 2);
         if (dist < innerR || dist > outerR) continue;
         const idx = (py * w + px) * 4;
-        rSum += data[idx]; gSum += data[idx + 1]; bSum += data[idx + 2];
+        rSum += data[idx];
+        gSum += data[idx + 1];
+        bSum += data[idx + 2];
         count++;
       }
     }
@@ -58,7 +63,10 @@ export class HealEngine {
     w: number,
     h: number,
   ): { r: number; g: number; b: number } {
-    let rSum = 0, gSum = 0, bSum = 0, count = 0;
+    let rSum = 0,
+      gSum = 0,
+      bSum = 0,
+      count = 0;
     const innerR = radius * 0.75;
 
     const x0 = Math.max(0, Math.floor(cx - radius));
@@ -111,11 +119,7 @@ export class HealEngine {
       const scy = Math.round(spot.src.y * imgH);
       const dstM = this.sampleBorderMean(data, cx, cy, radius, imgW, imgH);
       const srcM = this.sampleBorderMean(data, scx, scy, radius, imgW, imgH);
-      return [
-        (dstM.r - srcM.r) / 255,
-        (dstM.g - srcM.g) / 255,
-        (dstM.b - srcM.b) / 255,
-      ];
+      return [(dstM.r - srcM.r) / 255, (dstM.g - srcM.g) / 255, (dstM.b - srcM.b) / 255];
     }
 
     return [0, 0, 0];
@@ -173,7 +177,9 @@ export class HealEngine {
     w: number,
     h: number,
   ): number {
-    let sum = 0, sumSq = 0, count = 0;
+    let sum = 0,
+      sumSq = 0,
+      count = 0;
     const r2 = radius * radius;
     const x0 = Math.max(0, cx - radius);
     const x1 = Math.min(w - 1, cx + radius);

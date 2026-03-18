@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HealMode, HealSpot } from '../model/types';
+import type { HealMode, HealSpot } from '../store/types';
 
 interface DragState {
   type: 'idle' | 'dragging-dst' | 'dragging-src';
@@ -11,7 +11,7 @@ export interface HealOverlayProps {
   canvasHeight: number;
   spots: HealSpot[];
   selectedSpotId: string | null;
-  brushSizePx: number;   // brush radius in screen pixels
+  brushSizePx: number; // brush radius in screen pixels
   zoom: number;
   activeMode: HealMode;
   onAddSpot: (normX: number, normY: number) => void;
@@ -32,7 +32,6 @@ export function HealOverlay({
   selectedSpotId,
   brushSizePx,
   zoom,
-  activeMode: _activeMode,
   onAddSpot,
   onMoveSpotDst,
   onMoveSpotSrc,
@@ -72,15 +71,15 @@ export function HealOverlay({
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
     // invZ keeps strokes/dots at constant screen size regardless of zoom.
-    const invZ    = 1 / zoom;
+    const invZ = 1 / zoom;
     // brushSizePx is in screen pixels. ÷zoom converts to CSS px in the overlay
     // (parent CSS transform scale(zoom) will bring it back to brushSizePx screen px).
-    const dispR   = brushSizePx / zoom;
+    const dispR = brushSizePx / zoom;
     // Drop shadow makes circles visible on any background
     const shadowBlur = 3 * invZ;
-    ctx.shadowColor   = 'rgba(0,0,0,0.7)';
-    ctx.shadowBlur    = shadowBlur;
-    const dotR    = 2.5 * invZ;
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur = shadowBlur;
+    const dotR = 2.5 * invZ;
     const cursorDotR = 2 * invZ;
 
     for (const spot of spots) {
@@ -276,7 +275,13 @@ export function HealOverlay({
       className="absolute inset-0"
       width={Math.round(canvasWidth * zoom)}
       height={Math.round(canvasHeight * zoom)}
-      style={{ cursor: 'none', touchAction: 'none', width: canvasWidth, height: canvasHeight, ...style }}
+      style={{
+        cursor: 'none',
+        touchAction: 'none',
+        width: canvasWidth,
+        height: canvasHeight,
+        ...style,
+      }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}

@@ -2,21 +2,21 @@ import { create } from 'zustand';
 
 export interface Adjustments {
   // White Balance
-  temp: number;      // -100 to 100
-  tint: number;      // -100 to 100
+  temp: number; // -100 to 100
+  tint: number; // -100 to 100
   // Light
-  exposure: number;  // -5 to 5
-  contrast: number;  // -100 to 100
-  highlights: number;// -100 to 100
-  shadows: number;   // -100 to 100
-  whites: number;    // -100 to 100
-  blacks: number;    // -100 to 100
+  exposure: number; // -5 to 5
+  contrast: number; // -100 to 100
+  highlights: number; // -100 to 100
+  shadows: number; // -100 to 100
+  whites: number; // -100 to 100
+  blacks: number; // -100 to 100
   // Presence
-  texture: number;   // -100 to 100
-  clarity: number;   // -100 to 100
-  dehaze: number;    // -100 to 100
-  vibrance: number;  // -100 to 100
-  saturation: number;// -100 to 100
+  texture: number; // -100 to 100
+  clarity: number; // -100 to 100
+  dehaze: number; // -100 to 100
+  vibrance: number; // -100 to 100
+  saturation: number; // -100 to 100
 }
 
 export const DEFAULT_ADJUSTMENTS: Adjustments = {
@@ -35,12 +35,12 @@ export const DEFAULT_ADJUSTMENTS: Adjustments = {
   saturation: 0,
 };
 
-interface AdjustmentsStore {
+type AdjustmentsStore = {
   adjustments: Adjustments;
   setAdjustment: <K extends keyof Adjustments>(key: K, value: Adjustments[K]) => void;
   resetAdjustment: (key: keyof Adjustments) => void;
   resetAll: () => void;
-}
+};
 
 export const useAdjustmentsStore = create<AdjustmentsStore>((set) => ({
   adjustments: { ...DEFAULT_ADJUSTMENTS },

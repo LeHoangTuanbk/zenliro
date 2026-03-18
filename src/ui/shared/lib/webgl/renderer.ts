@@ -1,5 +1,5 @@
-import type { Adjustments } from '@/features/develop/edit/model/adjustments-store';
-import type { CropState } from '@/features/develop/crop/model/types';
+import type { Adjustments } from '@/features/develop/edit/store/adjustments-store';
+import type { CropState } from '@/features/develop/crop/store/types';
 import type { SpotGPUData } from './types';
 import { linkProgram, createTexture, createFBO } from './gl-utils';
 import { VERT_SRC, BLUR_FRAG_SRC, HEAL_FRAG_SRC, MAIN_FRAG_SRC } from './shaders';

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useHealStore } from '../model/heal-store';
+import { useHealStore } from '../store/heal-store';
 
 interface HealPanelProps {
   photoId: string | null;
@@ -23,7 +23,7 @@ function Slider({
   display?: string;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState('');
+  const [draft, setDraft] = useState('');
 
   const displayVal = display ?? String(Math.round(value));
 
@@ -63,7 +63,10 @@ function Slider({
         <span
           className="text-[10px] text-[#929292] w-8 text-right tabular-nums cursor-text hover:text-[#f2f2f2] transition-colors"
           title="Click to enter value"
-          onDoubleClick={() => { setDraft(displayVal); setEditing(true); }}
+          onDoubleClick={() => {
+            setDraft(displayVal);
+            setEditing(true);
+          }}
         >
           {displayVal}
         </span>
@@ -197,9 +200,7 @@ export function HealPanel({ photoId }: HealPanelProps) {
                 className={`flex items-center justify-between px-2 py-1.5 rounded-[2px] cursor-pointer select-none ${
                   spot.id === selectedSpotId ? 'bg-[#2a3d52]' : 'hover:bg-[#2a2a2a]'
                 }`}
-                onClick={() =>
-                  setSelectedSpotId(spot.id === selectedSpotId ? null : spot.id)
-                }
+                onClick={() => setSelectedSpotId(spot.id === selectedSpotId ? null : spot.id)}
               >
                 <div className="flex items-center gap-2">
                   <span
@@ -207,8 +208,8 @@ export function HealPanel({ photoId }: HealPanelProps) {
                       spot.mode === 'heal'
                         ? 'bg-[#3d6fa5] text-[#9dc8f5]'
                         : spot.mode === 'fill'
-                        ? 'bg-[#3a3a1a] text-[#c8c86b]'
-                        : 'bg-[#4a3a1a] text-[#c8a86b]'
+                          ? 'bg-[#3a3a1a] text-[#c8c86b]'
+                          : 'bg-[#4a3a1a] text-[#c8a86b]'
                     }`}
                   >
                     {spot.mode === 'heal' ? 'H' : spot.mode === 'fill' ? 'F' : 'C'}

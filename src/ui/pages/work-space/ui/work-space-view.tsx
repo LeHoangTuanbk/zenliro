@@ -1,15 +1,14 @@
 import type { RefObject } from 'react';
 import { ImageCanvas, type ImageCanvasHandle } from '@widgets/image-canvas/ui/image-canvas';
 import { LibraryContainer } from '@features/library';
-import { EditPanel } from '@/features/develop/edit/ui/edit-panel';
+import { EditPanel, ToolStrip } from '@/features/develop/edit';
 import { HealPanel } from '@/features/develop/heal/ui/heal-panel';
 import { CropPanel } from '@/features/develop/crop/ui/crop-panel';
 import { ExportDialog, type ExportSettings } from '@features/export/ui/export-dialog';
-import { ToolStrip } from '@/features/develop/edit/ui/tool-strip';
 import { Histogram } from '@features/histogram/ui/histogram';
-import type { HealSpot } from '@/features/develop/heal/model/types';
+import type { HealSpot } from '@/features/develop/heal/store/types';
 import { ActiveTool } from '@features/develop/const';
-import type { CropState } from '@/features/develop/crop/model/types';
+import type { CropState } from '@/features/develop/crop/store/types';
 import type {
   HealInteractionProps,
   CropInteractionProps,

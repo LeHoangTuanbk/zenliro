@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CropRect, CropState } from '../model/types';
+import type { CropRect, CropState } from '../store/types';
 
 type DragHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'move' | null;
 
@@ -21,12 +21,18 @@ export interface CropOverlayProps {
 
 const HANDLE_HIT_PX = 10;
 const CORNER_LEN_PX = 14;
-const CORNER_THICK  = 2.5;
+const CORNER_THICK = 2.5;
 
 const HANDLE_CURSORS: Record<NonNullable<DragHandle>, string> = {
-  nw: 'nw-resize', n: 'n-resize', ne: 'ne-resize',
-  e: 'e-resize', se: 'se-resize', s: 's-resize',
-  sw: 'sw-resize', w: 'w-resize', move: 'move',
+  nw: 'nw-resize',
+  n: 'n-resize',
+  ne: 'ne-resize',
+  e: 'e-resize',
+  se: 'se-resize',
+  s: 's-resize',
+  sw: 'sw-resize',
+  w: 'w-resize',
+  move: 'move',
 };
 
 export function CropOverlay({
@@ -39,7 +45,7 @@ export function CropOverlay({
   style,
 }: CropOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const dragRef   = useRef<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
   const [cursor, setCursor] = useState('crosshair');
 
   // ── Coordinate helpers ──────────────────────────────────────────────────
@@ -63,7 +69,7 @@ export function CropOverlay({
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
     const { rect } = cropState;
-    const tl = toCanvas(rect.x,          rect.y);
+    const tl = toCanvas(rect.x, rect.y);
     const br = toCanvas(rect.x + rect.w, rect.y + rect.h);
     const rw = br.x - tl.x;
     const rh = br.y - tl.y;
@@ -79,43 +85,47 @@ export function CropOverlay({
 
     // Rule-of-thirds grid (inside crop)
     ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-    ctx.lineWidth   = invZ;
+    ctx.lineWidth = invZ;
     for (let i = 1; i <= 2; i++) {
       const x = tl.x + rw * (i / 3);
       const y = tl.y + rh * (i / 3);
-      ctx.beginPath(); ctx.moveTo(x, tl.y); ctx.lineTo(x, br.y); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(tl.x, y); ctx.lineTo(br.x, y); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, tl.y);
+      ctx.lineTo(x, br.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(tl.x, y);
+      ctx.lineTo(br.x, y);
+      ctx.stroke();
     }
 
     // Crop border
     ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-    ctx.lineWidth   = invZ;
+    ctx.lineWidth = invZ;
     ctx.strokeRect(tl.x, tl.y, rw, rh);
 
     // Corner handles (L-shaped, Lightroom style)
     const cl = CORNER_LEN_PX * invZ;
-    const ct = CORNER_THICK  * invZ;
+    const ct = CORNER_THICK * invZ;
     ctx.fillStyle = '#ffffff';
     const corners: [number, number, number, number][] = [
-      [tl.x, tl.y,  1,  1],
-      [br.x, tl.y, -1,  1],
+      [tl.x, tl.y, 1, 1],
+      [br.x, tl.y, -1, 1],
       [br.x, br.y, -1, -1],
-      [tl.x, br.y,  1, -1],
+      [tl.x, br.y, 1, -1],
     ];
     for (const [cx, cy, sx, sy] of corners) {
-      ctx.fillRect(cx - ct * (sx < 0 ? 1 : 0), cy - ct * (sy < 0 ? 1 : 0),
-                   cl * sx, ct * sy); // horizontal arm
-      ctx.fillRect(cx - ct * (sx < 0 ? 1 : 0), cy - ct * (sy < 0 ? 1 : 0),
-                   ct * sx, cl * sy); // vertical arm
+      ctx.fillRect(cx - ct * (sx < 0 ? 1 : 0), cy - ct * (sy < 0 ? 1 : 0), cl * sx, ct * sy); // horizontal arm
+      ctx.fillRect(cx - ct * (sx < 0 ? 1 : 0), cy - ct * (sy < 0 ? 1 : 0), ct * sx, cl * sy); // vertical arm
     }
 
     // Edge midpoint handles (small squares)
     const hs = 4 * invZ;
     const mids: [number, number][] = [
       [tl.x + rw / 2, tl.y],
-      [br.x,           tl.y + rh / 2],
+      [br.x, tl.y + rh / 2],
       [tl.x + rw / 2, br.y],
-      [tl.x,           tl.y + rh / 2],
+      [tl.x, tl.y + rh / 2],
     ];
     for (const [mx, my] of mids) {
       ctx.fillRect(mx - hs, my - hs, hs * 2, hs * 2);
@@ -126,22 +136,21 @@ export function CropOverlay({
   const findHandle = useCallback(
     (cx: number, cy: number): DragHandle => {
       const { rect } = cropState;
-      const tl = toCanvas(rect.x,          rect.y);
+      const tl = toCanvas(rect.x, rect.y);
       const br = toCanvas(rect.x + rect.w, rect.y + rect.h);
       const mid = { x: (tl.x + br.x) / 2, y: (tl.y + br.y) / 2 };
       const hit = HANDLE_HIT_PX / zoom;
 
-      const near = (ax: number, ay: number) =>
-        Math.abs(cx - ax) <= hit && Math.abs(cy - ay) <= hit;
+      const near = (ax: number, ay: number) => Math.abs(cx - ax) <= hit && Math.abs(cy - ay) <= hit;
 
-      if (near(tl.x, tl.y))   return 'nw';
-      if (near(mid.x, tl.y))  return 'n';
-      if (near(br.x, tl.y))   return 'ne';
-      if (near(br.x, mid.y))  return 'e';
-      if (near(br.x, br.y))   return 'se';
-      if (near(mid.x, br.y))  return 's';
-      if (near(tl.x, br.y))   return 'sw';
-      if (near(tl.x, mid.y))  return 'w';
+      if (near(tl.x, tl.y)) return 'nw';
+      if (near(mid.x, tl.y)) return 'n';
+      if (near(br.x, tl.y)) return 'ne';
+      if (near(br.x, mid.y)) return 'e';
+      if (near(br.x, br.y)) return 'se';
+      if (near(mid.x, br.y)) return 's';
+      if (near(tl.x, br.y)) return 'sw';
+      if (near(tl.x, mid.y)) return 'w';
       if (cx >= tl.x && cx <= br.x && cy >= tl.y && cy <= br.y) return 'move';
       return null;
     },
@@ -151,7 +160,7 @@ export function CropOverlay({
   // ── Pos helper ──────────────────────────────────────────────────────────
   const getPos = (e: React.MouseEvent | MouseEvent) => {
     const rect = canvasRef.current!.getBoundingClientRect();
-    const sx = canvasWidth  / rect.width;
+    const sx = canvasWidth / rect.width;
     const sy = canvasHeight / rect.height;
     return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
   };
@@ -170,13 +179,13 @@ export function CropOverlay({
   // ── Mouse down ──────────────────────────────────────────────────────────
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return;
-    const pos     = getPos(e);
-    const handle  = findHandle(pos.x, pos.y);
+    const pos = getPos(e);
+    const handle = findHandle(pos.x, pos.y);
     const normPos = toNorm(pos.x, pos.y);
     dragRef.current = {
       handle,
       startMouse: normPos,
-      startRect:  { ...cropState.rect },
+      startRect: { ...cropState.rect },
     };
   };
 
@@ -185,13 +194,13 @@ export function CropOverlay({
     const onMove = (e: MouseEvent) => {
       const drag = dragRef.current;
       if (!drag || !drag.handle) return;
-      const pos  = getPos(e as unknown as React.MouseEvent);
+      const pos = getPos(e as unknown as React.MouseEvent);
       const norm = toNorm(pos.x, pos.y);
       const dx = norm.x - drag.startMouse.x;
       const dy = norm.y - drag.startMouse.y;
       const { startRect: sr } = drag;
 
-      let r: CropRect = { ...sr };
+      const r: CropRect = { ...sr };
 
       const aspect = cropState.lockAspect
         ? (sr.w * imageAspect) / (sr.h * imageAspect) // = sr.w / sr.h
@@ -203,13 +212,16 @@ export function CropOverlay({
           r.y = sr.y + dy;
           break;
         case 'nw':
-          r.x = sr.x + dx; r.w = sr.w - dx;
-          r.y = sr.y + dy; r.h = sr.h - dy;
+          r.x = sr.x + dx;
+          r.w = sr.w - dx;
+          r.y = sr.y + dy;
+          r.h = sr.h - dy;
           if (aspect) r.h = r.w / aspect;
           break;
         case 'ne':
           r.w = sr.w + dx;
-          r.y = sr.y + dy; r.h = sr.h - dy;
+          r.y = sr.y + dy;
+          r.h = sr.h - dy;
           if (aspect) r.h = r.w / aspect;
           break;
         case 'se':
@@ -218,13 +230,15 @@ export function CropOverlay({
           if (aspect) r.h = r.w / aspect;
           break;
         case 'sw':
-          r.x = sr.x + dx; r.w = sr.w - dx;
+          r.x = sr.x + dx;
+          r.w = sr.w - dx;
           r.h = sr.h + dy;
           if (aspect) r.h = r.w / aspect;
           break;
         // Edge handles: only affect their own axis — no aspect enforcement
         case 'n':
-          r.y = sr.y + dy; r.h = sr.h - dy;
+          r.y = sr.y + dy;
+          r.h = sr.h - dy;
           break;
         case 's':
           r.h = sr.h + dy;
@@ -233,27 +247,30 @@ export function CropOverlay({
           r.w = sr.w + dx;
           break;
         case 'w':
-          r.x = sr.x + dx; r.w = sr.w - dx;
+          r.x = sr.x + dx;
+          r.w = sr.w - dx;
           break;
       }
 
       onChange({ rect: clampRect(r) });
     };
 
-    const onUp = () => { dragRef.current = null; };
+    const onUp = () => {
+      dragRef.current = null;
+    };
 
     window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup',   onUp);
+    window.addEventListener('mouseup', onUp);
     return () => {
       window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup',   onUp);
+      window.removeEventListener('mouseup', onUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cropState, toNorm, imageAspect, onChange, canvasWidth, canvasHeight]);
 
   // ── Cursor update ───────────────────────────────────────────────────────
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos    = getPos(e);
+    const pos = getPos(e);
     const handle = findHandle(pos.x, pos.y);
     setCursor(handle ? HANDLE_CURSORS[handle] : 'crosshair');
   };
@@ -274,7 +291,7 @@ export function CropOverlay({
     <canvas
       ref={canvasRef}
       className="absolute inset-0"
-      width={Math.round(canvasWidth  * zoom)}
+      width={Math.round(canvasWidth * zoom)}
       height={Math.round(canvasHeight * zoom)}
       style={{ width: canvasWidth, height: canvasHeight, cursor, touchAction: 'none', ...style }}
       onMouseDown={handleMouseDown}
