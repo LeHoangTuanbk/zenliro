@@ -293,12 +293,18 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       const adj = m.adjustments;
       const base = {
         adj: {
-          exposure: adj.exposure, contrast: adj.contrast,
-          highlights: adj.highlights, shadows: adj.shadows,
-          whites: adj.whites, blacks: adj.blacks,
-          temp: adj.temp, tint: adj.tint,
-          texture: adj.texture, clarity: adj.clarity,
-          dehaze: adj.dehaze, vibrance: adj.vibrance,
+          exposure: adj.exposure,
+          contrast: adj.contrast,
+          highlights: adj.highlights,
+          shadows: adj.shadows,
+          whites: adj.whites,
+          blacks: adj.blacks,
+          temp: adj.temp,
+          tint: adj.tint,
+          texture: adj.texture,
+          clarity: adj.clarity,
+          dehaze: adj.dehaze,
+          vibrance: adj.vibrance,
           saturation: adj.saturation,
         },
       };
@@ -308,7 +314,11 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
         return { type: 2, linear: [d.x1, d.y1, d.x2, d.y2, d.feather], ...base };
       }
       const d = m.mask.data;
-      return { type: 3, radial: [d.cx, d.cy, d.rx, d.ry, d.angle, d.feather, d.invert ? 1 : 0], ...base };
+      return {
+        type: 3,
+        radial: [d.cx, d.cy, d.rx, d.ry, d.angle, d.feather, d.invert ? 1 : 0],
+        ...base,
+      };
     });
     renderer.setMasks(gpuMasks);
 
@@ -343,7 +353,8 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     for (let i = activeMasks.length; i < 4; i++) {
       if (prevSlotMaskIdsRef.current[i] !== null) {
         renderer.clearBrushMask(i);
-        if (prevSlotMaskIdsRef.current[i]) uploadedStrokesRef.current.delete(prevSlotMaskIdsRef.current[i]!);
+        if (prevSlotMaskIdsRef.current[i])
+          uploadedStrokesRef.current.delete(prevSlotMaskIdsRef.current[i]!);
         prevSlotMaskIdsRef.current[i] = null;
       }
     }

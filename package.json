@@ -1,7 +1,8 @@
 {
-  "name": "bright-room",
+  "name": "zenliro",
   "private": true,
   "version": "0.0.0",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {

@@ -1,6 +1,6 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, Tray, Menu, nativeImage } from 'electron';
 import { ipcMainHandle, isDev, validateEventFrame } from './utils.js';
-import { getPreloadPath, getUIPath } from './path-resolver.js';
+import { getPreloadPath, getUIPath, getTrayIconPath } from './path-resolver.js';
 import { registerCatalogHandlers } from './catalog.js';
 import fs from 'fs';
 import path from 'path';
@@ -25,6 +25,7 @@ app.on('ready', () => {
   }
 
   registerCatalogHandlers();
+  setupTray(mainWindow);
 
   // ── Import ────────────────────────────────────────────────────────────────
   ipcMainHandle('importPhotos', async () => {
@@ -97,6 +98,23 @@ app.on('ready', () => {
     };
     const ext = extMap[req.mimeType] ?? 'jpg';
     const baseName = req.defaultName.replace(/\.[^.]+$/, '');
+    const template = req.namingTemplate ?? 'filename-sequence';
+    const customText = req.customText || 'edit';
+    const startNum = req.startNumber ?? 1;
+
+    let fileName: string;
+    if (template === 'filename') {
+      fileName = `${baseName}.${ext}`;
+    } else if (template === 'custom') {
+      fileName = `${customText}_${startNum}.${ext}`;
+    } else if (template === 'date') {
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      fileName = `${dateStr}_${baseName}.${ext}`;
+    } else {
+      // filename-sequence (default)
+      fileName = `${baseName}_${customText}_${startNum}.${ext}`;
+    }
 
     const buffer = Buffer.from(req.base64, 'base64');
 
@@ -104,14 +122,14 @@ app.on('ready', () => {
     if (req.destFolder) {
       const expanded = req.destFolder.replace(/^~/, os.homedir());
       fs.mkdirSync(expanded, { recursive: true });
-      const outPath = path.join(expanded, `${baseName}_edited.${ext}`);
+      const outPath = path.join(expanded, fileName);
       fs.writeFileSync(outPath, buffer);
       return { saved: true, filePath: outPath };
     }
 
     const result = await dialog.showSaveDialog(mainWindow, {
       title: 'Export Photo',
-      defaultPath: path.join(app.getPath('pictures'), `${baseName}_edited.${ext}`),
+      defaultPath: path.join(app.getPath('pictures'), fileName),
       filters: [
         {
           name:
@@ -129,6 +147,27 @@ app.on('ready', () => {
 
   handleCloseEvents(mainWindow);
 });
+
+function setupTray(mainWindow: BrowserWindow) {
+  const icon = nativeImage.createFromPath(getTrayIconPath());
+  icon.setTemplateImage(true);
+  const tray = new Tray(icon);
+  tray.setToolTip('Zenliro');
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Open Zenliro', click: () => mainWindow.show() },
+      { type: 'separator' },
+      { label: 'Quit', click: () => app.quit() },
+    ]),
+  );
+  tray.on('click', () => {
+    if (mainWindow.isVisible()) {
+      mainWindow.focus();
+    } else {
+      mainWindow.show();
+    }
+  });
+}
 
 function handleCloseEvents(mainWindow: BrowserWindow) {
   let quitting = false;

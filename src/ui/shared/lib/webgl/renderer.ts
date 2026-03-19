@@ -2,7 +2,14 @@ import type { Adjustments } from '@/features/develop/edit/store/adjustments-stor
 import type { CropState } from '@/features/develop/crop/store/types';
 import type { SpotGPUData, MaskGPUData } from './types';
 import { linkProgram, createTexture, createFBO } from './gl-utils';
-import { VERT_SRC, BLUR_FRAG_SRC, HEAL_FRAG_SRC, MAIN_FRAG_SRC, BRUSH_VERT_SRC, BRUSH_FRAG_SRC } from './shaders';
+import {
+  VERT_SRC,
+  BLUR_FRAG_SRC,
+  HEAL_FRAG_SRC,
+  MAIN_FRAG_SRC,
+  BRUSH_VERT_SRC,
+  BRUSH_FRAG_SRC,
+} from './shaders';
 
 const MAX_MASKS = 4;
 
@@ -32,8 +39,8 @@ export class WebGLRenderer {
   private imgH = 0;
   private ready = false;
   private spotsData: SpotGPUData[] = [];
+  // private maskData: MaskGPUData[] = [];
   private cropData: CropState | null = null;
-  private maskData: MaskGPUData[] = [];
   private paintFBOs: (WebGLFramebuffer | null)[] = [null, null, null, null];
   private paintTextures: (WebGLTexture | null)[] = [null, null, null, null];
   private eraseFBOs: (WebGLFramebuffer | null)[] = [null, null, null, null];
@@ -123,7 +130,17 @@ export class WebGLRenderer {
     // Fallback 1×1 zero texture for unused brush mask slots
     this.fallbackTex = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, this.fallbackTex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    gl.texImage2D(
+      gl.TEXTURE_2D,
+      0,
+      gl.RGBA8,
+      1,
+      1,
+      0,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      new Uint8Array([0, 0, 0, 255]),
+    );
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -167,10 +184,22 @@ export class WebGLRenderer {
 
     // Create/recreate paint and erase FBOs for each mask slot
     for (let i = 0; i < MAX_MASKS; i++) {
-      if (this.paintTextures[i]) { gl.deleteTexture(this.paintTextures[i]); this.paintTextures[i] = null; }
-      if (this.paintFBOs[i]) { gl.deleteFramebuffer(this.paintFBOs[i]); this.paintFBOs[i] = null; }
-      if (this.eraseTextures[i]) { gl.deleteTexture(this.eraseTextures[i]); this.eraseTextures[i] = null; }
-      if (this.eraseFBOs[i]) { gl.deleteFramebuffer(this.eraseFBOs[i]); this.eraseFBOs[i] = null; }
+      if (this.paintTextures[i]) {
+        gl.deleteTexture(this.paintTextures[i]);
+        this.paintTextures[i] = null;
+      }
+      if (this.paintFBOs[i]) {
+        gl.deleteFramebuffer(this.paintFBOs[i]);
+        this.paintFBOs[i] = null;
+      }
+      if (this.eraseTextures[i]) {
+        gl.deleteTexture(this.eraseTextures[i]);
+        this.eraseTextures[i] = null;
+      }
+      if (this.eraseFBOs[i]) {
+        gl.deleteFramebuffer(this.eraseFBOs[i]);
+        this.eraseFBOs[i] = null;
+      }
 
       // Create paint FBO
       this.paintTextures[i] = this.createBrushTex(this.maskW, this.maskH);
@@ -194,7 +223,7 @@ export class WebGLRenderer {
     const gl = this.gl;
     if (!gl) return;
     const count = Math.min(masks.length, MAX_MASKS);
-    this.maskData = masks.slice(0, MAX_MASKS);
+    // this.maskData = masks.slice(0, MAX_MASKS);
 
     // Brush textures are managed via GPU FBOs (see addBrushStrokes / clearBrushMask)
 
@@ -204,13 +233,19 @@ export class WebGLRenderer {
     gl.uniform1i(u('u_maskCount'), count);
 
     const types = new Int32Array(MAX_MASKS);
-    const zeroF = new Float32Array(MAX_MASKS);
-    const exp_ = new Float32Array(MAX_MASKS), con_ = new Float32Array(MAX_MASKS);
-    const high_ = new Float32Array(MAX_MASKS), shad_ = new Float32Array(MAX_MASKS);
-    const whites_ = new Float32Array(MAX_MASKS), blacks_ = new Float32Array(MAX_MASKS);
-    const temp_ = new Float32Array(MAX_MASKS), tint_ = new Float32Array(MAX_MASKS);
-    const texv_ = new Float32Array(MAX_MASKS), clar_ = new Float32Array(MAX_MASKS);
-    const dehaze_ = new Float32Array(MAX_MASKS), vib_ = new Float32Array(MAX_MASKS);
+    // TODO: use zeroF to reset unused mask uniform arrays (fix GPU bleeding)
+    const exp_ = new Float32Array(MAX_MASKS),
+      con_ = new Float32Array(MAX_MASKS);
+    const high_ = new Float32Array(MAX_MASKS),
+      shad_ = new Float32Array(MAX_MASKS);
+    const whites_ = new Float32Array(MAX_MASKS),
+      blacks_ = new Float32Array(MAX_MASKS);
+    const temp_ = new Float32Array(MAX_MASKS),
+      tint_ = new Float32Array(MAX_MASKS);
+    const texv_ = new Float32Array(MAX_MASKS),
+      clar_ = new Float32Array(MAX_MASKS);
+    const dehaze_ = new Float32Array(MAX_MASKS),
+      vib_ = new Float32Array(MAX_MASKS);
     const sat_ = new Float32Array(MAX_MASKS);
     const linear_ = new Float32Array(MAX_MASKS * 4);
     const linearF_ = new Float32Array(MAX_MASKS);
@@ -221,12 +256,18 @@ export class WebGLRenderer {
       const m = masks[i];
       if (!m) continue;
       types[i] = m.type;
-      exp_[i] = m.adj.exposure; con_[i] = m.adj.contrast;
-      high_[i] = m.adj.highlights; shad_[i] = m.adj.shadows;
-      whites_[i] = m.adj.whites; blacks_[i] = m.adj.blacks;
-      temp_[i] = m.adj.temp; tint_[i] = m.adj.tint;
-      texv_[i] = m.adj.texture; clar_[i] = m.adj.clarity;
-      dehaze_[i] = m.adj.dehaze; vib_[i] = m.adj.vibrance;
+      exp_[i] = m.adj.exposure;
+      con_[i] = m.adj.contrast;
+      high_[i] = m.adj.highlights;
+      shad_[i] = m.adj.shadows;
+      whites_[i] = m.adj.whites;
+      blacks_[i] = m.adj.blacks;
+      temp_[i] = m.adj.temp;
+      tint_[i] = m.adj.tint;
+      texv_[i] = m.adj.texture;
+      clar_[i] = m.adj.clarity;
+      dehaze_[i] = m.adj.dehaze;
+      vib_[i] = m.adj.vibrance;
       sat_[i] = m.adj.saturation;
       if (m.linear) {
         linear_.set(m.linear.slice(0, 4), i * 4);
@@ -321,9 +362,14 @@ export class WebGLRenderer {
   }
 
   setEffects(
-    vigAmount: number, vigMidpoint: number, vigRoundness: number,
-    vigFeather: number, vigHighlights: number,
-    grainAmount: number, grainSize: number, grainRoughness: number,
+    vigAmount: number,
+    vigMidpoint: number,
+    vigRoundness: number,
+    vigFeather: number,
+    vigHighlights: number,
+    grainAmount: number,
+    grainSize: number,
+    grainRoughness: number,
   ): void {
     const gl = this.gl;
     if (!gl) return;
@@ -346,6 +392,7 @@ export class WebGLRenderer {
     gl.bindTexture(gl.TEXTURE_2D, tex);
     // Use RGBA8 — guaranteed color-renderable in WebGL2 (R8 FBO may not clear correctly on some drivers)
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    // Use LINEAR for smooth mask edges; feather in the brush shader controls softness
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -363,7 +410,11 @@ export class WebGLRenderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
-  addBrushStrokes(slot: number, strokes: import('@/features/develop/mask').BrushStroke[], erase: boolean): void {
+  addBrushStrokes(
+    slot: number,
+    strokes: import('@/features/develop/mask').BrushStroke[],
+    erase: boolean,
+  ): void {
     const gl = this.gl;
     if (!this.ready || slot < 0 || slot >= MAX_MASKS || this.maskW === 0) return;
     const fbo = erase ? this.eraseFBOs[slot] : this.paintFBOs[slot];
@@ -600,6 +651,7 @@ export class WebGLRenderer {
     const renderer = new WebGLRenderer();
     renderer.init(canvas, { preserveDrawingBuffer: true });
     renderer.loadImage(image);
+    renderer.setMasks([]); // Initialize mask uniforms (empty masks for export)
     if (spots?.length) renderer.setHealSpots(spots);
     if (crop) renderer.setCropState(crop);
     renderer.render(canvas, adjustments);
