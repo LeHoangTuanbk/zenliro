@@ -1,7 +1,10 @@
 {
-  "name": "bright-room",
+  "name": "zenliro",
   "private": true,
   "version": "0.0.0",
+  "description": "Desktop photo development app for color grading, tone mapping, and mood — built for photographers.",
+  "license": "AGPL-3.0-only",
+  "author": "Tuan Le Hoang <lehoangtuanbk@gmail.com>",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {

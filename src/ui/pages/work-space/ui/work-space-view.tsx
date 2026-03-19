@@ -98,9 +98,7 @@ export function WorkSpaceView({
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
         <div className="w-44 px-3 flex items-center flex-shrink-0">
-          <span className="text-[12px] font-semibold text-[#f2f2f2] tracking-wide">
-            Bright Room
-          </span>
+          <span className="text-lg font-bold text-[#f2f2f2] tracking-wide">Zenliro</span>
         </div>
 
         {/* Module tabs */}

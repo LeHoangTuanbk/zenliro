@@ -1,10 +1,13 @@
 {
-  "appId": "com.tuan-lehoang.electron-course",
+  "appId": "com.tuan-lehoang.zenliro",
+  "productName": "Zenliro",
   "files": ["dist-electron", "dist-react"],
   "extraResources": ["dist-electron/preload.cjs", "src/assets/**"],
   "icon": "./desktop-icon.png",
   "mac": {
-    "target": "dmg"
+    "target": "dmg",
+    "entitlementsInherit": "build/entitlements.mac.plist",
+    "hardenedRuntime": false
   },
   "linux": {
     "target": "AppImage",

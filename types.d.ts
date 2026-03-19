@@ -14,6 +14,9 @@ interface ExportPhotoRequest {
   base64: string;
   mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
   defaultName: string;
+  customText?: string;
+  namingTemplate?: 'filename' | 'filename-sequence' | 'custom' | 'date';
+  startNumber?: number;
   /** If provided, save directly to this folder without showing a save dialog */
   destFolder?: string;
 }

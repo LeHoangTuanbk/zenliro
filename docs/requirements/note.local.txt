@@ -1,11 +1,11 @@
-# Bright room
+# Zenliro
 Một ứng dụng giúp cho quá trình photo development, dựa trên lightroom. Lightroom classic clone + agent để chỉnh ảnh. 
 Giúp cho xử lí raw processing, color grading, local adjustment...
 Đặc biệt cần trong quá trình blend màu, tạo mood cho ảnh = color grading + tone mapping. 
 Không phải là ứng dụng chỉnh sửa ảnh, phá ảnh như Photoshop. Enhance, not alter. Giữ nguyên chi tiết, không sửa vật thể, chỉ làm ảnh đẹp hơn, artistic nhưng vẫn authentic. Không phải là Inpainting, chỉnh sửa ảnh.
 => Giao diện và các phím tắt, mọi thứ phải giống y đúc lightroom classic. Các góc border radius. 
 # Các features: 
-+ Import một ảnh: raw, jpg, png, ... => Xem thông tin các ảnh đó. => Xem được cái overal hitogram
++ Import một ảnh: raw, jpg, png, ... => Xem thông tin các ảnh đó. Quản lí các imported photos. => Xem được cái overal hitogram
 + Tab Develop: Tất cả những tab của lighroom trong tab development đều có. 
 + Có MCP server. Claude code kết nối vào MCP. Dựa trên đầu ra của bức ảnh sẽ tự làm luôn chỉnh ảnh để tạo ra output tốt nhất. Có thể yêu cầu AI agent copy style của một bức ảnh hoặc xử lí ảnh để có thể có một ảnh tốt, nghệ thuật
 + Phải track được quá trình sửa ảnh để có thể undo/redo. Không sửa file gốc. => Giữ được ảnh nguyên bản. 
@@ -25,6 +25,34 @@ Electron
 ## UI
 + color: #000000, xám; #929292, xám ở sidebar: #505050, #222222, white: #f2f2f2
 + 
+
+## How to start for develop
++ pnpm install
++ pnpm dev
++ pnpm build:all
++ pnpm dist:mac
++ pnpm dist:win
++ pnpm dist:linux
+
+## Làm sao để cài đặt bản sau khi đã buil
+Chạy để cho macsos chấp nhận app. 
+macOS sẽ block app chưa có code signature. Có 2 cách bypass:                                                                        
+   
+  Cách 1: Right-click → Open (lần đầu tiên)                                                                                           
+                                                                  
+  1. Right-click vào .app → Open                                                                                                      
+  2. Dialog hỏi "unidentified developer" → click Open             
+  3. Lần sau double-click bình thường                                                                                                 
+  xattr -cr /Applications/Zenliro.app                                                                                                 
+  Lệnh này xóa quarantine attribute mà macOS gán cho file download từ internet.                                                       
+  Cách 3: System Settings (macOS 13+)                                                                                                 
+  Nếu bị block, vào System Settings → Privacy & Security → kéo xuống dưới → thấy "Zenliro was blocked" → click Open Anyway. 
+
+
+---                                                                                                                                 
+  Long-term: Ad-hoc signing (miễn phí, không cần Apple Developer account)                                                             
+                                                                                                                                      
+  codesign --deep --force --sign - /Applications/Zenliro.app
 
 # Inspired
 + Lightroom

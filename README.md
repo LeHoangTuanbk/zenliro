@@ -1,73 +1,72 @@
-# React + TypeScript + Vite
+# Zenliro
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> **Enhance, not alter.** A Lightroom Classic-inspired photo development app powered by AI.
 
-Currently, two official plugins are available:
+Zenliro is a desktop RAW processing and color grading tool built for photographers who care about mood, tone, and authenticity. Not a destructive editor — no object removal, no inpainting. Just light, color, and feel.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **RAW Processing** — Import RAW, JPG, PNG, TIFF and more. View EXIF metadata and overall histogram at a glance.
+- **Develop Module** — Full panel parity with Lightroom Classic: Basic, Tone Curve, HSL, Color Grading, Detail, and more.
+- **AI Agent** — Claude-powered agent analyzes your photo, plans adjustments, and edits in real-time. Watch it work like a photographer at the controls. Can copy the style of a reference image or craft the best possible output autonomously.
+- **Non-destructive** — Full undo/redo history. Original file is never touched.
+- **Style Presets** — 10 curated looks for different moods and genres.
+- **WebGL Rendering** — Custom-written shaders for real-time color processing entirely on the GPU.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+Electron
+├── React + Vite + TypeScript      → UI (Feature-Sliced Design architecture)
+├── Shadcn/ui + Tailwind CSS       → Component system
+├── WebGL (custom shaders)         → Real-time GPU color processing
+├── Zustand                        → State management
+└── Claude (MCP)                   → AI agent for intelligent photo editing
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Getting Started
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm install
+pnpm dev
 ```
+
+### Build
+
+```bash
+pnpm dist:mac    # macOS DMG (arm64)
+pnpm dist:win    # Windows (x64)
+pnpm dist:linux  # Linux AppImage (x64)
+```
+
+### Install unsigned build on macOS
+
+macOS will block apps without a code signature. Run:
+
+```bash
+xattr -cr /Applications/Zenliro.app
+```
+
+Or: right-click the `.app` → **Open** → click **Open** in the dialog.
+
+---
+
+## Inspired By
+
+- [Lightroom Classic](https://www.adobe.com/products/photoshop-lightroom-classic.html)
+- [RapidRAW](https://github.com/CyberTimon/RapidRAW)
+- [Pencil](https://www.pencil.com)
+
+---
+
+## License
+
+Licensed under [AGPL-3.0](./LICENSE).
+
+If you distribute or deploy a modified version of Zenliro — including as a hosted service — you must release the source code under the same license and credit the original project.
