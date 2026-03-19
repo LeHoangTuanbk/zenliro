@@ -12,6 +12,8 @@ import {
   defaultParametric,
 } from '@features/develop/edit/tone-curve/store/types';
 import { useCropStore } from '@features/develop/crop/store/crop-store';
+import { useMaskStore } from '@/features/develop/mask';
+import type { Mask } from '@/features/develop/mask';
 
 function captureEdits(photoId: string): PhotoEdits {
   const adj = useAdjustmentsStore.getState();
@@ -62,6 +64,7 @@ function captureEdits(photoId: string): PhotoEdits {
           },
         }
       : {}),
+  masks: useMaskStore.getState().getMasks(photoId) as PhotoEdits['masks'],
   };
 }
 
@@ -104,14 +107,19 @@ function applyEdits(photoId: string, edits: PhotoEdits) {
       lockAspect: edits.crop.lockAspect,
     });
   }
+
+  if (edits.masks?.length) {
+    useMaskStore.getState().setMasksForPhoto(photoId, edits.masks as Mask[]);
+  }
 }
 
-function resetEdits() {
+function resetEdits(photoId: string) {
   useAdjustmentsStore.getState().resetAll();
   useColorMixerStore.getState().reset();
   useColorGradingStore.getState().reset();
   useEffectsStore.getState().reset();
   useToneCurveStore.getState().reset();
+  useMaskStore.getState().setMasksForPhoto(photoId, []);
 }
 
 export function usePhotoEdits(selectedId: string | null) {
@@ -136,7 +144,7 @@ export function usePhotoEdits(selectedId: string | null) {
       if (stored) {
         applyEdits(selectedId, stored);
       } else {
-        resetEdits();
+        resetEdits(selectedId);
       }
     }
 
@@ -167,6 +175,7 @@ export function usePhotoEdits(selectedId: string | null) {
       useEffectsStore.subscribe(onAnyChange),
       useToneCurveStore.subscribe(onAnyChange),
       useCropStore.subscribe(onAnyChange),
+      useMaskStore.subscribe(onAnyChange),
     ];
 
     return () => {

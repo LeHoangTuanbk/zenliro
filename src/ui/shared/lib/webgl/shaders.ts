@@ -91,6 +91,33 @@ void main() {
   fragColor = vec4(color, 1.0);
 }`;
 
+export const BRUSH_VERT_SRC = /* glsl */ `#version 300 es
+uniform vec2 u_brCenter;   // UV coords with y=0 at top-of-image
+uniform float u_brRadiusPx; // radius in FBO pixels
+void main() {
+  // FBO y=0 is at bottom, but our coords have y=0 at top → flip y
+  float ndcX = u_brCenter.x * 2.0 - 1.0;
+  float ndcY = 1.0 - u_brCenter.y * 2.0;
+  gl_Position = vec4(ndcX, ndcY, 0.0, 1.0);
+  gl_PointSize = u_brRadiusPx * 2.0;
+}
+`;
+
+export const BRUSH_FRAG_SRC = /* glsl */ `#version 300 es
+precision mediump float;
+uniform float u_brFeather;
+uniform float u_brOpacity;
+out vec4 fragColor;
+void main() {
+  vec2 coord = gl_PointCoord - vec2(0.5);
+  float dist = length(coord); // 0 at center, 0.5 at edge
+  float hard = 0.5 * (1.0 - u_brFeather);
+  float alpha = (1.0 - smoothstep(hard, max(0.5, hard + 0.001), dist)) * u_brOpacity;
+  if (dist > 0.5) discard;
+  fragColor = vec4(alpha, 0.0, 0.0, 1.0);
+}
+`;
+
 export const MAIN_FRAG_SRC = /* glsl */ `#version 300 es
 precision highp float;
 
@@ -145,6 +172,41 @@ uniform float u_vigHighlights; // 0 to 1
 uniform float u_grainAmount;   // 0 to 1
 uniform float u_grainSize;     // 0 to 1
 uniform float u_grainRoughness;// 0 to 1
+
+// ── Local adjustments (masks) ────────────────────────────────────────────────
+#define MAX_MASKS 4
+uniform int u_maskCount;
+uniform int u_maskType[MAX_MASKS];        // 0=off 1=brush 2=linear 3=radial
+// Brush textures (sampler arrays need constant indexing, so use separate uniforms)
+uniform sampler2D u_maskTex0;    // paint tex slot 0
+uniform sampler2D u_maskTex1;    // paint tex slot 1
+uniform sampler2D u_maskTex2;    // paint tex slot 2
+uniform sampler2D u_maskTex3;    // paint tex slot 3
+uniform sampler2D u_maskEraseTex0; // erase tex slot 0
+uniform sampler2D u_maskEraseTex1; // erase tex slot 1
+uniform sampler2D u_maskEraseTex2; // erase tex slot 2
+uniform sampler2D u_maskEraseTex3; // erase tex slot 3
+// Linear gradient: (x1, y1, x2, y2)
+uniform vec4  u_maskLinear[MAX_MASKS];
+uniform float u_maskLinearFeather[MAX_MASKS];
+// Radial gradient: (cx, cy, rx, ry)
+uniform vec4  u_maskRadial[MAX_MASKS];
+// (angleDeg, feather, invert01)
+uniform vec3  u_maskRadialParams[MAX_MASKS];
+// Per-mask delta adjustments
+uniform float u_maskExp[MAX_MASKS];
+uniform float u_maskCon[MAX_MASKS];
+uniform float u_maskHigh[MAX_MASKS];
+uniform float u_maskShad[MAX_MASKS];
+uniform float u_maskWhites[MAX_MASKS];
+uniform float u_maskBlacks[MAX_MASKS];
+uniform float u_maskTemp[MAX_MASKS];
+uniform float u_maskTint_[MAX_MASKS];
+uniform float u_maskTexVal[MAX_MASKS];
+uniform float u_maskClar[MAX_MASKS];
+uniform float u_maskDehaze[MAX_MASKS];
+uniform float u_maskVib[MAX_MASKS];
+uniform float u_maskSat[MAX_MASKS];
 
 in vec2 v_texCoord;
 out vec4 fragColor;
@@ -321,10 +383,128 @@ vec3 applyGrain(vec3 color, vec2 uv) {
   return color;
 }
 
+float sampleBrushTex(int slot, vec2 uv) {
+  float paint = 0.0, erase = 0.0;
+  if (slot == 0) { paint = texture(u_maskTex0, uv).r; erase = texture(u_maskEraseTex0, uv).r; }
+  else if (slot == 1) { paint = texture(u_maskTex1, uv).r; erase = texture(u_maskEraseTex1, uv).r; }
+  else if (slot == 2) { paint = texture(u_maskTex2, uv).r; erase = texture(u_maskEraseTex2, uv).r; }
+  else { paint = texture(u_maskTex3, uv).r; erase = texture(u_maskEraseTex3, uv).r; }
+  return paint * (1.0 - erase);
+}
+
+float sampleMaskWeight(int slot, vec2 uv) {
+  int t = u_maskType[slot];
+  if (t == 1) {
+    return sampleBrushTex(slot, uv);
+  }
+  if (t == 2) {
+    vec4 l = u_maskLinear[slot];
+    // Stored coords use screen convention (y=0=top); imageUV has y=0=bottom → flip y
+    vec4 lf = vec4(l.x, 1.0 - l.y, l.z, 1.0 - l.w);
+    float feath = max(u_maskLinearFeather[slot], 0.001);
+    vec2 dir = lf.zw - lf.xy;
+    float len2 = length(dir);
+    if (len2 < 0.0001) return 0.0;
+    float proj = dot(uv - lf.xy, dir / len2) / len2;
+    float hw = feath * 0.5;
+    // proj=0 at start pin → full weight; proj=1 at end pin → zero weight (Lightroom convention)
+    return 1.0 - clamp((proj - (0.5 - hw)) / (2.0 * hw), 0.0, 1.0);
+  }
+  if (t == 3) {
+    vec4 r = u_maskRadial[slot];
+    vec3 rp = u_maskRadialParams[slot];
+    float ang = rp.x * PI / 180.0;
+    // cy stored in screen convention (y=0=top); imageUV has y=0=bottom → flip cy only (rx/ry are radii, not positions)
+    vec2 center = vec2(r.x, 1.0 - r.y);
+    vec2 d2 = uv - center;
+    float cosA = cos(ang), sinA = sin(ang);
+    vec2 rd = vec2(cosA * d2.x + sinA * d2.y, -sinA * d2.x + cosA * d2.y);
+    float dist2 = length(rd / max(r.zw, vec2(0.0001)));
+    float feath2 = max(rp.y, 0.001);
+    float w2 = 1.0 - smoothstep(1.0 - feath2, 1.0, dist2);
+    return rp.z > 0.5 ? 1.0 - w2 : w2;
+  }
+  return 0.0;
+}
+
+vec3 applyLocalAdj(vec3 color, vec2 blurCoord, int i) {
+  // White balance
+  float t_ = u_maskTemp[i] / 100.0;
+  color.r += t_ * 0.12; color.g += t_ * 0.02; color.b -= t_ * 0.12;
+  float tnt_ = u_maskTint_[i] / 100.0;
+  color.r += tnt_ * 0.04; color.g -= tnt_ * 0.08; color.b += tnt_ * 0.04;
+  // Exposure
+  color *= pow(2.0, u_maskExp[i]);
+  // Tone
+  float lm2 = luma(color);
+  float blk = u_maskBlacks[i];
+  if (abs(blk) > 0.5) {
+    float mk = pow(clamp(1.0 - lm2 / 0.35, 0.0, 1.0), 1.5);
+    float adj = (blk / 100.0) * mk;
+    color = blk > 0.0 ? color + adj * (1.0 - color) * 0.5 : color * (1.0 + adj * 0.8);
+    lm2 = luma(color);
+  }
+  float shd = u_maskShad[i];
+  if (abs(shd) > 0.5) {
+    float mk = pow(clamp(1.0 - lm2 / 0.55, 0.0, 1.0), 1.2);
+    color += (shd / 100.0) * mk * 0.45 * (1.0 + color * 0.2);
+    lm2 = luma(color);
+  }
+  float hgh = u_maskHigh[i];
+  if (abs(hgh) > 0.5) {
+    float mk = pow(clamp((lm2 - 0.45) / 0.55, 0.0, 1.0), 1.2);
+    color += (hgh / 100.0) * mk * 0.45 * color;
+    lm2 = luma(color);
+  }
+  float wht = u_maskWhites[i];
+  if (abs(wht) > 0.5) {
+    float mk = pow(clamp((lm2 - 0.65) / 0.35, 0.0, 1.0), 1.5);
+    float adj = (wht / 100.0) * mk;
+    color = wht > 0.0 ? color + adj * (1.0 - color) * 0.5 : color * (1.0 + adj * 0.4);
+  }
+  float con2 = u_maskCon[i];
+  if (abs(con2) > 0.5) {
+    float factor2 = tan(PI * 0.25 * (1.0 + (con2 / 100.0) * 0.5));
+    color = (color - 0.5) * factor2 + 0.5;
+  }
+  float clar2 = u_maskClar[i];
+  if (abs(clar2) > 0.5) {
+    vec3 lb2 = texture(u_largeBlur, blurCoord).rgb;
+    float lmc2 = luma(color);
+    float mk2 = 1.0 - abs(lmc2 * 2.0 - 1.0); mk2 *= mk2;
+    color += (color - lb2) * (clar2 / 100.0) * mk2 * 1.8;
+  }
+  float texv = u_maskTexVal[i];
+  if (abs(texv) > 0.5) {
+    vec3 sb2 = texture(u_smallBlur, blurCoord).rgb;
+    color += (color - sb2) * (texv / 100.0) * 0.9;
+  }
+  float dhz2 = u_maskDehaze[i];
+  if (abs(dhz2) > 0.5) {
+    vec3 lb3 = texture(u_largeBlur, blurCoord).rgb;
+    float d2 = dhz2 / 100.0;
+    color -= d2 * 0.04;
+    color += (color - lb3) * d2 * 0.6;
+  }
+  float sat2 = u_maskSat[i];
+  if (abs(sat2) > 0.5) {
+    float grey2 = luma(color);
+    color = mix(vec3(grey2), color, 1.0 + sat2 / 100.0);
+  }
+  float vib2 = u_maskVib[i];
+  if (abs(vib2) > 0.5) {
+    vec3 hsl2 = rgb2hsl(color);
+    float protect2 = 1.0 - hsl2.y;
+    hsl2.y = clamp(hsl2.y + (vib2 / 100.0) * protect2 * 0.65, 0.0, 1.0);
+    color = hsl2rgb(hsl2);
+  }
+  return color;
+}
+
 void main() {
   vec2 uv = v_texCoord;
 
-  // ── CROP & ROTATE ──────────────────────────────────────────────────────
+  // ── CROP & ROTATE ─────────────────────────────────────────────────────
   vec2 imageUV = u_cropOrigin + uv * u_cropSize;
 
   if (u_rotation != 0.0) {
@@ -447,6 +627,16 @@ void main() {
 
   // ── COLOR GRADING ───────────────────────────────────────────────────────
   color = applyColorGrading(color);
+
+  // ── LOCAL ADJUSTMENTS (MASKS) ───────────────────────────────────────────
+  for (int mi = 0; mi < MAX_MASKS; mi++) {
+    if (mi >= u_maskCount || u_maskType[mi] == 0) continue;
+    float mw = sampleMaskWeight(mi, imageUV);
+    if (mw > 0.001) {
+      vec3 localColor = applyLocalAdj(color, v_texCoord, mi);
+      color = mix(color, clamp(localColor, 0.0, 1.0), mw);
+    }
+  }
 
   // ── VIGNETTE ────────────────────────────────────────────────────────────
   color = applyVignette(color, uv);

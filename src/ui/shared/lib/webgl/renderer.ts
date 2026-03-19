@@ -1,14 +1,17 @@
 import type { Adjustments } from '@/features/develop/edit/store/adjustments-store';
 import type { CropState } from '@/features/develop/crop/store/types';
-import type { SpotGPUData } from './types';
+import type { SpotGPUData, MaskGPUData } from './types';
 import { linkProgram, createTexture, createFBO } from './gl-utils';
-import { VERT_SRC, BLUR_FRAG_SRC, HEAL_FRAG_SRC, MAIN_FRAG_SRC } from './shaders';
+import { VERT_SRC, BLUR_FRAG_SRC, HEAL_FRAG_SRC, MAIN_FRAG_SRC, BRUSH_VERT_SRC, BRUSH_FRAG_SRC } from './shaders';
+
+const MAX_MASKS = 4;
 
 export class WebGLRenderer {
   private gl!: WebGL2RenderingContext;
   private blurProg!: WebGLProgram;
   private mainProg!: WebGLProgram;
   private healProg!: WebGLProgram;
+  private brushProg!: WebGLProgram;
   private vao!: WebGLVertexArrayObject;
 
   private imageTex!: WebGLTexture;
@@ -30,6 +33,15 @@ export class WebGLRenderer {
   private ready = false;
   private spotsData: SpotGPUData[] = [];
   private cropData: CropState | null = null;
+  private maskData: MaskGPUData[] = [];
+  private paintFBOs: (WebGLFramebuffer | null)[] = [null, null, null, null];
+  private paintTextures: (WebGLTexture | null)[] = [null, null, null, null];
+  private eraseFBOs: (WebGLFramebuffer | null)[] = [null, null, null, null];
+  private eraseTextures: (WebGLTexture | null)[] = [null, null, null, null];
+  private maskW = 0;
+  private maskH = 0;
+  private maxPointSize = 1024;
+  private fallbackTex!: WebGLTexture; // 1×1 transparent, used for unused brush slots
 
   init(canvas: HTMLCanvasElement, opts: { preserveDrawingBuffer?: boolean } = {}): void {
     const gl = canvas.getContext('webgl2', {
@@ -42,6 +54,8 @@ export class WebGLRenderer {
     this.blurProg = linkProgram(gl, VERT_SRC, BLUR_FRAG_SRC);
     this.mainProg = linkProgram(gl, VERT_SRC, MAIN_FRAG_SRC);
     this.healProg = linkProgram(gl, VERT_SRC, HEAL_FRAG_SRC);
+    this.brushProg = linkProgram(gl, BRUSH_VERT_SRC, BRUSH_FRAG_SRC);
+    this.maxPointSize = (gl.getParameter(gl.ALIASED_POINT_SIZE_RANGE) as Float32Array)[1];
 
     const vao = gl.createVertexArray()!;
     gl.bindVertexArray(vao);
@@ -92,7 +106,29 @@ export class WebGLRenderer {
     gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_grainAmount'), 0);
     gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_grainSize'), 0.25);
     gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_grainRoughness'), 0.5);
+
+    // Mask uniforms init
+    gl.uniform1i(gl.getUniformLocation(this.mainProg, 'u_maskCount'), 0);
+    gl.uniform1iv(gl.getUniformLocation(this.mainProg, 'u_maskType'), new Int32Array(MAX_MASKS));
+    // Bind paint brush texture samplers to TEXTURE4-7
+    for (let i = 0; i < MAX_MASKS; i++) {
+      gl.uniform1i(gl.getUniformLocation(this.mainProg, `u_maskTex${i}`), 4 + i);
+    }
+    // Bind erase brush texture samplers to TEXTURE8-11
+    for (let i = 0; i < MAX_MASKS; i++) {
+      gl.uniform1i(gl.getUniformLocation(this.mainProg, `u_maskEraseTex${i}`), 8 + i);
+    }
     gl.useProgram(null);
+
+    // Fallback 1×1 zero texture for unused brush mask slots
+    this.fallbackTex = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, this.fallbackTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindTexture(gl.TEXTURE_2D, null);
   }
 
   loadImage(image: HTMLImageElement | HTMLCanvasElement): void {
@@ -122,11 +158,107 @@ export class WebGLRenderer {
     this.largeBlurFBO = createFBO(gl, this.largeBlurTex);
     this.healTex = createTexture(gl, w, h);
     this.healFBO = createFBO(gl, this.healTex);
+
+    // Compute mask FBO dims (max 2048 on larger side)
+    const MAX_BRUSH_DIM = 2048;
+    const mScale = Math.min(1, MAX_BRUSH_DIM / Math.max(this.imgW, this.imgH));
+    this.maskW = Math.max(1, Math.round(this.imgW * mScale));
+    this.maskH = Math.max(1, Math.round(this.imgH * mScale));
+
+    // Create/recreate paint and erase FBOs for each mask slot
+    for (let i = 0; i < MAX_MASKS; i++) {
+      if (this.paintTextures[i]) { gl.deleteTexture(this.paintTextures[i]); this.paintTextures[i] = null; }
+      if (this.paintFBOs[i]) { gl.deleteFramebuffer(this.paintFBOs[i]); this.paintFBOs[i] = null; }
+      if (this.eraseTextures[i]) { gl.deleteTexture(this.eraseTextures[i]); this.eraseTextures[i] = null; }
+      if (this.eraseFBOs[i]) { gl.deleteFramebuffer(this.eraseFBOs[i]); this.eraseFBOs[i] = null; }
+
+      // Create paint FBO
+      this.paintTextures[i] = this.createBrushTex(this.maskW, this.maskH);
+      this.paintFBOs[i] = createFBO(gl, this.paintTextures[i]!);
+      // Create erase FBO
+      this.eraseTextures[i] = this.createBrushTex(this.maskW, this.maskH);
+      this.eraseFBOs[i] = createFBO(gl, this.eraseTextures[i]!);
+      // Clear both
+      this.clearBrushFBO(this.paintFBOs[i]!);
+      this.clearBrushFBO(this.eraseFBOs[i]!);
+    }
+
     this.ready = true;
   }
 
   setHealSpots(spots: SpotGPUData[]): void {
     this.spotsData = spots.slice(0, 32);
+  }
+
+  setMasks(masks: MaskGPUData[]): void {
+    const gl = this.gl;
+    if (!gl) return;
+    const count = Math.min(masks.length, MAX_MASKS);
+    this.maskData = masks.slice(0, MAX_MASKS);
+
+    // Brush textures are managed via GPU FBOs (see addBrushStrokes / clearBrushMask)
+
+    // Upload uniforms
+    gl.useProgram(this.mainProg);
+    const u = (n: string) => gl.getUniformLocation(this.mainProg, n);
+    gl.uniform1i(u('u_maskCount'), count);
+
+    const types = new Int32Array(MAX_MASKS);
+    const zeroF = new Float32Array(MAX_MASKS);
+    const exp_ = new Float32Array(MAX_MASKS), con_ = new Float32Array(MAX_MASKS);
+    const high_ = new Float32Array(MAX_MASKS), shad_ = new Float32Array(MAX_MASKS);
+    const whites_ = new Float32Array(MAX_MASKS), blacks_ = new Float32Array(MAX_MASKS);
+    const temp_ = new Float32Array(MAX_MASKS), tint_ = new Float32Array(MAX_MASKS);
+    const texv_ = new Float32Array(MAX_MASKS), clar_ = new Float32Array(MAX_MASKS);
+    const dehaze_ = new Float32Array(MAX_MASKS), vib_ = new Float32Array(MAX_MASKS);
+    const sat_ = new Float32Array(MAX_MASKS);
+    const linear_ = new Float32Array(MAX_MASKS * 4);
+    const linearF_ = new Float32Array(MAX_MASKS);
+    const radial_ = new Float32Array(MAX_MASKS * 4);
+    const radialP_ = new Float32Array(MAX_MASKS * 3);
+
+    for (let i = 0; i < MAX_MASKS; i++) {
+      const m = masks[i];
+      if (!m) continue;
+      types[i] = m.type;
+      exp_[i] = m.adj.exposure; con_[i] = m.adj.contrast;
+      high_[i] = m.adj.highlights; shad_[i] = m.adj.shadows;
+      whites_[i] = m.adj.whites; blacks_[i] = m.adj.blacks;
+      temp_[i] = m.adj.temp; tint_[i] = m.adj.tint;
+      texv_[i] = m.adj.texture; clar_[i] = m.adj.clarity;
+      dehaze_[i] = m.adj.dehaze; vib_[i] = m.adj.vibrance;
+      sat_[i] = m.adj.saturation;
+      if (m.linear) {
+        linear_.set(m.linear.slice(0, 4), i * 4);
+        linearF_[i] = m.linear[4];
+      }
+      if (m.radial) {
+        radial_.set(m.radial.slice(0, 4), i * 4);
+        radialP_.set(m.radial.slice(4, 7), i * 3);
+      }
+    }
+
+    gl.uniform1iv(u('u_maskType'), types);
+    gl.uniform1fv(u('u_maskExp'), exp_);
+    gl.uniform1fv(u('u_maskCon'), con_);
+    gl.uniform1fv(u('u_maskHigh'), high_);
+    gl.uniform1fv(u('u_maskShad'), shad_);
+    gl.uniform1fv(u('u_maskWhites'), whites_);
+    gl.uniform1fv(u('u_maskBlacks'), blacks_);
+    gl.uniform1fv(u('u_maskTemp'), temp_);
+    gl.uniform1fv(u('u_maskTint_'), tint_);
+    gl.uniform1fv(u('u_maskTexVal'), texv_);
+    gl.uniform1fv(u('u_maskClar'), clar_);
+    gl.uniform1fv(u('u_maskDehaze'), dehaze_);
+    gl.uniform1fv(u('u_maskVib'), vib_);
+    gl.uniform1fv(u('u_maskSat'), sat_);
+    gl.uniform4fv(u('u_maskLinear'), linear_);
+    gl.uniform1fv(u('u_maskLinearFeather'), linearF_);
+    gl.uniform4fv(u('u_maskRadial'), radial_);
+    gl.uniform3fv(u('u_maskRadialParams'), radialP_);
+    // unused arrays still need a value to avoid GLSL undefined
+    gl.uniform1fv(u('u_maskExp'), exp_);
+    gl.useProgram(null);
   }
   setCropState(crop: CropState | null): void {
     this.cropData = crop;
@@ -206,6 +338,89 @@ export class WebGLRenderer {
     gl.uniform1f(u('u_grainSize'), grainSize);
     gl.uniform1f(u('u_grainRoughness'), grainRoughness);
     gl.useProgram(null);
+  }
+
+  private createBrushTex(w: number, h: number): WebGLTexture {
+    const gl = this.gl;
+    const tex = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    // Use RGBA8 — guaranteed color-renderable in WebGL2 (R8 FBO may not clear correctly on some drivers)
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    return tex;
+  }
+
+  private clearBrushFBO(fbo: WebGLFramebuffer): void {
+    const gl = this.gl;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.viewport(0, 0, this.maskW, this.maskH);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  addBrushStrokes(slot: number, strokes: import('@/features/develop/mask').BrushStroke[], erase: boolean): void {
+    const gl = this.gl;
+    if (!this.ready || slot < 0 || slot >= MAX_MASKS || this.maskW === 0) return;
+    const fbo = erase ? this.eraseFBOs[slot] : this.paintFBOs[slot];
+    if (!fbo) return;
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.viewport(0, 0, this.maskW, this.maskH);
+    gl.bindVertexArray(null); // brush shader uses no vertex attributes
+    gl.useProgram(this.brushProg);
+    gl.enable(gl.BLEND);
+    gl.blendEquation(gl.MAX);
+    gl.blendFunc(gl.ONE, gl.ONE);
+
+    const uCenter = gl.getUniformLocation(this.brushProg, 'u_brCenter');
+    const uRadiusPx = gl.getUniformLocation(this.brushProg, 'u_brRadiusPx');
+    const uFeather = gl.getUniformLocation(this.brushProg, 'u_brFeather');
+    const uOpacity = gl.getUniformLocation(this.brushProg, 'u_brOpacity');
+
+    for (const stroke of strokes) {
+      const radiusPx = Math.min((stroke.size / 2) * this.maskW, this.maxPointSize / 2);
+      gl.uniform1f(uRadiusPx, radiusPx);
+      gl.uniform1f(uFeather, stroke.feather);
+      gl.uniform1f(uOpacity, stroke.opacity);
+
+      const { points } = stroke;
+      if (points.length === 0) continue;
+
+      // Draw first point
+      gl.uniform2f(uCenter, points[0].x, points[0].y);
+      gl.drawArrays(gl.POINTS, 0, 1);
+
+      for (let i = 1; i < points.length; i++) {
+        // Interpolate between previous and current point
+        const prev = points[i - 1];
+        const cur = points[i];
+        const dx = cur.x - prev.x;
+        const dy = cur.y - prev.y;
+        const distUV = Math.hypot(dx, dy);
+        const stepUV = stroke.size * 0.2; // step = 20% of radius
+        const steps = Math.max(1, Math.floor(distUV / stepUV));
+        for (let s = 0; s <= steps; s++) {
+          const t = s / steps;
+          gl.uniform2f(uCenter, prev.x + dx * t, prev.y + dy * t);
+          gl.drawArrays(gl.POINTS, 0, 1);
+        }
+      }
+    }
+
+    gl.disable(gl.BLEND);
+    gl.bindVertexArray(null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
+  clearBrushMask(slot: number): void {
+    if (!this.ready || slot < 0 || slot >= MAX_MASKS || this.maskW === 0) return;
+    if (this.paintFBOs[slot]) this.clearBrushFBO(this.paintFBOs[slot]!);
+    if (this.eraseFBOs[slot]) this.clearBrushFBO(this.eraseFBOs[slot]!);
   }
 
   private runHealPass(): WebGLTexture | null {
@@ -304,6 +519,17 @@ export class WebGLRenderer {
     gl.activeTexture(gl.TEXTURE3);
     gl.bindTexture(gl.TEXTURE_2D, this.toneCurveLUTTex);
     gl.uniform1i(u('u_toneCurveLUT'), 3);
+
+    // Bind paint mask textures to TEXTURE4-7
+    for (let i = 0; i < MAX_MASKS; i++) {
+      gl.activeTexture(gl.TEXTURE4 + i);
+      gl.bindTexture(gl.TEXTURE_2D, this.paintTextures[i] ?? this.fallbackTex);
+    }
+    // Bind erase mask textures to TEXTURE8-11
+    for (let i = 0; i < MAX_MASKS; i++) {
+      gl.activeTexture(gl.TEXTURE8 + i);
+      gl.bindTexture(gl.TEXTURE_2D, this.eraseTextures[i] ?? this.fallbackTex);
+    }
 
     const crop = this.cropData;
     gl.uniform2f(u('u_cropOrigin'), crop ? crop.rect.x : 0, crop ? crop.rect.y : 0);

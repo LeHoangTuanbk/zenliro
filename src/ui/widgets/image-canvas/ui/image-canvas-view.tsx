@@ -1,8 +1,9 @@
 import type { RefObject } from 'react';
 import { HealOverlay } from '@/features/develop/heal';
 import { CropOverlay } from '@/features/develop/crop';
+import { MaskOverlay } from '@/features/develop/mask/ui/mask-overlay';
 import { Spinner } from '@/shared/ui/base';
-import type { CropInteractionProps, HealInteractionProps } from '../store/types';
+import type { CropInteractionProps, HealInteractionProps, MaskInteractionProps } from '../store/types';
 
 type Props = {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -16,7 +17,9 @@ type Props = {
   isPanning: boolean;
   showHeal: boolean;
   showCrop: boolean;
+  showMask: boolean;
   healInteractionProps?: HealInteractionProps;
+  maskInteractionProps?: MaskInteractionProps;
   cropInteractionProps?: CropInteractionProps;
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
   onAddSpot: (normX: number, normY: number) => void;
@@ -34,7 +37,9 @@ export function ImageCanvasView({
   isPanning,
   showHeal,
   showCrop,
+  showMask,
   healInteractionProps,
+  maskInteractionProps,
   cropInteractionProps,
   onMouseDown,
   onAddSpot,
@@ -71,6 +76,15 @@ export function ImageCanvasView({
             imageAspect={cropInteractionProps!.imageAspect}
             onChange={cropInteractionProps!.onChange}
             style={noPointer}
+          />
+        )}
+
+        {showMask && maskInteractionProps && (
+          <MaskOverlay
+            interactionProps={maskInteractionProps}
+            canvasW={canvasDims.w}
+            canvasH={canvasDims.h}
+            zoom={zoom}
           />
         )}
 
