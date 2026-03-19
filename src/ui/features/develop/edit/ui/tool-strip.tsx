@@ -55,13 +55,13 @@ const icons: Record<ActiveTool, React.ReactNode> = {
 const labels: Record<ActiveTool, string> = {
   edit: 'Edit',
   heal: 'Heal',
-  crop: 'Crop',
+  crop: 'Crop & Rotate',
 };
 
-interface ToolStripProps {
+type ToolStripProps = {
   activeTool: ActiveTool;
   onSelect: (tool: ActiveTool) => void;
-}
+};
 
 export function ToolStrip({ activeTool, onSelect }: ToolStripProps) {
   const tools = Object.values(ActiveTool);
@@ -69,19 +69,24 @@ export function ToolStrip({ activeTool, onSelect }: ToolStripProps) {
   return (
     <div className="flex items-center justify-center gap-1 px-2 py-2 bg-[#1e1e1e] border-b border-black">
       {tools.map((tool) => (
-        <button
-          key={tool}
-          title={labels[tool]}
-          onClick={() => onSelect(tool)}
-          className={`flex flex-col items-center gap-0.5 w-14 py-1.5 rounded-[3px] cursor-pointer transition-colors border ${
-            activeTool === tool
-              ? 'bg-[#2a3d50] text-[#4d9fec] border-[#2d4f6a]'
-              : 'bg-transparent text-[#666] border-transparent hover:text-[#929292] hover:bg-[#2a2a2a]'
-          }`}
-        >
-          {icons[tool]}
-          <span className="text-[9px] tracking-wide">{labels[tool]}</span>
-        </button>
+        <div key={tool} className="relative group">
+          <button
+            onClick={() => onSelect(tool)}
+            onMouseDown={(e) => e.currentTarget.blur()}
+            className={`flex items-center justify-center w-10 h-8 rounded-[3px] cursor-pointer transition-colors border ${
+              activeTool === tool
+                ? 'bg-[#2a3d50] text-br-accent border-[#2d4f6a]'
+                : 'bg-transparent text-br-muted border-transparent hover:text-br-text hover:bg-br-hover'
+            }`}
+          >
+            {icons[tool]}
+          </button>
+
+          {/* Tooltip */}
+          <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-0.5 bg-[#111] border border-[#333] text-br-text text-[10px] tracking-wide rounded-[3px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-300 z-50">
+            {labels[tool]}
+          </div>
+        </div>
       ))}
     </div>
   );
