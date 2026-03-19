@@ -16,6 +16,10 @@ import type {
 import type { HistogramData } from '@features/histogram/lib/compute-histogram';
 import type { PhotoExif } from '@features/histogram/lib/read-exif';
 import type { ActiveView } from '../const';
+import { CanvasMode } from '../const';
+import { CompareBeforePanel, useCompareStore } from '@features/develop/compare';
+import type { ExternalZoomPan } from '@widgets/image-canvas/ui/image-canvas';
+import { CanvasToolbar } from './canvas-toolbar';
 
 export type WorkSpaceViewProps = {
   photos: ImportedPhoto[];
@@ -68,6 +72,18 @@ export function WorkSpaceView({
   onActiveToolChange,
   onShowExportChange,
 }: WorkSpaceViewProps) {
+  const isCompareMode = useCompareStore((s) => s.isCompareMode);
+  const toggleCompare = useCompareStore((s) => s.toggle);
+  const compareZoom = useCompareStore((s) => s.zoom);
+  const comparePan = useCompareStore((s) => s.pan);
+  const setZoomPan = useCompareStore((s) => s.setZoomPan);
+
+  const externalZoomPan: ExternalZoomPan = {
+    zoom: compareZoom,
+    pan: comparePan,
+    onChange: setZoomPan,
+  };
+
   return (
     <div className="flex flex-col w-full h-screen bg-[#1a1a1a] text-[#929292] font-sans text-[11px]">
       {/* ── Title bar ────────────────────────────────────────────────────────── */}
@@ -165,19 +181,48 @@ export function WorkSpaceView({
             </div>
           </aside>
 
-          {/* Canvas */}
-          <main className="flex-1 bg-[#111] flex items-center justify-center overflow-hidden">
-            <ImageCanvas
-              ref={canvasRef}
-              dataUrl={selected?.dataUrl ?? null}
-              healSpots={healSpots}
-              hideOverlay={previewOriginal}
-              healInteractionProps={healInteractionProps}
-              cropInteractionProps={cropInteractionProps}
-              confirmedCropState={activeTool !== ActiveTool.Crop ? cropState : null}
-              onImageLoaded={onImageLoaded}
-            />
-          </main>
+          {/* Canvas + toolbar */}
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <main className="relative flex-1 bg-[#111] flex overflow-hidden">
+              {/* Before panel — only shown in compare mode */}
+              {isCompareMode && (
+                <CompareBeforePanel
+                  dataUrl={selected?.dataUrl ?? null}
+                  externalZoomPan={externalZoomPan}
+                />
+              )}
+
+              {/* After / single — ImageCanvas always mounted to preserve WebGL context */}
+              <div className="relative flex-1 overflow-hidden flex items-center justify-center">
+                {isCompareMode && (
+                  <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 px-2 py-0.5 bg-black/50 text-br-muted text-[10px] tracking-wider rounded-[2px] select-none pointer-events-none">
+                    After
+                  </div>
+                )}
+                <ImageCanvas
+                  ref={canvasRef}
+                  dataUrl={selected?.dataUrl ?? null}
+                  healSpots={healSpots}
+                  hideOverlay={previewOriginal}
+                  healInteractionProps={healInteractionProps}
+                  cropInteractionProps={cropInteractionProps}
+                  confirmedCropState={activeTool !== ActiveTool.Crop ? cropState : null}
+                  externalZoomPan={isCompareMode ? externalZoomPan : undefined}
+                  onImageLoaded={onImageLoaded}
+                />
+              </div>
+            </main>
+
+            {selected && (
+              <CanvasToolbar
+                activeMode={isCompareMode ? CanvasMode.Compare : CanvasMode.Loupe}
+                onModeChange={(mode) => {
+                  if (mode === CanvasMode.Compare && !isCompareMode) toggleCompare();
+                  if (mode === CanvasMode.Loupe && isCompareMode) toggleCompare();
+                }}
+              />
+            )}
+          </div>
 
           {/* Right panel */}
           <aside className="w-[260px] bg-[#222] border-l border-black flex flex-col flex-shrink-0">

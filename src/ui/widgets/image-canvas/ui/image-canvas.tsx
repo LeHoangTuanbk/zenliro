@@ -5,7 +5,7 @@ import { ImageCanvasView } from './image-canvas-view';
 import type { ImageCanvasHandle, ImageCanvasProps } from '../store/types';
 
 export type { ImageCanvasHandle, ImageCanvasProps };
-export type { CropInteractionProps, HealInteractionProps } from '../store/types';
+export type { CropInteractionProps, HealInteractionProps, ExternalZoomPan } from '../store/types';
 
 export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
   (
@@ -16,13 +16,14 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
       cropInteractionProps,
       confirmedCropState,
       hideOverlay = false,
+      externalZoomPan,
       onImageLoaded,
     },
     ref,
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const { zoom, pan, isSpaceDown, isPanning, zoomRef, reset, handleMouseDown } =
-      useZoomPan(containerRef);
+      useZoomPan(containerRef, externalZoomPan);
 
     const { canvasRef, canvasDims, isLoading, handleOverlayAddSpot } = useWebGLCanvas(ref, {
       dataUrl,
