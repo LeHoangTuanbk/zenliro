@@ -54,6 +54,13 @@ type PhotoEdits = {
     x: number; y: number; w: number; h: number;
     angle: number; aspectPreset: string; lockAspect: boolean;
   };
+  masks?: Array<{
+    id: string;
+    name: string;
+    enabled: boolean;
+    mask: unknown;
+    adjustments: Record<string, number>;
+  }>;
 };
 
 type Catalog = {

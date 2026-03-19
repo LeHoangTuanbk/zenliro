@@ -6,9 +6,14 @@ import { usePhotos } from './hook/use-photos';
 import { useHistogram } from './hook/use-histogram';
 import { useHealInteraction } from './hook/use-heal-interaction';
 import { useCropInteraction } from './hook/use-crop-interaction';
+import { useMaskInteraction } from './hook/use-mask-interaction';
 import { useExport } from './hook/use-export';
 import { usePhotoEdits } from './hook/use-photo-edits';
 import { useCatalogStore } from './store/catalog-store';
+import { useMaskStore } from '@/features/develop/mask';
+import type { Mask } from '@/features/develop/mask';
+
+const EMPTY_MASKS: Mask[] = [];
 
 export function WorkSpaceContainer() {
   const canvasRef = useRef<ImageCanvasHandle>(null);
@@ -41,6 +46,9 @@ export function WorkSpaceContainer() {
     selectedId,
     imageAspect,
   );
+  const maskInteractionProps = useMaskInteraction(selectedId, activeTool);
+  const masks = useMaskStore((s) => (selectedId ? (s.masksByPhoto[selectedId] ?? EMPTY_MASKS) : EMPTY_MASKS));
+
   const handleExport = useExport(selected, selectedId, canvasRef);
   usePhotoEdits(selectedId);
 
@@ -54,12 +62,14 @@ export function WorkSpaceContainer() {
       showExport={showExport}
       histogramData={histogramData}
       exifData={exifData}
+      masks={masks}
       healSpots={healSpots}
       previewOriginal={previewOriginal}
       cropState={cropState}
       imageAspect={imageAspect}
       canvasRef={canvasRef}
       healInteractionProps={healInteractionProps}
+      maskInteractionProps={maskInteractionProps}
       cropInteractionProps={cropInteractionProps}
       onImport={handleImport}
       onExport={handleExport}

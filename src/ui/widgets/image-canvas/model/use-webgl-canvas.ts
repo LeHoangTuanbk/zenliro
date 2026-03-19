@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { ForwardedRef, RefObject } from 'react';
-import { type SpotGPUData, WebGLRenderer } from '@shared/lib/webgl';
+import { type SpotGPUData, type MaskGPUData, WebGLRenderer } from '@shared/lib/webgl';
 import { useAdjustmentsStore } from '@/features/develop/edit';
+import { type Mask } from '@/features/develop/mask';
 import { type HealSpot, HealEngine } from '@/features/develop/heal';
 import { useToneCurveStore } from '@/features/develop/edit/tone-curve';
 import { generateLUT, combineLUTs } from '@/features/develop/edit/tone-curve';
@@ -20,6 +21,7 @@ import type { CropState } from '@/features/develop/crop';
 
 type Params = {
   dataUrl: string | null;
+  masks: Mask[];
   healSpots: HealSpot[];
   healInteractionProps?: HealInteractionProps;
   cropInteractionProps?: CropInteractionProps;
@@ -33,6 +35,7 @@ type Params = {
 export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Params) {
   const {
     dataUrl,
+    masks,
     healSpots,
     healInteractionProps,
     cropInteractionProps,
@@ -48,6 +51,8 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   const originalImgRef = useRef<HTMLCanvasElement | null>(null);
   const imageDataRef = useRef<ImageData | null>(null);
   const gpuSpotsRef = useRef<SpotGPUData[]>([]);
+  const uploadedStrokesRef = useRef<Map<string, number>>(new Map()); // maskId → count uploaded
+  const prevSlotMaskIdsRef = useRef<(string | null)[]>([null, null, null, null]);
   const [canvasDims, setCanvasDims] = useState({ w: 0, h: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const adjustments = useAdjustmentsStore((s) => s.adjustments);
@@ -276,6 +281,76 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     );
     renderToCanvas();
   }, [effects]);
+
+  useEffect(() => {
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+
+    const activeMasks = masks.filter((m) => m.enabled).slice(0, 4);
+
+    // Upload uniforms + handle brush slots incrementally
+    const gpuMasks: MaskGPUData[] = activeMasks.map((m): MaskGPUData => {
+      const adj = m.adjustments;
+      const base = {
+        adj: {
+          exposure: adj.exposure, contrast: adj.contrast,
+          highlights: adj.highlights, shadows: adj.shadows,
+          whites: adj.whites, blacks: adj.blacks,
+          temp: adj.temp, tint: adj.tint,
+          texture: adj.texture, clarity: adj.clarity,
+          dehaze: adj.dehaze, vibrance: adj.vibrance,
+          saturation: adj.saturation,
+        },
+      };
+      if (m.mask.type === 'brush') return { type: 1, ...base };
+      if (m.mask.type === 'linear') {
+        const d = m.mask.data;
+        return { type: 2, linear: [d.x1, d.y1, d.x2, d.y2, d.feather], ...base };
+      }
+      const d = m.mask.data;
+      return { type: 3, radial: [d.cx, d.cy, d.rx, d.ry, d.angle, d.feather, d.invert ? 1 : 0], ...base };
+    });
+    renderer.setMasks(gpuMasks);
+
+    // Incremental brush stroke rendering
+    activeMasks.forEach((m, slotIndex) => {
+      const prevId = prevSlotMaskIdsRef.current[slotIndex];
+      if (prevId !== m.id) {
+        // Different mask in this slot — clear FBO and reset upload count
+        renderer.clearBrushMask(slotIndex);
+        if (prevId) uploadedStrokesRef.current.delete(prevId);
+        prevSlotMaskIdsRef.current[slotIndex] = m.id;
+      }
+      if (m.mask.type !== 'brush') return;
+      const uploaded = uploadedStrokesRef.current.get(m.id) ?? 0;
+      const strokes = m.mask.strokes;
+      if (strokes.length < uploaded) {
+        // Strokes removed (undo/reset) — clear and re-render all
+        renderer.clearBrushMask(slotIndex);
+        uploadedStrokesRef.current.set(m.id, 0);
+      }
+      const newCount = uploadedStrokesRef.current.get(m.id) ?? 0;
+      if (strokes.length > newCount) {
+        const paintStrokes = strokes.slice(newCount).filter((s) => !s.erase);
+        const eraseStrokes = strokes.slice(newCount).filter((s) => s.erase);
+        if (paintStrokes.length > 0) renderer.addBrushStrokes(slotIndex, paintStrokes, false);
+        if (eraseStrokes.length > 0) renderer.addBrushStrokes(slotIndex, eraseStrokes, true);
+        uploadedStrokesRef.current.set(m.id, strokes.length);
+      }
+    });
+
+    // Clear FBOs for unused slots
+    for (let i = activeMasks.length; i < 4; i++) {
+      if (prevSlotMaskIdsRef.current[i] !== null) {
+        renderer.clearBrushMask(i);
+        if (prevSlotMaskIdsRef.current[i]) uploadedStrokesRef.current.delete(prevSlotMaskIdsRef.current[i]!);
+        prevSlotMaskIdsRef.current[i] = null;
+      }
+    }
+
+    renderToCanvas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [masks]);
 
   // ── Heal: add spot with auto-source ─────────────────────────────────────
   const handleOverlayAddSpot = useCallback(

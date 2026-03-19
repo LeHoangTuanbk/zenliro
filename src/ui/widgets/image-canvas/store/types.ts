@@ -1,5 +1,6 @@
 import type { CropState } from '@/features/develop/crop';
 import type { HealMode, HealSpot } from '@/features/develop/heal';
+import type { Mask } from '@/features/develop/mask';
 import type { ExternalZoomPan } from './use-zoom-pan';
 
 export type ImageCanvasHandle = {
@@ -34,10 +35,46 @@ export type HealInteractionProps = {
   onBrushSizeChange: (px: number) => void;
 };
 
+type BrushMaskInteractionProps = {
+  maskType: 'brush';
+  photoId: string;
+  selectedMaskId: string;
+  brushSizePx: number;
+  brushFeather: number;
+  brushOpacity: number;
+  brushErase: boolean;
+  strokes: import('@/features/develop/mask').BrushStroke[];
+  onStrokeAdded: (stroke: import('@/features/develop/mask').BrushStroke) => void;
+  onBrushSizeChange: (px: number) => void;
+};
+
+type LinearMaskInteractionProps = {
+  maskType: 'linear';
+  photoId: string;
+  selectedMaskId: string;
+  linearData: import('@/features/develop/mask').LinearMaskData;
+  onUpdate: (data: import('@/features/develop/mask').LinearMaskData) => void;
+};
+
+type RadialMaskInteractionProps = {
+  maskType: 'radial';
+  photoId: string;
+  selectedMaskId: string;
+  radialData: import('@/features/develop/mask').RadialMaskData;
+  onUpdate: (data: import('@/features/develop/mask').RadialMaskData) => void;
+};
+
+export type MaskInteractionProps =
+  | BrushMaskInteractionProps
+  | LinearMaskInteractionProps
+  | RadialMaskInteractionProps;
+
 export type ImageCanvasProps = {
   dataUrl: string | null;
+  masks?: Mask[];
   healSpots?: HealSpot[];
   healInteractionProps?: HealInteractionProps;
+  maskInteractionProps?: MaskInteractionProps;
   cropInteractionProps?: CropInteractionProps;
   confirmedCropState?: CropState | null;
   hideOverlay?: boolean;

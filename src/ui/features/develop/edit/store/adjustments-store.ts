@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export interface Adjustments {
+export type Adjustments = {
   // White Balance
   temp: number; // -100 to 100
   tint: number; // -100 to 100
@@ -17,7 +17,7 @@ export interface Adjustments {
   dehaze: number; // -100 to 100
   vibrance: number; // -100 to 100
   saturation: number; // -100 to 100
-}
+};
 
 export const DEFAULT_ADJUSTMENTS: Adjustments = {
   temp: 0,

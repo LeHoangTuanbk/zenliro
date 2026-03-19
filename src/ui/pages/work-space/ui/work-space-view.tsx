@@ -18,7 +18,9 @@ import type { PhotoExif } from '@features/histogram/lib/read-exif';
 import type { ActiveView } from '../const';
 import { CanvasMode } from '../const';
 import { CompareBeforePanel, useCompareStore } from '@features/develop/compare';
-import type { ExternalZoomPan } from '@widgets/image-canvas/ui/image-canvas';
+import type { ExternalZoomPan, MaskInteractionProps } from '@widgets/image-canvas/ui/image-canvas';
+import { MaskPanel } from '@/features/develop/mask/ui/mask-panel';
+import type { Mask } from '@/features/develop/mask';
 import { CanvasToolbar } from './canvas-toolbar';
 
 export type WorkSpaceViewProps = {
@@ -35,7 +37,9 @@ export type WorkSpaceViewProps = {
   cropState: CropState | null;
   imageAspect: number;
   canvasRef: RefObject<ImageCanvasHandle | null>;
+  masks: Mask[];
   healInteractionProps: HealInteractionProps | undefined;
+  maskInteractionProps: MaskInteractionProps | undefined;
   cropInteractionProps: CropInteractionProps | undefined;
   onImport: () => void;
   onExport: (settings: ExportSettings) => Promise<void>;
@@ -56,12 +60,14 @@ export function WorkSpaceView({
   showExport,
   histogramData,
   exifData,
+  masks,
   healSpots,
   previewOriginal,
   cropState,
   imageAspect,
   canvasRef,
   healInteractionProps,
+  maskInteractionProps,
   cropInteractionProps,
   onImport,
   onExport,
@@ -202,9 +208,11 @@ export function WorkSpaceView({
                 <ImageCanvas
                   ref={canvasRef}
                   dataUrl={selected?.dataUrl ?? null}
+                  masks={masks}
                   healSpots={healSpots}
                   hideOverlay={previewOriginal}
                   healInteractionProps={healInteractionProps}
+                  maskInteractionProps={maskInteractionProps}
                   cropInteractionProps={cropInteractionProps}
                   confirmedCropState={activeTool !== ActiveTool.Crop ? cropState : null}
                   externalZoomPan={isCompareMode ? externalZoomPan : undefined}
@@ -231,6 +239,7 @@ export function WorkSpaceView({
             <div className="flex-1 overflow-y-auto">
               {activeTool === ActiveTool.Edit && <EditPanel />}
               {activeTool === ActiveTool.Heal && <HealPanel photoId={selectedId} />}
+              {activeTool === ActiveTool.Mask && <MaskPanel photoId={selectedId} />}
               {activeTool === ActiveTool.Crop && (
                 <CropPanel
                   photoId={selectedId}

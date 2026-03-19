@@ -50,12 +50,19 @@ const icons: Record<ActiveTool, React.ReactNode> = {
       <polyline points="2 6 18 6 18 22" />
     </svg>
   ),
+  mask: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 12 Q10 8 12 12 Q14 16 16 12" />
+    </svg>
+  ),
 };
 
 const labels: Record<ActiveTool, string> = {
   edit: 'Edit',
   heal: 'Heal',
   crop: 'Crop & Rotate',
+  mask: 'Masking',
 };
 
 type ToolStripProps = {
