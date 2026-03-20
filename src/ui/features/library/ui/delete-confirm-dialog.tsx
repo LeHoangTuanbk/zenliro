@@ -34,7 +34,7 @@ export function DeleteConfirmDialog({ count, fileName, open, onConfirm, onCancel
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <BrButton variant="default" size="sm" onClick={onCancel}>Cancel</BrButton>
+          <BrButton variant="ghost" size="sm" onClick={onCancel}>Cancel</BrButton>
           <BrButton variant="primary" size="sm" onClick={onConfirm}>Remove</BrButton>
         </DialogFooter>
       </DialogContent>

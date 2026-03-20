@@ -108,7 +108,6 @@ export function usePhotos() {
   );
 
   const handleDelete = useCallback(async (id: string) => {
-    const photo = photos.find((p) => p.id === id);
     const catalogPhoto = catalogPhotos.find((p) => p.id === id);
     const thumbPath = catalogPhoto?.thumbnailPath ?? '';
     await window.electron.photo.deletePhoto(id, thumbPath);
