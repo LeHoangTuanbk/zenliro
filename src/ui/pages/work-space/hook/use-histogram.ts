@@ -1,4 +1,4 @@
-import { useEffect, useState, type RefObject } from 'react';
+import { useEffect, useMemo, useState, type RefObject } from 'react';
 import { useAdjustmentsStore } from '@/features/develop/edit/store/adjustments-store';
 import {
   histogramFromDataUrl,
@@ -12,19 +12,19 @@ export function useHistogram(
   selectedDataUrl: string | null | undefined,
   canvasRef: RefObject<ImageCanvasHandle | null>,
 ) {
-  const [histogramData, setHistogramData] = useState<HistogramData | null>(null);
+  const [asyncHistogram, setAsyncHistogram] = useState<HistogramData | null>(null);
   const [exifData, setExifData] = useState<PhotoExif | null>(null);
   const adjustments = useAdjustmentsStore((s) => s.adjustments);
 
   useEffect(() => {
     if (!selectedDataUrl) {
-      setHistogramData(null);
+      setAsyncHistogram(null);
       setExifData(null);
       return;
     }
     let cancelled = false;
     histogramFromDataUrl(selectedDataUrl).then((d) => {
-      if (!cancelled) setHistogramData(d);
+      if (!cancelled) setAsyncHistogram(d);
     });
     readExifFromDataUrl(selectedDataUrl).then((e) => {
       if (!cancelled) setExifData(e);
@@ -34,11 +34,12 @@ export function useHistogram(
     };
   }, [selectedDataUrl]);
 
-  useEffect(() => {
+  const histogramData = useMemo(() => {
     const pixels = canvasRef.current?.getRenderedPixels();
-    if (!pixels) return;
-    setHistogramData(computeHistogram(pixels.data));
-  }, [adjustments, canvasRef]);
+    if (!pixels) return asyncHistogram;
+    return computeHistogram(pixels.data);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adjustments, asyncHistogram]);
 
   return { histogramData, exifData };
 }

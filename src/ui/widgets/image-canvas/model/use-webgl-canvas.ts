@@ -244,6 +244,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       renderer.setCropState(confirmedCropState ?? null);
     }
     renderToCanvas();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cropInteractionProps, confirmedCropState]);
 
   useEffect(() => {
@@ -400,7 +401,6 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     }
 
     renderToCanvas();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [masks]);
 
   // ── Heal: add spot with auto-source ─────────────────────────────────────

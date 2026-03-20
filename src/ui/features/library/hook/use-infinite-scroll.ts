@@ -1,17 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 const PAGE_SIZE = 20;
 const ROOT_MARGIN = '200px';
 
 export function useInfiniteScroll(totalCount: number) {
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [state, setState] = useState({ visibleCount: PAGE_SIZE, totalSnapshot: totalCount });
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [totalCount]);
-
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Reset visible count when totalCount changes (React recommended pattern)
+  let { visibleCount } = state;
+  if (state.totalSnapshot !== totalCount) {
+    visibleCount = PAGE_SIZE;
+    setState({ visibleCount: PAGE_SIZE, totalSnapshot: totalCount });
+  }
 
   const setSentinel = useCallback(
     (node: HTMLDivElement | null) => {
@@ -21,7 +23,10 @@ export function useInfiniteScroll(totalCount: number) {
       observerRef.current = new IntersectionObserver(
         ([entry]) => {
           if (entry.isIntersecting) {
-            setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, totalCount));
+            setState((prev) => ({
+              ...prev,
+              visibleCount: Math.min(prev.visibleCount + PAGE_SIZE, totalCount),
+            }));
           }
         },
         { rootMargin: ROOT_MARGIN },
