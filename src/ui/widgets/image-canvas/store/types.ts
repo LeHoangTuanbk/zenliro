@@ -85,7 +85,6 @@ export type ImageCanvasProps = {
   hideOverlay?: boolean;
   externalZoomPan?: ExternalZoomPan;
   onImageLoaded?: (w: number, h: number) => void;
-  onImageRendered?: () => void;
 };
 
 export type { ExternalZoomPan };

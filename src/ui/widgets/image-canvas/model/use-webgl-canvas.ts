@@ -32,7 +32,6 @@ type Params = {
   cropInteractionProps?: CropInteractionProps;
   confirmedCropState?: CropState | null;
   onImageLoaded?: (w: number, h: number) => void;
-  onImageRendered?: () => void;
   containerRef: RefObject<HTMLElement | null>;
   zoomRef: RefObject<number>;
   onResetView: () => void;
@@ -51,7 +50,6 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     cropInteractionProps,
     confirmedCropState,
     onImageLoaded,
-    onImageRendered,
     containerRef,
     zoomRef,
     onResetView,
@@ -61,12 +59,17 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   const rendererRef = useRef<WebGLRenderer | null>(null);
   const originalImgRef = useRef<HTMLCanvasElement | null>(null);
   const imageDataRef = useRef<ImageData | null>(null);
-  const decodedImageCacheRef = useRef<Map<string, {
-    canvas: HTMLCanvasElement;
-    imageData: ImageData;
-    width: number;
-    height: number;
-  }>>(new Map());
+  const decodedImageCacheRef = useRef<
+    Map<
+      string,
+      {
+        canvas: HTMLCanvasElement;
+        imageData: ImageData;
+        width: number;
+        height: number;
+      }
+    >
+  >(new Map());
   const gpuSpotsRef = useRef<SpotGPUData[]>([]);
   const uploadedStrokesRef = useRef<Map<string, number>>(new Map()); // maskId → count uploaded
   const prevSlotMaskIdsRef = useRef<(string | null)[]>([null, null, null, null]);
@@ -206,7 +209,8 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   // ── Load image ───────────────────────────────────────────────────────────
   useEffect(() => {
     if ((!dataUrl && !imageBuffer) || !rendererRef.current) return;
-    const cacheKey = photoId ?? dataUrl ?? `${imageMimeType ?? 'image'}:${imageBuffer?.byteLength ?? 0}`;
+    const cacheKey =
+      photoId ?? dataUrl ?? `${imageMimeType ?? 'image'}:${imageBuffer?.byteLength ?? 0}`;
     const cached = decodedImageCacheRef.current.get(cacheKey);
     if (cached) {
       applyLoadedImage(cached.canvas, cached.imageData, cached.width, cached.height);
@@ -220,7 +224,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     (async () => {
       try {
         const sourceBuffer = imageBuffer ?? dataUrlToArrayBuffer(dataUrl!);
-        const orientation = precomputedOrientation ?? await readExifOrientation(sourceBuffer);
+        const orientation = precomputedOrientation ?? (await readExifOrientation(sourceBuffer));
         const blob = imageBuffer
           ? arrayBufferToBlob(imageBuffer, imageMimeType ?? 'image/jpeg')
           : dataUrlToBlob(dataUrl!);
@@ -273,11 +277,11 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     // Determine effective dimensions for canvas sizing
     const cropState = cropInteractionProps?.cropState ?? confirmedCropState;
     const steps = cropState?.rotationSteps ?? 0;
-    const swap = (steps % 2) !== 0;
+    const swap = steps % 2 !== 0;
     const imgW = renderer.imageWidth;
     const imgH = renderer.imageHeight;
     // In crop-editing mode: show full image. In confirmed mode: use cropped dims.
-    const cropRect = (!cropInteractionProps && confirmedCropState) ? confirmedCropState.rect : null;
+    const cropRect = !cropInteractionProps && confirmedCropState ? confirmedCropState.rect : null;
     const baseW = cropRect ? imgW * cropRect.w : imgW;
     const baseH = cropRect ? imgH * cropRect.h : imgH;
     const effectiveW = swap ? baseH : baseW;
@@ -305,10 +309,14 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     if (cropInteractionProps) {
       const cs = cropInteractionProps.cropState;
       const hasTransform = cs.flipH || cs.flipV || cs.rotationSteps !== 0 || cs.rotation !== 0;
-      renderer.setCropState(hasTransform ? {
-        ...cs,
-        rect: { x: 0, y: 0, w: 1, h: 1 },
-      } : null);
+      renderer.setCropState(
+        hasTransform
+          ? {
+              ...cs,
+              rect: { x: 0, y: 0, w: 1, h: 1 },
+            }
+          : null,
+      );
     } else {
       renderer.setCropState(confirmedCropState ?? null);
     }
