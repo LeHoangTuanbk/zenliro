@@ -6,16 +6,20 @@ export type SliderDef = {
   min: number;
   max: number;
   step?: number;
+  gradient?: string;
 };
 
 export type Section = { title: string; sliders: SliderDef[] };
+
+const TEMP_GRADIENT = 'linear-gradient(to right, #2855cc, #5b8fd4, #c8c0a8, #d4a44e, #c48a1a)';
+const TINT_GRADIENT = 'linear-gradient(to right, #4a9a3a, #7ab86a, #c8c0a8, #b878b0, #9a44b8)';
 
 export const SECTIONS: Section[] = [
   {
     title: 'White Balance',
     sliders: [
-      { key: 'temp', label: 'Temp', min: -100, max: 100 },
-      { key: 'tint', label: 'Tint', min: -100, max: 100 },
+      { key: 'temp', label: 'Temp', min: -100, max: 100, gradient: TEMP_GRADIENT },
+      { key: 'tint', label: 'Tint', min: -100, max: 100, gradient: TINT_GRADIENT },
     ],
   },
   {

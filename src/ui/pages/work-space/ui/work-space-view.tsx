@@ -21,6 +21,7 @@ import { CompareBeforePanel, useCompareStore } from '@features/develop/compare';
 import type { ExternalZoomPan, MaskInteractionProps } from '@widgets/image-canvas/ui/image-canvas';
 import { MaskPanel } from '@/features/develop/mask/ui/mask-panel';
 import type { Mask } from '@/features/develop/mask';
+import { ModuleTab } from '@/shared/ui/base';
 import { CanvasToolbar } from './canvas-toolbar';
 import { HistoryPanel } from '@features/develop/history';
 import type { ImportProgress } from '../hook/use-photos';
@@ -126,20 +127,19 @@ export function WorkSpaceView({
           className="absolute left-1/2 -translate-x-1/2 flex items-center"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          {(['library', 'develop'] as const).map((v, i) => (
-            <button
-              key={v}
-              onClick={() => onActiveViewChange(v)}
-              className={`px-4 h-9 text-[11px] font-medium tracking-wide cursor-pointer transition-colors border-none ${
-                activeView === v
-                  ? 'text-[#f2f2f2] bg-[#1a1a1a]'
-                  : 'text-[#929292] bg-transparent hover:text-[#d0d0d0]'
-              }`}
-            >
-              {v.charAt(0).toUpperCase() + v.slice(1)}
-              {i === 0 && <span className="ml-4 text-[#333]">|</span>}
-            </button>
-          ))}
+          <ModuleTab
+            active={activeView === 'library'}
+            onClick={() => onActiveViewChange('library')}
+          >
+            Library
+          </ModuleTab>
+          <span className="text-br-hover select-none">|</span>
+          <ModuleTab
+            active={activeView === 'develop'}
+            onClick={() => onActiveViewChange('develop')}
+          >
+            Develop
+          </ModuleTab>
         </div>
 
         {/* Export action */}
@@ -203,7 +203,7 @@ export function WorkSpaceView({
                 <img
                   src={p.thumbnailDataUrl || p.dataUrl}
                   alt={p.fileName}
-                  className="w-full object-contain block"
+                  className="w-full h-[90px] object-cover block"
                   loading="lazy"
                 />
               </button>

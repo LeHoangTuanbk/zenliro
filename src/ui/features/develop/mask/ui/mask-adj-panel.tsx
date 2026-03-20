@@ -53,7 +53,7 @@ export function MaskAdjPanel({ photoId, maskId }: Props) {
 
           {!collapsed[section.title] && (
             <div className="px-3 py-2 flex flex-col gap-0.5">
-              {section.sliders.map(({ key, label, min, max, step }) => (
+              {section.sliders.map(({ key, label, min, max, step, gradient }) => (
                 <AdjustmentSlider
                   key={key}
                   label={label}
@@ -62,6 +62,7 @@ export function MaskAdjPanel({ photoId, maskId }: Props) {
                   min={min}
                   max={max}
                   step={step}
+                  gradient={gradient}
                   onChange={handleChange}
                   onReset={handleReset}
                 />
