@@ -17,7 +17,10 @@ const DEBOUNCE_MS = 400;
 export function useHistoryTracking(photoId: string | null) {
   const lastSnapshotRef = useRef<EditSnapshot | null>(null);
   const photoIdRef = useRef(photoId);
-  photoIdRef.current = photoId;
+
+  useEffect(() => {
+    photoIdRef.current = photoId;
+  }, [photoId]);
 
   // Push initial snapshot when photo is selected
   useEffect(() => {

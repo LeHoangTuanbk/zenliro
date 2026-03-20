@@ -118,7 +118,7 @@ export function usePhotos() {
     }
     catalogDeletePhoto(id);
     saveToDisk();
-  }, [photos, catalogPhotos, selectedId, catalogSetId, catalogDeletePhoto, saveToDisk]);
+  }, [catalogPhotos, selectedId, catalogSetId, catalogDeletePhoto, saveToDisk]);
 
   const handleBulkDelete = useCallback(async (ids: Set<string>) => {
     for (const id of ids) {
