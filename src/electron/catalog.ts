@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { validateEventFrame } from './utils.js';
+import { readExifOrientation, readJpegRawDimensions, needsManualOrientation, applyOrientation } from './exif-orientation.js';
 
 const MIME_MAP: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
@@ -60,9 +61,14 @@ export function registerCatalogHandlers() {
   ipcMain.handle('photo:generateThumbnail', async (event, filePath: string, photoId: string) => {
     validateEventFrame(event.senderFrame!);
     try {
-      // createFromPath on macOS auto-applies EXIF orientation
-      const img = nativeImage.createFromPath(filePath);
+      const rawBuf = fs.readFileSync(filePath);
+      const orientation = await readExifOrientation(rawBuf);
+      const rawDims = readJpegRawDimensions(rawBuf);
+      let img = nativeImage.createFromPath(filePath);
       if (img.isEmpty()) return null;
+      if (needsManualOrientation(img.getSize(), rawDims, orientation)) {
+        img = applyOrientation(img, orientation);
+      }
       const small = img.resize({ width: THUMBNAIL_WIDTH });
       const jpegBuffer = small.toJPEG(80);
       const thumbPath = path.join(getThumbnailDir(), `${hashId(photoId)}.jpg`);

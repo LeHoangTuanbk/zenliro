@@ -15,38 +15,63 @@ export async function readExifOrientation(buf: Buffer): Promise<number> {
 }
 
 /**
- * Read raw pixel dimensions from EXIF (before any orientation transform).
- * Returns { width, height } or null if unavailable.
+ * Read raw pixel dimensions from the JPEG SOF (Start of Frame) marker.
+ * These are ALWAYS the unrotated/raw encoded dimensions regardless of EXIF.
+ * Returns null for non-JPEG files.
  */
-export async function readExifDimensions(buf: Buffer): Promise<{ width: number; height: number } | null> {
-  try {
-    const exif = await exifr.parse(buf, { pick: ['ImageWidth', 'ImageHeight', 'ExifImageWidth', 'ExifImageHeight'] });
-    const w = exif?.ExifImageWidth ?? exif?.ImageWidth;
-    const h = exif?.ExifImageHeight ?? exif?.ImageHeight;
-    if (w && h) return { width: w, height: h };
-    return null;
-  } catch {
-    return null;
+export function readJpegRawDimensions(buf: Buffer): { width: number; height: number } | null {
+  if (buf.length < 10 || buf[0] !== 0xFF || buf[1] !== 0xD8) return null;
+  let offset = 2;
+  while (offset < buf.length - 9) {
+    if (buf[offset] !== 0xFF) break;
+    const marker = buf[offset + 1];
+    // SOF0 (0xC0), SOF1 (0xC1), SOF2 (0xC2), SOF3 (0xC3)
+    if (marker >= 0xC0 && marker <= 0xC3) {
+      const height = buf.readUInt16BE(offset + 5);
+      const width = buf.readUInt16BE(offset + 7);
+      return { width, height };
+    }
+    // Standalone markers (no payload)
+    if (marker === 0xD8 || marker === 0xD9 || (marker >= 0xD0 && marker <= 0xD7)) {
+      offset += 2;
+      continue;
+    }
+    // Skip marker segment
+    if (offset + 3 >= buf.length) break;
+    const segLen = buf.readUInt16BE(offset + 2);
+    offset += 2 + segLen;
   }
+  return null;
 }
 
 /**
- * Check if nativeImage already applied EXIF orientation by comparing
- * its dimensions with raw EXIF dimensions and the orientation tag.
+ * Determine if manual EXIF orientation is needed by comparing
+ * nativeImage dimensions with JPEG raw dimensions.
+ *
+ * For orientation 5-8 (90°/270° rotations that swap w/h):
+ *   - If imgSize matches rawDims → NOT auto-oriented → needs manual
+ *   - If imgSize is swapped vs rawDims → already auto-oriented → skip
+ *
+ * For orientation 2-4 (flip/180°, no dimension change):
+ *   - Cannot detect from dimensions. macOS createFromPath typically
+ *     handles these, so skip to avoid double-apply.
  */
-export function isAlreadyOriented(
+export function needsManualOrientation(
   imgSize: { width: number; height: number },
   rawDims: { width: number; height: number } | null,
   orientation: number,
 ): boolean {
-  if (!rawDims || orientation <= 1 || orientation > 8) return false;
-  const shouldSwap = orientation >= 5 && orientation <= 8;
-  if (!shouldSwap) return false;
-  // If orientation says swap but nativeImage dimensions are already swapped
-  // (width < height when raw is width > height, or vice versa), it was auto-applied
-  const rawIsLandscape = rawDims.width > rawDims.height;
-  const imgIsLandscape = imgSize.width > imgSize.height;
-  return rawIsLandscape !== imgIsLandscape;
+  if (orientation <= 1 || orientation > 8) return false;
+
+  // Orientation 5-8: rotation that swaps width/height
+  if (orientation >= 5 && rawDims) {
+    const dimsMatchRaw = imgSize.width === rawDims.width && imgSize.height === rawDims.height;
+    // If dimensions still match raw → createFromPath did NOT auto-orient
+    return dimsMatchRaw;
+  }
+
+  // No raw dims available or orientation 2-4: skip manual to avoid double-apply
+  return false;
 }
 
 /**

@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { readExifOrientation, applyOrientation } from './exif-orientation.js';
+import { readExifOrientation, readJpegRawDimensions, needsManualOrientation, applyOrientation } from './exif-orientation.js';
 
 const THUMBNAIL_WIDTH = 400;
 
@@ -81,11 +81,13 @@ app.on('ready', () => {
         let photoWidth = 0;
         let photoHeight = 0;
         const orientation = await readExifOrientation(rawBuf);
-        // createFromPath on macOS auto-applies EXIF orientation
-        const img = nativeImage.createFromPath(filePath);
+        const rawDims = readJpegRawDimensions(rawBuf);
+        let img = nativeImage.createFromPath(filePath);
         if (!img.isEmpty()) {
+          if (needsManualOrientation(img.getSize(), rawDims, orientation)) {
+            img = applyOrientation(img, orientation);
+          }
           const imgSize = img.getSize();
-          // On macOS, imgSize is already oriented (rotated)
           photoWidth = imgSize.width;
           photoHeight = imgSize.height;
 

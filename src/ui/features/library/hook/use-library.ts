@@ -19,6 +19,14 @@ export function useLibrary() {
       if (e.key === 'Escape') {
         setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
       }
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        setSelectedIds((prev) => {
+          if (prev.size > 0) {
+            setShowBulkDelete(true);
+          }
+          return prev;
+        });
+      }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'Meta' || e.key === 'Control') {
