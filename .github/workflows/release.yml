@@ -31,12 +31,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: List build output
+        run: ls -la dist/
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           name: Zenliro ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            release/*.dmg
-            release/*.zip
-            release/*.blockmap
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
