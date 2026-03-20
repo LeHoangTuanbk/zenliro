@@ -1,5 +1,5 @@
 {
-  "version": "2.8",
+  "version": "2.9",
   "children": [
     {
       "type": "frame",
@@ -28808,6 +28808,597 @@
               ]
             }
           ]
+        }
+      ]
+    },
+    {
+      "type": "icon_font",
+      "id": "IT8jH",
+      "x": -4104,
+      "y": 2994,
+      "name": "logoIcon",
+      "width": 512,
+      "height": 512,
+      "iconFontName": "sun",
+      "iconFontFamily": "lucide",
+      "fill": "$accent-blue"
+    },
+    {
+      "type": "icon_font",
+      "id": "Zrrwr",
+      "x": -4104,
+      "y": 3983,
+      "name": "logoIcon",
+      "width": 512,
+      "height": 512,
+      "iconFontName": "sun",
+      "iconFontFamily": "lucide",
+      "fill": "$accent-blue"
+    },
+    {
+      "type": "icon_font",
+      "id": "uiC25",
+      "x": -3236,
+      "y": 2904,
+      "name": "logoIcon",
+      "width": 512,
+      "height": 512,
+      "iconFontName": "sun",
+      "iconFontFamily": "lucide",
+      "fill": "$accent-blue"
+    },
+    {
+      "type": "frame",
+      "id": "Sk9Oy",
+      "x": -4104,
+      "y": 7898,
+      "name": "App Icon Preview",
+      "width": 1024,
+      "height": 1024,
+      "fill": {
+        "type": "color",
+        "color": "#FFFFFF",
+        "enabled": false
+      },
+      "cornerRadius": 16,
+      "justifyContent": "center",
+      "alignItems": "center",
+      "children": [
+        {
+          "type": "frame",
+          "id": "sSMb5",
+          "name": "App Icon 1024",
+          "rotation": 0.05123404655394778,
+          "clip": true,
+          "width": 753,
+          "height": 753,
+          "fill": {
+            "type": "mesh_gradient",
+            "enabled": true,
+            "columns": 3,
+            "rows": 3,
+            "colors": [
+              "#1A1A2E",
+              "#16213E",
+              "#0F3460",
+              "#1A1A3E",
+              "#2C3E6B",
+              "#1B4965",
+              "#0F3460",
+              "#1B4965",
+              "#274C77"
+            ],
+            "points": [
+              [
+                0,
+                0
+              ],
+              [
+                0.5,
+                0
+              ],
+              [
+                1,
+                0
+              ],
+              [
+                0,
+                0.5
+              ],
+              [
+                0.5,
+                0.5
+              ],
+              [
+                1,
+                0.5
+              ],
+              [
+                0,
+                1
+              ],
+              [
+                0.5,
+                1
+              ],
+              [
+                1,
+                1
+              ]
+            ]
+          },
+          "cornerRadius": 224,
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "#00000033",
+            "offset": {
+              "x": 0,
+              "y": 12
+            },
+            "blur": 40,
+            "spread": 4
+          },
+          "layout": "none",
+          "children": [
+            {
+              "type": "icon_font",
+              "id": "EVxTK",
+              "x": 82.8226960429729,
+              "y": 82.8226960429729,
+              "name": "sunIcon",
+              "width": 587.3546079140542,
+              "height": 587.3546079140542,
+              "iconFontName": "sun",
+              "iconFontFamily": "lucide",
+              "fill": {
+                "type": "gradient",
+                "gradientType": "linear",
+                "enabled": true,
+                "rotation": 180,
+                "size": {
+                  "height": 1
+                },
+                "colors": [
+                  {
+                    "color": "#FFB347",
+                    "position": 0
+                  },
+                  {
+                    "color": "#FF6B6B",
+                    "position": 0.5
+                  },
+                  {
+                    "color": "#4A90D9",
+                    "position": 1
+                  }
+                ]
+              }
+            },
+            {
+              "type": "ellipse",
+              "id": "JEH3A",
+              "x": 580,
+              "y": 240,
+              "name": "flare1",
+              "fill": {
+                "type": "gradient",
+                "gradientType": "radial",
+                "enabled": true,
+                "rotation": 0,
+                "size": {
+                  "width": 1,
+                  "height": 1
+                },
+                "colors": [
+                  {
+                    "color": "#FFFFFF44",
+                    "position": 0
+                  },
+                  {
+                    "color": "#FFFFFF00",
+                    "position": 1
+                  }
+                ]
+              },
+              "width": 120,
+              "height": 120
+            },
+            {
+              "type": "ellipse",
+              "id": "9VWrD",
+              "x": 300,
+              "y": 680,
+              "name": "flare2",
+              "fill": {
+                "type": "gradient",
+                "gradientType": "radial",
+                "enabled": true,
+                "rotation": 0,
+                "size": {
+                  "width": 1,
+                  "height": 1
+                },
+                "colors": [
+                  {
+                    "color": "#FFB34733",
+                    "position": 0
+                  },
+                  {
+                    "color": "#FFB34700",
+                    "position": 1
+                  }
+                ]
+              },
+              "width": 80,
+              "height": 80
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "0jujK",
+      "x": -2804,
+      "y": 7898,
+      "name": "App Icon Preview V2",
+      "width": 1200,
+      "height": 1200,
+      "fill": "#FFFFFF",
+      "cornerRadius": 16,
+      "justifyContent": "center",
+      "alignItems": "center"
+    },
+    {
+      "type": "frame",
+      "id": "fxPh2",
+      "x": -2542,
+      "y": 9543,
+      "name": "App Icon 1024 V2",
+      "clip": true,
+      "width": 1024,
+      "height": 1024,
+      "fill": "#ffffffff",
+      "cornerRadius": 224,
+      "effect": {
+        "type": "shadow",
+        "shadowType": "outer",
+        "enabled": false,
+        "color": "#00000033",
+        "offset": {
+          "x": 0,
+          "y": 12
+        },
+        "blur": 40,
+        "spread": 4
+      },
+      "layout": "none",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "EwpN9",
+          "x": 212,
+          "y": 212,
+          "name": "glowRing",
+          "width": 600,
+          "height": 600,
+          "stroke": {
+            "align": "center",
+            "thickness": 3,
+            "fill": "#FFFFFF26"
+          }
+        },
+        {
+          "type": "icon_font",
+          "id": "47DGI",
+          "x": 272,
+          "y": 396.06759738255823,
+          "name": "sunIcon",
+          "rotation": 0.08802377841533443,
+          "width": 44,
+          "height": 44,
+          "iconFontName": "sun",
+          "iconFontFamily": "lucide",
+          "fill": [
+            {
+              "type": "gradient",
+              "gradientType": "linear",
+              "enabled": false,
+              "rotation": 180,
+              "size": {
+                "height": 1
+              },
+              "colors": [
+                {
+                  "color": "#00D4FF",
+                  "position": 0
+                },
+                {
+                  "color": "#4A90D9",
+                  "position": 1
+                }
+              ]
+            },
+            "#000000ff"
+          ]
+        },
+        {
+          "type": "ellipse",
+          "id": "VCu86",
+          "x": 580,
+          "y": 280,
+          "name": "flare",
+          "fill": {
+            "type": "gradient",
+            "gradientType": "radial",
+            "enabled": true,
+            "rotation": 0,
+            "size": {
+              "width": 1,
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "#FFFFFF4D",
+                "position": 0
+              },
+              {
+                "color": "#FFFFFF00",
+                "position": 1
+              }
+            ]
+          },
+          "width": 80,
+          "height": 80
+        },
+        {
+          "type": "icon_font",
+          "id": "Xpivx",
+          "x": 272,
+          "y": 490.06759738255823,
+          "name": "sunIcon",
+          "rotation": 0.08802377841533443,
+          "width": 18,
+          "height": 18,
+          "iconFontName": "sun",
+          "iconFontFamily": "lucide",
+          "fill": [
+            {
+              "type": "gradient",
+              "gradientType": "linear",
+              "enabled": false,
+              "rotation": 180,
+              "size": {
+                "height": 1
+              },
+              "colors": [
+                {
+                  "color": "#00D4FF",
+                  "position": 0
+                },
+                {
+                  "color": "#4A90D9",
+                  "position": 1
+                }
+              ]
+            },
+            "#000000ff"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "ZbFk7",
+      "x": -4104,
+      "y": 9543,
+      "name": "App Icon 1024",
+      "clip": true,
+      "width": 1024,
+      "height": 1024,
+      "fill": {
+        "type": "mesh_gradient",
+        "enabled": true,
+        "columns": 3,
+        "rows": 3,
+        "colors": [
+          "#1A1A2E",
+          "#16213E",
+          "#0F3460",
+          "#1A1A3E",
+          "#2C3E6B",
+          "#1B4965",
+          "#0F3460",
+          "#1B4965",
+          "#274C77"
+        ],
+        "points": [
+          [
+            0,
+            0
+          ],
+          [
+            0.5,
+            0
+          ],
+          [
+            1,
+            0
+          ],
+          [
+            0,
+            0.5
+          ],
+          [
+            0.5,
+            0.5
+          ],
+          [
+            1,
+            0.5
+          ],
+          [
+            0,
+            1
+          ],
+          [
+            0.5,
+            1
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      },
+      "effect": {
+        "type": "shadow",
+        "shadowType": "outer",
+        "color": "#00000033",
+        "offset": {
+          "x": 0,
+          "y": 12
+        },
+        "blur": 40,
+        "spread": 4
+      },
+      "layout": "none",
+      "children": [
+        {
+          "type": "ellipse",
+          "id": "FW5I6",
+          "x": 162,
+          "y": 162,
+          "name": "glowCircle",
+          "fill": {
+            "type": "gradient",
+            "gradientType": "radial",
+            "enabled": true,
+            "rotation": 0,
+            "size": {
+              "width": 1,
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "#4A90D920",
+                "position": 0
+              },
+              {
+                "color": "#4A90D900",
+                "position": 1
+              }
+            ]
+          },
+          "width": 700,
+          "height": 700
+        },
+        {
+          "type": "icon_font",
+          "id": "GTzbW",
+          "x": 151.5,
+          "y": 151.5,
+          "name": "sunIcon",
+          "width": 721,
+          "height": 721,
+          "iconFontName": "sun",
+          "iconFontFamily": "lucide",
+          "fill": {
+            "type": "gradient",
+            "gradientType": "linear",
+            "enabled": true,
+            "rotation": 180,
+            "size": {
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "#FFB347",
+                "position": 0
+              },
+              {
+                "color": "#FF6B6B",
+                "position": 0.5
+              },
+              {
+                "color": "#4A90D9",
+                "position": 1
+              }
+            ]
+          }
+        },
+        {
+          "type": "ellipse",
+          "id": "YTpCo",
+          "x": 580,
+          "y": 240,
+          "name": "flare1",
+          "fill": {
+            "type": "gradient",
+            "gradientType": "radial",
+            "enabled": true,
+            "rotation": 0,
+            "size": {
+              "width": 1,
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "#FFFFFF44",
+                "position": 0
+              },
+              {
+                "color": "#FFFFFF00",
+                "position": 1
+              }
+            ]
+          },
+          "width": 120,
+          "height": 120
+        },
+        {
+          "type": "ellipse",
+          "id": "BINQG",
+          "x": 300,
+          "y": 680,
+          "name": "flare2",
+          "fill": {
+            "type": "gradient",
+            "gradientType": "radial",
+            "enabled": true,
+            "rotation": 0,
+            "size": {
+              "width": 1,
+              "height": 1
+            },
+            "colors": [
+              {
+                "color": "#FFB34733",
+                "position": 0
+              },
+              {
+                "color": "#FFB34700",
+                "position": 1
+              }
+            ]
+          },
+          "width": 80,
+          "height": 80
+        },
+        {
+          "type": "ellipse",
+          "id": "V9FWo",
+          "x": 192,
+          "y": 192,
+          "name": "innerRing",
+          "width": 640,
+          "height": 640,
+          "stroke": {
+            "align": "center",
+            "thickness": 2,
+            "fill": "#FFFFFF15"
+          }
         }
       ]
     }

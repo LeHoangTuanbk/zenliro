@@ -5,6 +5,16 @@ import { registerCatalogHandlers } from './catalog.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import crypto from 'crypto';
+import { readExifOrientation, applyOrientation } from './exif-orientation.js';
+
+const THUMBNAIL_WIDTH = 400;
+
+function getThumbnailDir() {
+  const dir = path.join(app.getPath('userData'), 'thumbnails');
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
 
 app.on('ready', () => {
   const mainWindow = new BrowserWindow({
@@ -42,8 +52,12 @@ app.on('ready', () => {
 
     if (result.canceled || result.filePaths.length === 0) return [];
 
+    const total = result.filePaths.length;
+    mainWindow.webContents.send('import:progress', { current: 0, total });
+
     const photos: ImportedPhoto[] = [];
-    for (const filePath of result.filePaths) {
+    for (let fi = 0; fi < result.filePaths.length; fi++) {
+      const filePath = result.filePaths[fi];
       try {
         const stats = fs.statSync(filePath);
         const ext = path.extname(filePath).toLowerCase().replace('.', '');
@@ -58,22 +72,55 @@ app.on('ready', () => {
           gif: 'image/gif',
         };
         const mimeType = mimeMap[ext] || 'image/jpeg';
-        const base64 = fs.readFileSync(filePath).toString('base64');
+        const rawBuf = fs.readFileSync(filePath);
+        const base64 = rawBuf.toString('base64');
+        const photoId = `${filePath}-${stats.mtimeMs}`;
+
+        // Generate thumbnail: resize first (fast), then rotate small image
+        let thumbnailDataUrl = '';
+        let photoWidth = 0;
+        let photoHeight = 0;
+        const orientation = readExifOrientation(rawBuf);
+        const img = nativeImage.createFromPath(filePath);
+        if (!img.isEmpty()) {
+          // Compute oriented dimensions from original
+          const rawSize = img.getSize();
+          const swap = orientation >= 5 && orientation <= 8;
+          photoWidth = swap ? rawSize.height : rawSize.width;
+          photoHeight = swap ? rawSize.width : rawSize.height;
+
+          // Resize first (small), then rotate — much faster than rotating full-res
+          const resizeW = swap ? undefined : THUMBNAIL_WIDTH;
+          const resizeH = swap ? THUMBNAIL_WIDTH : undefined;
+          const small = img.resize({ width: resizeW, height: resizeH });
+          const oriented = applyOrientation(small, orientation);
+
+          const jpegBuf = oriented.toJPEG(80);
+          const hash = crypto.createHash('md5').update(photoId).digest('hex');
+          const thumbPath = path.join(getThumbnailDir(), `${hash}.jpg`);
+          fs.writeFileSync(thumbPath, jpegBuf);
+          thumbnailDataUrl = `data:image/jpeg;base64,${jpegBuf.toString('base64')}`;
+        }
+
         photos.push({
-          id: `${filePath}-${stats.mtimeMs}`,
+          id: photoId,
           filePath,
           fileName: path.basename(filePath),
           fileSize: stats.size,
           mimeType,
-          width: 0,
-          height: 0,
+          width: photoWidth,
+          height: photoHeight,
           dataUrl: `data:${mimeType};base64,${base64}`,
+          thumbnailDataUrl,
           importedAt: Date.now(),
         });
+        mainWindow.webContents.send('import:progress', { current: fi + 1, total });
       } catch (err) {
         console.error('Failed to import photo:', filePath, err);
+        mainWindow.webContents.send('import:progress', { current: fi + 1, total });
       }
     }
+    mainWindow.webContents.send('import:progress', null);
     return photos;
   });
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ImageCanvasHandle } from '@widgets/image-canvas/ui/image-canvas';
 import { WorkSpaceView } from './ui/work-space-view';
 import { ActiveTool } from '@features/develop/const';
@@ -21,6 +21,10 @@ export function WorkSpaceContainer() {
   const [showExport, setShowExport] = useState(false);
 
   const initFromDisk = useCatalogStore((s) => s.initFromDisk);
+  const catalogPhotos = useCatalogStore((s) => s.photos);
+  const setPhotoRating = useCatalogStore((s) => s.setPhotoRating);
+  const saveToDisk = useCatalogStore((s) => s.saveToDisk);
+
   useEffect(() => { initFromDisk(); }, [initFromDisk]);
 
   const {
@@ -29,10 +33,14 @@ export function WorkSpaceContainer() {
     selected,
     imageAspect,
     activeView,
+    importProgress,
     setSelectedId,
     setActiveView,
     handleImport,
     handleImageLoaded,
+    handleDelete,
+    handleBulkDelete,
+    handleReorder,
     openDevelop,
   } = usePhotos();
 
@@ -52,9 +60,15 @@ export function WorkSpaceContainer() {
   const handleExport = useExport(selected, selectedId, canvasRef);
   usePhotoEdits(selectedId);
 
+  const handleRatingChange = useCallback((id: string, rating: number) => {
+    setPhotoRating(id, rating);
+    saveToDisk();
+  }, [setPhotoRating, saveToDisk]);
+
   return (
     <WorkSpaceView
       photos={photos}
+      catalogPhotos={catalogPhotos}
       selectedId={selectedId}
       selected={selected}
       activeView={activeView}
@@ -71,11 +85,16 @@ export function WorkSpaceContainer() {
       healInteractionProps={healInteractionProps}
       maskInteractionProps={maskInteractionProps}
       cropInteractionProps={cropInteractionProps}
+      importProgress={importProgress}
       onImport={handleImport}
       onExport={handleExport}
       onImageLoaded={handleImageLoaded}
       onSelectId={setSelectedId}
       onOpenDevelop={openDevelop}
+      onDelete={handleDelete}
+      onBulkDelete={handleBulkDelete}
+      onReorder={handleReorder}
+      onRatingChange={handleRatingChange}
       onActiveViewChange={setActiveView}
       onActiveToolChange={setActiveTool}
       onShowExportChange={setShowExport}
