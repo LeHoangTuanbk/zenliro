@@ -12,6 +12,7 @@ type AdjustmentSliderProps = {
   max: number;
   step?: number;
   decimals?: number;
+  gradient?: string;
   onChange: (key: keyof Adjustments, value: number) => void;
   onReset: (key: keyof Adjustments) => void;
 };
@@ -26,6 +27,7 @@ export function AdjustmentSlider({
   onChange,
   onReset,
   decimals,
+  gradient,
 }: AdjustmentSliderProps) {
   const d = decimals ?? (name === 'exposure' ? 2 : 0);
   const fmt = (v: number) => formatAdjustmentValue(v, d);
@@ -114,11 +116,17 @@ export function AdjustmentSlider({
 
       {/* Track */}
       <div className="relative h-[14px] cursor-pointer" onDoubleClick={() => onReset(name)}>
-        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[3px] bg-br-elevated rounded-[1px] pointer-events-none hover:bg-br-border-hover">
+        <div
+          className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[3px] rounded-[1.5px] pointer-events-none"
+          style={gradient ? { background: gradient } : undefined}
+        >
+          {!gradient && (
+            <div className="absolute inset-0 bg-br-elevated rounded-[1px]" />
+          )}
           {/* Center mark */}
-          <div className="absolute left-1/2 -top-[1px] w-px h-[5px] bg-br-mark -translate-x-1/2" />
-          {/* Fill */}
-          {value !== 0 && (
+          <div className="absolute left-1/2 -top-[1px] w-px h-[5px] bg-br-mark -translate-x-1/2 z-[1]" />
+          {/* Fill (only for non-gradient tracks) */}
+          {!gradient && value !== 0 && (
             <div
               className="absolute top-0 h-full bg-br-accent opacity-70 rounded-[1px]"
               style={
@@ -126,6 +134,13 @@ export function AdjustmentSlider({
                   ? { left: '50%', width: `${pct - 50}%` }
                   : { left: `${pct}%`, width: `${50 - pct}%` }
               }
+            />
+          )}
+          {/* Thumb for gradient tracks */}
+          {gradient && (
+            <div
+              className="absolute top-1/2 -translate-y-1/2 w-[9px] h-[9px] rounded-full border-[1.5px] border-white bg-transparent z-[2] shadow-[0_0_2px_rgba(0,0,0,0.6)]"
+              style={{ left: `${pct}%`, marginLeft: -4.5 }}
             />
           )}
         </div>
