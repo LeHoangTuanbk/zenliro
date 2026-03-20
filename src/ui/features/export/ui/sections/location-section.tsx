@@ -29,7 +29,7 @@ export function LocationSection({ settings, set }: Props) {
               placeholder="~/Pictures"
             />
             <button
-              className="bg-transparent border border-br-elevated rounded-[2px] text-br-muted text-[11px] px-2 h-[22px] cursor-pointer font-sans hover:border-br-mark hover:text-br-text"
+              className="bg-transparent border border-br-elevated rounded-[2px] text-br-muted text-[11px] px-4 h-[22px] cursor-pointer font-sans hover:border-br-mark hover:text-br-text flex items-center justify-center shrink-0"
               onClick={async () => {
                 const folder = await window.electron.selectFolder();
                 if (folder) set('exportFolder', folder);

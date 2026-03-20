@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ImageCanvasHandle } from '@widgets/image-canvas/ui/image-canvas';
 import { WorkSpaceView } from './ui/work-space-view';
+import { SplashScreen } from './ui/splash-screen';
 import { ActiveTool } from '@features/develop/const';
 import { usePhotos } from './hook/use-photos';
 import { useHistogram } from './hook/use-histogram';
@@ -22,6 +23,7 @@ export function WorkSpaceContainer() {
   const [showExport, setShowExport] = useState(false);
 
   const initFromDisk = useCatalogStore((s) => s.initFromDisk);
+  const isLoaded = useCatalogStore((s) => s.isLoaded);
   const catalogPhotos = useCatalogStore((s) => s.photos);
   const setPhotoRating = useCatalogStore((s) => s.setPhotoRating);
   const saveToDisk = useCatalogStore((s) => s.saveToDisk);
@@ -66,6 +68,8 @@ export function WorkSpaceContainer() {
     setPhotoRating(id, rating);
     saveToDisk();
   }, [setPhotoRating, saveToDisk]);
+
+  if (!isLoaded) return <SplashScreen />;
 
   return (
     <WorkSpaceView

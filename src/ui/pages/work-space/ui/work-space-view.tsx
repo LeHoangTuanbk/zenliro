@@ -176,7 +176,7 @@ export function WorkSpaceView({
       {activeView === 'develop' && (
         <div className="flex flex-1 overflow-hidden">
           {/* Left filmstrip */}
-          <aside className="w-[120px] bg-[#1a1a1a] border-r border-black flex flex-col shrink-0">
+          <aside className="w-[180px] bg-br-bg border-r border-black flex flex-col shrink-0">
             <button
               onClick={onImport}
               className="mx-2 my-2 py-1 text-[10px] text-br-muted bg-br-input border border-br-elevated rounded-[2px] cursor-pointer hover:text-br-text transition-colors"

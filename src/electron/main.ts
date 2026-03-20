@@ -6,7 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import crypto from 'crypto';
-import { readExifOrientation, applyOrientation } from './exif-orientation.js';
+import { readExifOrientation, readJpegRawDimensions, needsManualOrientation, applyOrientation } from './exif-orientation.js';
 
 const THUMBNAIL_WIDTH = 400;
 
@@ -76,26 +76,23 @@ app.on('ready', () => {
         const base64 = rawBuf.toString('base64');
         const photoId = `${filePath}-${stats.mtimeMs}`;
 
-        // Generate thumbnail: resize first (fast), then rotate small image
+        // Generate thumbnail
         let thumbnailDataUrl = '';
         let photoWidth = 0;
         let photoHeight = 0;
         const orientation = await readExifOrientation(rawBuf);
-        const img = nativeImage.createFromPath(filePath);
+        const rawDims = readJpegRawDimensions(rawBuf);
+        let img = nativeImage.createFromPath(filePath);
         if (!img.isEmpty()) {
-          // Compute oriented dimensions from original
-          const rawSize = img.getSize();
-          const swap = orientation >= 5 && orientation <= 8;
-          photoWidth = swap ? rawSize.height : rawSize.width;
-          photoHeight = swap ? rawSize.width : rawSize.height;
+          if (needsManualOrientation(img.getSize(), rawDims, orientation)) {
+            img = applyOrientation(img, orientation);
+          }
+          const imgSize = img.getSize();
+          photoWidth = imgSize.width;
+          photoHeight = imgSize.height;
 
-          // Resize first (small), then rotate — much faster than rotating full-res
-          const resizeW = swap ? undefined : THUMBNAIL_WIDTH;
-          const resizeH = swap ? THUMBNAIL_WIDTH : undefined;
-          const small = img.resize({ width: resizeW, height: resizeH });
-          const oriented = applyOrientation(small, orientation);
-
-          const jpegBuf = oriented.toJPEG(80);
+          const small = img.resize({ width: THUMBNAIL_WIDTH });
+          const jpegBuf = small.toJPEG(80);
           const hash = crypto.createHash('md5').update(photoId).digest('hex');
           const thumbPath = path.join(getThumbnailDir(), `${hash}.jpg`);
           fs.writeFileSync(thumbPath, jpegBuf);

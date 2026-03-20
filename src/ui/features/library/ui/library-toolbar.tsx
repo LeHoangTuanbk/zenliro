@@ -50,7 +50,7 @@ export function LibraryToolbar({
           </button>
           <button
             onClick={onClearSelection}
-            className="text-[9px] text-br-dim hover:text-[#f2f2f2] cursor-pointer"
+            className="text-[9px] text-[#5b9bd5] hover:text-[#7bb8ef] cursor-pointer"
           >
             Deselect
           </button>

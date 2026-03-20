@@ -166,12 +166,17 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
 
         onImageLoaded?.(imgW, imgH);
 
+        const dpr = window.devicePixelRatio || 1;
         const cw = container.clientWidth || 800;
         const ch = container.clientHeight || 600;
         const scale = Math.min(cw / imgW, ch / imgH, 1);
-        canvas.width = Math.max(1, Math.round(imgW * scale));
-        canvas.height = Math.max(1, Math.round(imgH * scale));
-        setCanvasDims({ w: canvas.width, h: canvas.height });
+        const cssW = Math.max(1, Math.round(imgW * scale));
+        const cssH = Math.max(1, Math.round(imgH * scale));
+        canvas.width = Math.round(cssW * dpr);
+        canvas.height = Math.round(cssH * dpr);
+        canvas.style.width = `${cssW}px`;
+        canvas.style.height = `${cssH}px`;
+        setCanvasDims({ w: cssW, h: cssH });
         onResetView();
 
         imageDataRef.current = ctx2d.getImageData(0, 0, imgW, imgH);
@@ -221,15 +226,20 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
 
     // Resize canvas to fit rotated dimensions
     if (effectiveW > 0 && effectiveH > 0) {
+      const dpr = window.devicePixelRatio || 1;
       const cw = container.clientWidth || 800;
       const ch = container.clientHeight || 600;
       const scale = Math.min(cw / effectiveW, ch / effectiveH, 1);
-      const newW = Math.max(1, Math.round(effectiveW * scale));
-      const newH = Math.max(1, Math.round(effectiveH * scale));
-      if (canvas.width !== newW || canvas.height !== newH) {
-        canvas.width = newW;
-        canvas.height = newH;
-        setCanvasDims({ w: newW, h: newH });
+      const cssW = Math.max(1, Math.round(effectiveW * scale));
+      const cssH = Math.max(1, Math.round(effectiveH * scale));
+      const pxW = Math.round(cssW * dpr);
+      const pxH = Math.round(cssH * dpr);
+      if (canvas.width !== pxW || canvas.height !== pxH) {
+        canvas.width = pxW;
+        canvas.height = pxH;
+        canvas.style.width = `${cssW}px`;
+        canvas.style.height = `${cssH}px`;
+        setCanvasDims({ w: cssW, h: cssH });
       }
     }
 
