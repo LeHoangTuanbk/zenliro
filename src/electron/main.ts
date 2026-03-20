@@ -80,7 +80,7 @@ app.on('ready', () => {
         let thumbnailDataUrl = '';
         let photoWidth = 0;
         let photoHeight = 0;
-        const orientation = readExifOrientation(rawBuf);
+        const orientation = await readExifOrientation(rawBuf);
         const img = nativeImage.createFromPath(filePath);
         if (!img.isEmpty()) {
           // Compute oriented dimensions from original
@@ -112,6 +112,7 @@ app.on('ready', () => {
           height: photoHeight,
           dataUrl: `data:${mimeType};base64,${base64}`,
           thumbnailDataUrl,
+          orientation,
           importedAt: Date.now(),
         });
         mainWindow.webContents.send('import:progress', { current: fi + 1, total });

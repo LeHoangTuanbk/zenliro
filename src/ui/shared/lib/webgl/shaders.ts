@@ -128,7 +128,8 @@ uniform sampler2D u_largeBlur;
 // Crop & rotate
 uniform vec2  u_cropOrigin;
 uniform vec2  u_cropSize;
-uniform float u_rotation;
+uniform float u_rotation;     // fine rotation (straighten) in radians
+uniform int   u_rotSteps;     // 90° rotation steps (0-3, CW)
 uniform float u_flipH;
 uniform float u_flipV;
 uniform float u_imgAspect;
@@ -505,21 +506,35 @@ void main() {
   vec2 uv = v_texCoord;
 
   // ── CROP & ROTATE ─────────────────────────────────────────────────────
+  // 1. Apply crop (in rotated+flipped image space)
   vec2 imageUV = u_cropOrigin + uv * u_cropSize;
 
+  // 2. Apply fine rotation (straighten) around crop center
   if (u_rotation != 0.0) {
     vec2 center = u_cropOrigin + u_cropSize * 0.5;
     vec2 d = imageUV - center;
-    d.x *= u_imgAspect;
+    // Use rotated aspect for fine rotation correction
+    float aspect = (u_rotSteps % 2 == 1) ? (1.0 / u_imgAspect) : u_imgAspect;
+    d.x *= aspect;
     float cosR = cos(-u_rotation);
     float sinR = sin(-u_rotation);
     vec2 rd = vec2(cosR * d.x - sinR * d.y, sinR * d.x + cosR * d.y);
-    rd.x /= u_imgAspect;
+    rd.x /= aspect;
     imageUV = center + rd;
   }
 
+  // 3. Apply flips (in rotated image space)
   if (u_flipH > 0.5) imageUV.x = 1.0 - imageUV.x;
   if (u_flipV > 0.5) imageUV.y = 1.0 - imageUV.y;
+
+  // 4. Undo 90° rotation steps to map back to original texture coords
+  if (u_rotSteps > 0) {
+    int s = u_rotSteps % 4;
+    vec2 tmp = imageUV;
+    if (s == 1)      imageUV = vec2(1.0 - tmp.y, tmp.x);            // undo 90° CW
+    else if (s == 2) imageUV = vec2(1.0 - tmp.x, 1.0 - tmp.y);     // undo 180°
+    else if (s == 3) imageUV = vec2(tmp.y, 1.0 - tmp.x);            // undo 270° CW
+  }
 
   if (imageUV.x < 0.0 || imageUV.x > 1.0 || imageUV.y < 0.0 || imageUV.y > 1.0) {
     fragColor = vec4(0.078, 0.078, 0.078, 1.0);

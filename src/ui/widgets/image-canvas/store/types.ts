@@ -71,6 +71,7 @@ export type MaskInteractionProps =
 
 export type ImageCanvasProps = {
   dataUrl: string | null;
+  orientation?: number;
   masks?: Mask[];
   healSpots?: HealSpot[];
   healInteractionProps?: HealInteractionProps;

@@ -1,31 +1,15 @@
-export function readExifOrientationFromBuffer(buf: ArrayBuffer): number {
+import exifr from 'exifr';
+
+/**
+ * Read EXIF orientation from an ArrayBuffer using exifr.
+ */
+export async function readExifOrientation(buf: ArrayBuffer): Promise<number> {
   try {
-    const view = new DataView(buf);
-    const len = Math.min(buf.byteLength, 65536);
-    let off = 2;
-    while (off + 4 < len) {
-      if (view.getUint8(off) !== 0xff) break;
-      const marker = view.getUint8(off + 1);
-      const segLen = view.getUint16(off + 2);
-      if (marker === 0xe1 && segLen >= 8) {
-        if (view.getUint32(off + 4) === 0x45786966 && view.getUint16(off + 8) === 0) {
-          const tiff = off + 10;
-          const le = view.getUint8(tiff) === 0x49;
-          const ifdOff = view.getUint32(tiff + 4, le);
-          const entries = view.getUint16(tiff + ifdOff, le);
-          for (let i = 0; i < entries; i++) {
-            const ep = tiff + ifdOff + 2 + i * 12;
-            const tag = view.getUint16(ep, le);
-            if (tag === 0x0112) return view.getUint16(ep + 8, le);
-          }
-        }
-      }
-      off += 2 + segLen;
-    }
+    const exif = await exifr.parse(buf, { pick: ['Orientation'] });
+    return exif?.Orientation ?? 1;
   } catch {
-    /* ignore */
+    return 1;
   }
-  return 1;
 }
 
 export function drawBitmapWithOrientation(
@@ -79,11 +63,10 @@ export function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([bytes], { type: mimeType });
 }
 
-/** Slice first 64 KB of a data-URL into an ArrayBuffer for EXIF((Exchangeable Image File Format) parsing. */
-export function dataUrlToPartialBuffer(dataUrl: string): ArrayBuffer {
+/** Decode a data-URL to an ArrayBuffer for EXIF parsing. */
+export function dataUrlToArrayBuffer(dataUrl: string): ArrayBuffer {
   const b64 = dataUrl.split(',')[1];
-  const slice = b64.slice(0, 87382);
-  const bin = atob(slice);
+  const bin = atob(b64);
   const buf = new ArrayBuffer(bin.length);
   const u8 = new Uint8Array(buf);
   for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);

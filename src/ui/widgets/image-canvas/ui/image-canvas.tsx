@@ -16,6 +16,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
   (
     {
       dataUrl,
+      orientation,
       masks = [],
       healSpots = [],
       healInteractionProps,
@@ -34,6 +35,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
 
     const { canvasRef, canvasDims, isLoading, handleOverlayAddSpot } = useWebGLCanvas(ref, {
       dataUrl,
+      orientation,
       masks,
       healSpots,
       healInteractionProps,

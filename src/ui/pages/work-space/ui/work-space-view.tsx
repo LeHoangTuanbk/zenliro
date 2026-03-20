@@ -226,6 +226,7 @@ export function WorkSpaceView({
                 <ImageCanvas
                   ref={canvasRef}
                   dataUrl={selected?.dataUrl ?? null}
+                  orientation={selected?.orientation}
                   masks={masks}
                   healSpots={healSpots}
                   hideOverlay={previewOriginal}
