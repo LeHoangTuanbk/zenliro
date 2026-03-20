@@ -10,7 +10,8 @@ electron.contextBridge.exposeInMainWorld('electron', {
   },
   photo: {
     loadFromPath: (filePath: string) => electron.ipcRenderer.invoke('photo:loadFromPath', filePath),
-    generateThumbnail: (filePath: string, photoId: string) => electron.ipcRenderer.invoke('photo:generateThumbnail', filePath, photoId),
+    saveThumbnail: (photoId: string, thumbnailDataUrl: string) => electron.ipcRenderer.invoke('photo:saveThumbnail', photoId, thumbnailDataUrl),
+    generateThumbnail: (photoId: string, thumbnailDataUrl: string) => electron.ipcRenderer.invoke('photo:generateThumbnail', photoId, thumbnailDataUrl),
     loadThumbnail: (thumbnailPath: string) => electron.ipcRenderer.invoke('photo:loadThumbnail', thumbnailPath),
     deleteThumbnail: (thumbnailPath: string) => electron.ipcRenderer.invoke('photo:deleteThumbnail', thumbnailPath),
     deletePhoto: (photoId: string, thumbnailPath: string) => electron.ipcRenderer.invoke('photo:deletePhoto', photoId, thumbnailPath),

@@ -1,5 +1,8 @@
 import exifr from 'exifr';
 
+export const DEFAULT_THUMBNAIL_MAX_WIDTH = 400;
+export const DEFAULT_THUMBNAIL_MAX_HEIGHT = 400;
+
 /**
  * Read EXIF orientation from an ArrayBuffer using exifr.
  */
@@ -51,6 +54,75 @@ export function drawBitmapWithOrientation(
   ctx.drawImage(bmp, 0, 0);
   ctx.restore();
   return { w: cw, h: ch };
+}
+
+export async function generateThumbnailDataUrl(
+  dataUrl: string,
+  orientation: number,
+  maxWidth = DEFAULT_THUMBNAIL_MAX_WIDTH,
+  maxHeight = DEFAULT_THUMBNAIL_MAX_HEIGHT,
+  quality = 0.8,
+): Promise<string> {
+  const blob = dataUrlToBlob(dataUrl);
+  return generateThumbnailDataUrlFromBlob(blob, orientation, maxWidth, maxHeight, quality);
+}
+
+export async function generateThumbnailDataUrlFromArrayBuffer(
+  buffer: ArrayBuffer,
+  mimeType: string,
+  orientation: number,
+  maxWidth = DEFAULT_THUMBNAIL_MAX_WIDTH,
+  maxHeight = DEFAULT_THUMBNAIL_MAX_HEIGHT,
+  quality = 0.8,
+): Promise<string> {
+  return generateThumbnailDataUrlFromBlob(
+    new Blob([buffer], { type: mimeType }),
+    orientation,
+    maxWidth,
+    maxHeight,
+    quality,
+  );
+}
+
+export async function generateThumbnailDataUrlFromBlob(
+  blob: Blob,
+  orientation: number,
+  maxWidth = DEFAULT_THUMBNAIL_MAX_WIDTH,
+  maxHeight = DEFAULT_THUMBNAIL_MAX_HEIGHT,
+  quality = 0.8,
+): Promise<string> {
+  const bmp = await createImageBitmap(blob, { imageOrientation: 'none' });
+
+  try {
+    const orientedCanvas = document.createElement('canvas');
+    const orientedCtx = orientedCanvas.getContext('2d');
+    if (!orientedCtx) return '';
+
+    const { w, h } = drawBitmapWithOrientation(orientedCtx, bmp, orientation);
+    const scale = Math.min(1, maxWidth / w, maxHeight / h);
+    const outW = Math.max(1, Math.round(w * scale));
+    const outH = Math.max(1, Math.round(h * scale));
+
+    if (outW === w && outH === h) {
+      return orientedCanvas.toDataURL('image/jpeg', quality);
+    }
+
+    const thumbCanvas = document.createElement('canvas');
+    thumbCanvas.width = outW;
+    thumbCanvas.height = outH;
+    const thumbCtx = thumbCanvas.getContext('2d');
+    if (!thumbCtx) return '';
+    thumbCtx.imageSmoothingEnabled = true;
+    thumbCtx.imageSmoothingQuality = 'high';
+    thumbCtx.drawImage(orientedCanvas, 0, 0, outW, outH);
+    return thumbCanvas.toDataURL('image/jpeg', quality);
+  } finally {
+    bmp.close();
+  }
+}
+
+export function arrayBufferToBlob(buffer: ArrayBuffer, mimeType: string): Blob {
+  return new Blob([buffer], { type: mimeType });
 }
 
 /** Decode a data-URL to a Blob for createImageBitmap. */

@@ -9,6 +9,7 @@ type Props = {
   containerRef: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   canvasDims: { w: number; h: number };
+  hasSelection: boolean;
   dataUrl: string | null;
   isLoading: boolean;
   zoom: number;
@@ -29,6 +30,7 @@ export function ImageCanvasView({
   containerRef,
   canvasRef,
   canvasDims,
+  hasSelection,
   dataUrl,
   isLoading,
   zoom,
@@ -46,6 +48,7 @@ export function ImageCanvasView({
 }: Props) {
   const cursor = isPanning ? 'grabbing' : isSpaceDown ? 'grab' : 'default';
   const noPointer = isSpaceDown ? { pointerEvents: 'none' as const } : undefined;
+  const showLoading = isLoading || (hasSelection && !dataUrl);
 
   return (
     <div
@@ -108,13 +111,13 @@ export function ImageCanvasView({
         )}
       </div>
 
-      {isLoading && (
+      {showLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-br-bg-deep/80 z-10">
           <Spinner className="size-7 text-br-accent" />
         </div>
       )}
 
-      {!dataUrl && !isLoading && (
+      {!hasSelection && !showLoading && (
         <div className="flex flex-col items-center gap-3 text-br-dim select-none">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
             <rect x="3" y="3" width="18" height="18" rx="2" />

@@ -15,7 +15,11 @@ export type {
 export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
   (
     {
+      photoId,
+      hasSelection = false,
       dataUrl,
+      imageBuffer,
+      imageMimeType,
       orientation,
       masks = [],
       healSpots = [],
@@ -34,7 +38,10 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
       useZoomPan(containerRef, externalZoomPan);
 
     const { canvasRef, canvasDims, isLoading, handleOverlayAddSpot } = useWebGLCanvas(ref, {
+      photoId,
       dataUrl,
+      imageBuffer,
+      imageMimeType,
       orientation,
       masks,
       healSpots,
@@ -56,6 +63,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
         containerRef={containerRef}
         canvasRef={canvasRef}
         canvasDims={canvasDims}
+        hasSelection={hasSelection}
         dataUrl={dataUrl}
         isLoading={isLoading}
         zoom={zoom}

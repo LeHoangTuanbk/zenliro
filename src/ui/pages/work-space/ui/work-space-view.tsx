@@ -1,3 +1,4 @@
+import { memo, useEffect, useRef } from 'react';
 import type { RefObject } from 'react';
 import { ImageCanvas, type ImageCanvasHandle } from '@widgets/image-canvas/ui/image-canvas';
 import { LibraryContainer } from '@features/library';
@@ -21,9 +22,51 @@ import { CompareBeforePanel, useCompareStore } from '@features/develop/compare';
 import type { ExternalZoomPan, MaskInteractionProps } from '@widgets/image-canvas/ui/image-canvas';
 import { MaskPanel } from '@/features/develop/mask/ui/mask-panel';
 import type { Mask } from '@/features/develop/mask';
+import { ModuleTab } from '@/shared/ui/base';
 import { CanvasToolbar } from './canvas-toolbar';
 import { HistoryPanel } from '@features/develop/history';
 import type { ImportProgress } from '../hook/use-photos';
+
+type FilmstripItemProps = {
+  photo: ImportedPhoto;
+  isSelected: boolean;
+  onSelectId: (id: string) => void;
+  registerRef: (node: HTMLButtonElement | null) => void;
+};
+
+const FilmstripItem = memo(
+  function FilmstripItem({ photo, isSelected, onSelectId, registerRef }: FilmstripItemProps) {
+    const imgSrc = photo.thumbnailDataUrl;
+
+    return (
+      <button
+        ref={registerRef}
+        onClick={() => onSelectId(photo.id)}
+        className={`bg-[#111] rounded-[2px] overflow-hidden cursor-pointer border-2 transition-colors p-0 shrink-0 ${
+          isSelected ? 'border-br-accent' : 'border-transparent hover:border-[#444]'
+        }`}
+        title={photo.fileName}
+      >
+        {imgSrc ? (
+          <img
+            src={imgSrc}
+            alt={photo.fileName}
+            className="w-full h-[116px] object-cover block bg-[#111]"
+            loading="eager"
+            decoding="async"
+          />
+        ) : (
+          <div className="w-full h-[116px] bg-[#1a1a1a]" />
+        )}
+      </button>
+    );
+  },
+  (prev, next) =>
+    prev.isSelected === next.isSelected &&
+    prev.photo.id === next.photo.id &&
+    prev.photo.fileName === next.photo.fileName &&
+    prev.photo.thumbnailDataUrl === next.photo.thumbnailDataUrl,
+);
 
 export type WorkSpaceViewProps = {
   photos: ImportedPhoto[];
@@ -31,6 +74,9 @@ export type WorkSpaceViewProps = {
   importProgress: ImportProgress;
   selectedId: string | null;
   selected: ImportedPhoto | null;
+  selectedImageUrl: string | null;
+  selectedImageBuffer: ArrayBuffer | null;
+  selectedImageMimeType: string | null;
   activeView: ActiveView;
   activeTool: ActiveTool;
   showExport: boolean;
@@ -65,6 +111,9 @@ export function WorkSpaceView({
   importProgress,
   selectedId,
   selected,
+  selectedImageUrl,
+  selectedImageBuffer,
+  selectedImageMimeType,
   activeView,
   activeTool,
   showExport,
@@ -97,12 +146,30 @@ export function WorkSpaceView({
   const compareZoom = useCompareStore((s) => s.zoom);
   const comparePan = useCompareStore((s) => s.pan);
   const setZoomPan = useCompareStore((s) => s.setZoomPan);
+  const filmstripRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef(new Map<string, HTMLButtonElement>());
 
   const externalZoomPan: ExternalZoomPan = {
     zoom: compareZoom,
     pan: comparePan,
     onChange: setZoomPan,
   };
+
+  useEffect(() => {
+    if (activeView !== 'develop' || !selectedId) return;
+    const container = filmstripRef.current;
+    const selectedItem = itemRefs.current.get(selectedId);
+    if (!container || !selectedItem) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = selectedItem.getBoundingClientRect();
+    const isAbove = itemRect.top < containerRect.top;
+    const isBelow = itemRect.bottom > containerRect.bottom;
+
+    if (isAbove || isBelow) {
+      selectedItem.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }, [activeView, selectedId]);
 
   return (
     <div className="flex flex-col w-full h-screen bg-[#1a1a1a] text-[#929292] font-sans text-[11px]">
@@ -120,30 +187,29 @@ export function WorkSpaceView({
           className="absolute left-1/2 -translate-x-1/2 flex items-center"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
-          {(['library', 'develop'] as const).map((v, i) => (
-            <button
-              key={v}
-              onClick={() => onActiveViewChange(v)}
-              className={`px-4 h-9 text-[11px] font-medium tracking-wide cursor-pointer transition-colors border-none ${
-                activeView === v
-                  ? 'text-[#f2f2f2] bg-[#1a1a1a]'
-                  : 'text-[#929292] bg-transparent hover:text-[#d0d0d0]'
-              }`}
-            >
-              {v.charAt(0).toUpperCase() + v.slice(1)}
-              {i === 0 && <span className="ml-4 text-[#333]">|</span>}
-            </button>
-          ))}
+          <ModuleTab
+            active={activeView === 'library'}
+            onClick={() => onActiveViewChange('library')}
+          >
+            Library
+          </ModuleTab>
+          <span className="text-br-hover select-none">|</span>
+          <ModuleTab
+            active={activeView === 'develop'}
+            onClick={() => onActiveViewChange('develop')}
+          >
+            Develop
+          </ModuleTab>
         </div>
 
         {/* Export action */}
         <div
-          className="ml-auto pr-3 flex items-center gap-2 flex-shrink-0"
+          className="ml-auto pr-3 flex items-center gap-2 shrink-0"
           style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           {selected && (
             <button
-              className="px-3 py-1 text-[10px] text-[#7ec88a] bg-[#2e5533] border border-[#3a6b40] rounded-[3px] cursor-pointer hover:bg-[#38683f] transition-colors"
+              className="px-3 py-1 text-[10px] text-br-green bg-br-green-bg border border-br-green-border rounded-[3px] cursor-pointer hover:bg-br-green-hover transition-colors"
               onClick={() => onShowExportChange(true)}
             >
               Export
@@ -183,25 +249,21 @@ export function WorkSpaceView({
             >
               + Add
             </button>
-            <div className="flex-1 overflow-y-auto flex flex-col gap-1 px-1.5 pb-2">
+            <div
+              ref={filmstripRef}
+              className="flex-1 overflow-y-auto flex flex-col gap-1 px-1.5 pb-2"
+            >
               {photos.map((p) => (
-                <button
+                <FilmstripItem
                   key={p.id}
-                  onClick={() => onSelectId(p.id)}
-                  className={`bg-[#111] rounded-[2px] overflow-hidden cursor-pointer border-2 transition-colors p-0 shrink-0 ${
-                    p.id === selectedId
-                      ? 'border-br-accent'
-                      : 'border-transparent hover:border-[#444]'
-                  }`}
-                  title={p.fileName}
-                >
-                  <img
-                    src={p.thumbnailDataUrl || p.dataUrl}
-                    alt={p.fileName}
-                    className="w-full object-contain block"
-                    loading="lazy"
-                  />
-                </button>
+                  photo={p}
+                  isSelected={p.id === selectedId}
+                  onSelectId={onSelectId}
+                  registerRef={(node) => {
+                    if (node) itemRefs.current.set(p.id, node);
+                    else itemRefs.current.delete(p.id);
+                  }}
+                />
               ))}
             </div>
             <div className="border-t border-black shrink-0">
@@ -214,10 +276,7 @@ export function WorkSpaceView({
             <main className="relative flex-1 bg-[#111] flex overflow-hidden">
               {/* Before panel — only shown in compare mode */}
               {isCompareMode && (
-                <CompareBeforePanel
-                  dataUrl={selected?.dataUrl ?? null}
-                  externalZoomPan={externalZoomPan}
-                />
+                <CompareBeforePanel dataUrl={selectedImageUrl} externalZoomPan={externalZoomPan} />
               )}
 
               {/* After / single — ImageCanvas always mounted to preserve WebGL context */}
@@ -229,7 +288,11 @@ export function WorkSpaceView({
                 )}
                 <ImageCanvas
                   ref={canvasRef}
-                  dataUrl={selected?.dataUrl ?? null}
+                  photoId={selectedId}
+                  hasSelection={!!selectedId}
+                  dataUrl={selectedImageUrl}
+                  imageBuffer={selectedImageBuffer}
+                  imageMimeType={selectedImageMimeType}
                   orientation={selected?.orientation}
                   masks={masks}
                   healSpots={healSpots}

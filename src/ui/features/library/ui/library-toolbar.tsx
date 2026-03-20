@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Search, X, Trash2 } from 'lucide-react';
 import { BrButton } from '@/shared/ui/base';
 import { StarRating } from './star-rating';
@@ -28,6 +29,20 @@ export function LibraryToolbar({
 }: LibraryToolbarProps) {
   const hasActiveFilter = filter.search || filter.minRating > 0 || filter.tags.length > 0;
   const isMac = navigator.platform.startsWith('Mac');
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const mod = isMac ? e.metaKey : e.ctrlKey;
+      if (mod && e.key === 's') {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMac]);
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 bg-br-bg border-b border-black shrink-0">
@@ -62,10 +77,17 @@ export function LibraryToolbar({
       <div className="relative flex items-center">
         <Search className="absolute left-2 w-3 h-3 text-br-dim pointer-events-none" />
         <input
+          ref={searchRef}
           type="text"
-          placeholder="Search..."
+          placeholder={`Search... (${isMac ? '⌘' : 'Ctrl'}+S)`}
           value={filter.search}
           onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              onFilterChange({ ...filter, search: '' });
+              searchRef.current?.blur();
+            }
+          }}
           className="pl-6 pr-2 py-1 w-[140px] text-[10px] bg-[#2a2a2a] border border-[#3a3a3a] rounded-[2px] text-[#f2f2f2] outline-none focus:border-[#4d9fec] placeholder:text-br-dim"
         />
       </div>

@@ -5,16 +5,7 @@ import { registerCatalogHandlers } from './catalog.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import crypto from 'crypto';
-import { readExifOrientation, readJpegRawDimensions, needsManualOrientation, applyOrientation } from './exif-orientation.js';
-
-const THUMBNAIL_WIDTH = 400;
-
-function getThumbnailDir() {
-  const dir = path.join(app.getPath('userData'), 'thumbnails');
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
+import { readExifOrientation, readJpegRawDimensions, getOrientedDimensions } from './exif-orientation.js';
 
 app.on('ready', () => {
   const mainWindow = new BrowserWindow({
@@ -73,30 +64,24 @@ app.on('ready', () => {
         };
         const mimeType = mimeMap[ext] || 'image/jpeg';
         const rawBuf = fs.readFileSync(filePath);
-        const base64 = rawBuf.toString('base64');
         const photoId = `${filePath}-${stats.mtimeMs}`;
 
-        // Generate thumbnail
-        let thumbnailDataUrl = '';
+        const thumbnailDataUrl = '';
         let photoWidth = 0;
         let photoHeight = 0;
         const orientation = await readExifOrientation(rawBuf);
         const rawDims = readJpegRawDimensions(rawBuf);
-        let img = nativeImage.createFromPath(filePath);
-        if (!img.isEmpty()) {
-          if (needsManualOrientation(img.getSize(), rawDims, orientation)) {
-            img = applyOrientation(img, orientation);
+        if (rawDims) {
+          const orientedDims = getOrientedDimensions(rawDims, orientation);
+          photoWidth = orientedDims.width;
+          photoHeight = orientedDims.height;
+        } else {
+          const img = nativeImage.createFromPath(filePath);
+          if (!img.isEmpty()) {
+            const imgSize = getOrientedDimensions(img.getSize(), orientation);
+            photoWidth = imgSize.width;
+            photoHeight = imgSize.height;
           }
-          const imgSize = img.getSize();
-          photoWidth = imgSize.width;
-          photoHeight = imgSize.height;
-
-          const small = img.resize({ width: THUMBNAIL_WIDTH });
-          const jpegBuf = small.toJPEG(80);
-          const hash = crypto.createHash('md5').update(photoId).digest('hex');
-          const thumbPath = path.join(getThumbnailDir(), `${hash}.jpg`);
-          fs.writeFileSync(thumbPath, jpegBuf);
-          thumbnailDataUrl = `data:image/jpeg;base64,${jpegBuf.toString('base64')}`;
         }
 
         photos.push({
@@ -107,7 +92,7 @@ app.on('ready', () => {
           mimeType,
           width: photoWidth,
           height: photoHeight,
-          dataUrl: `data:${mimeType};base64,${base64}`,
+          dataUrl: '',
           thumbnailDataUrl,
           orientation,
           importedAt: Date.now(),
