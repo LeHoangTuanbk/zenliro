@@ -58,11 +58,11 @@ export function registerCatalogHandlers() {
     }
   });
 
-  ipcMain.handle('photo:generateThumbnail', (event, filePath: string, photoId: string) => {
+  ipcMain.handle('photo:generateThumbnail', async (event, filePath: string, photoId: string) => {
     validateEventFrame(event.senderFrame!);
     try {
       const rawBuf = fs.readFileSync(filePath);
-      const orientation = readExifOrientation(rawBuf);
+      const orientation = await readExifOrientation(rawBuf);
       const img = nativeImage.createFromPath(filePath);
       if (img.isEmpty()) return null;
       // Resize first (small), then rotate — much faster

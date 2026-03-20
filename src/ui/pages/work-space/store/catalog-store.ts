@@ -34,6 +34,7 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
     const photos = (catalog.photos ?? []).map((p: CatalogPhoto) => ({
       ...p,
       thumbnailPath: p.thumbnailPath ?? '',
+      orientation: p.orientation ?? 1,
       rating: p.rating ?? 0,
       tags: p.tags ?? [],
     }));

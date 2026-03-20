@@ -307,6 +307,12 @@ export class WebGLRenderer {
   get isReady() {
     return this.ready;
   }
+  get imageWidth() {
+    return this.imgW;
+  }
+  get imageHeight() {
+    return this.imgH;
+  }
 
   setToneCurveLUT(rData: Uint8Array, gData: Uint8Array, bData: Uint8Array): void {
     const gl = this.gl;
@@ -583,12 +589,23 @@ export class WebGLRenderer {
     }
 
     const crop = this.cropData;
-    gl.uniform2f(u('u_cropOrigin'), crop ? crop.rect.x : 0, crop ? crop.rect.y : 0);
+    // Crop overlay uses screen coords (Y-down: y=0 is top), but texture coords
+    // are Y-up (UNPACK_FLIP_Y_WEBGL makes texCoord y=0 = bottom of image).
+    // Flip Y: shader_y = 1 - overlay_y - overlay_h
+    gl.uniform2f(
+      u('u_cropOrigin'),
+      crop ? crop.rect.x : 0,
+      crop ? 1 - crop.rect.y - crop.rect.h : 0,
+    );
     gl.uniform2f(u('u_cropSize'), crop ? crop.rect.w : 1, crop ? crop.rect.h : 1);
+    // Fine rotation (straighten) only — 90° steps handled separately
     gl.uniform1f(
       u('u_rotation'),
-      crop ? ((crop.rotationSteps * 90 + crop.rotation) * Math.PI) / 180 : 0,
+      crop ? (-crop.rotation * Math.PI) / 180 : 0,
     );
+    // 90° rotation steps as UV swaps (normalized to 0-3)
+    const rotSteps = crop ? ((crop.rotationSteps % 4) + 4) % 4 : 0;
+    gl.uniform1i(u('u_rotSteps'), rotSteps);
     gl.uniform1f(u('u_flipH'), crop?.flipH ? 1 : 0);
     gl.uniform1f(u('u_flipV'), crop?.flipV ? 1 : 0);
     gl.uniform1f(u('u_imgAspect'), this.imgW / this.imgH);

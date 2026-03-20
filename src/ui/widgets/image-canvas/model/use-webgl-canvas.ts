@@ -12,15 +12,16 @@ import { useColorGradingStore } from '@/features/develop/edit/color-grading';
 import { useEffectsStore } from '@/features/develop/edit/effects';
 import {
   dataUrlToBlob,
-  dataUrlToPartialBuffer,
+  dataUrlToArrayBuffer,
   drawBitmapWithOrientation,
-  readExifOrientationFromBuffer,
+  readExifOrientation,
 } from '../lib/image-utils';
 import type { CropInteractionProps, HealInteractionProps, ImageCanvasHandle } from '../store/types';
 import type { CropState } from '@/features/develop/crop';
 
 type Params = {
   dataUrl: string | null;
+  orientation?: number;
   masks: Mask[];
   healSpots: HealSpot[];
   healInteractionProps?: HealInteractionProps;
@@ -35,6 +36,7 @@ type Params = {
 export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Params) {
   const {
     dataUrl,
+    orientation: precomputedOrientation,
     masks,
     healSpots,
     healInteractionProps,
@@ -141,8 +143,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
 
     (async () => {
       try {
-        const exifBuf = dataUrlToPartialBuffer(dataUrl);
-        const orientation = readExifOrientationFromBuffer(exifBuf);
+        const orientation = precomputedOrientation ?? await readExifOrientation(dataUrlToArrayBuffer(dataUrl));
         const blob = dataUrlToBlob(dataUrl);
         const bmp = await createImageBitmap(blob, { imageOrientation: 'none' });
 
@@ -201,8 +202,47 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
 
   useEffect(() => {
     const renderer = rendererRef.current;
-    if (!renderer) return;
-    renderer.setCropState(cropInteractionProps ? null : (confirmedCropState ?? null));
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!renderer || !canvas || !container) return;
+
+    // Determine effective dimensions for canvas sizing
+    const cropState = cropInteractionProps?.cropState ?? confirmedCropState;
+    const steps = cropState?.rotationSteps ?? 0;
+    const swap = (steps % 2) !== 0;
+    const imgW = renderer.imageWidth;
+    const imgH = renderer.imageHeight;
+    // In crop-editing mode: show full image. In confirmed mode: use cropped dims.
+    const cropRect = (!cropInteractionProps && confirmedCropState) ? confirmedCropState.rect : null;
+    const baseW = cropRect ? imgW * cropRect.w : imgW;
+    const baseH = cropRect ? imgH * cropRect.h : imgH;
+    const effectiveW = swap ? baseH : baseW;
+    const effectiveH = swap ? baseW : baseH;
+
+    // Resize canvas to fit rotated dimensions
+    if (effectiveW > 0 && effectiveH > 0) {
+      const cw = container.clientWidth || 800;
+      const ch = container.clientHeight || 600;
+      const scale = Math.min(cw / effectiveW, ch / effectiveH, 1);
+      const newW = Math.max(1, Math.round(effectiveW * scale));
+      const newH = Math.max(1, Math.round(effectiveH * scale));
+      if (canvas.width !== newW || canvas.height !== newH) {
+        canvas.width = newW;
+        canvas.height = newH;
+        setCanvasDims({ w: newW, h: newH });
+      }
+    }
+
+    if (cropInteractionProps) {
+      const cs = cropInteractionProps.cropState;
+      const hasTransform = cs.flipH || cs.flipV || cs.rotationSteps !== 0 || cs.rotation !== 0;
+      renderer.setCropState(hasTransform ? {
+        ...cs,
+        rect: { x: 0, y: 0, w: 1, h: 1 },
+      } : null);
+    } else {
+      renderer.setCropState(confirmedCropState ?? null);
+    }
     renderToCanvas();
   }, [cropInteractionProps, confirmedCropState]);
 

@@ -8,6 +8,7 @@ interface ImportedPhoto {
   height: number;
   dataUrl: string;
   thumbnailDataUrl: string;
+  orientation: number;
   importedAt: number;
 }
 
@@ -41,6 +42,7 @@ type CatalogPhoto = {
   height: number;
   importedAt: number;
   thumbnailPath: string;
+  orientation: number;
   rating: number;
   tags: string[];
 };
