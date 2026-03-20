@@ -1,17 +1,14 @@
-import { app, ipcMain, nativeImage } from 'electron';
+import { app, ipcMain } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { validateEventFrame } from './utils.js';
-import { readExifOrientation, readJpegRawDimensions, needsManualOrientation, applyOrientation } from './exif-orientation.js';
 
 const MIME_MAP: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
   webp: 'image/webp', tiff: 'image/tiff', tif: 'image/tiff',
   bmp: 'image/bmp', gif: 'image/gif',
 };
-
-const THUMBNAIL_WIDTH = 400;
 
 function getThumbnailDir() {
   const dir = path.join(app.getPath('userData'), 'thumbnails');
@@ -25,6 +22,15 @@ function hashId(photoId: string) {
 
 export function registerCatalogHandlers() {
   const catalogPath = path.join(app.getPath('userData'), 'catalog.json');
+
+  const persistThumbnail = (photoId: string, thumbnailDataUrl: string) => {
+    const base64 = thumbnailDataUrl.split(',')[1];
+    if (!base64) return null;
+    const jpegBuffer = Buffer.from(base64, 'base64');
+    const thumbPath = path.join(getThumbnailDir(), `${hashId(photoId)}.jpg`);
+    fs.writeFileSync(thumbPath, jpegBuffer);
+    return { thumbnailPath: thumbPath, thumbnailDataUrl };
+  };
 
   ipcMain.handle('catalog:load', (event) => {
     validateEventFrame(event.senderFrame!);
@@ -58,23 +64,19 @@ export function registerCatalogHandlers() {
     }
   });
 
-  ipcMain.handle('photo:generateThumbnail', async (event, filePath: string, photoId: string) => {
+  ipcMain.handle('photo:saveThumbnail', (event, photoId: string, thumbnailDataUrl: string) => {
     validateEventFrame(event.senderFrame!);
     try {
-      const rawBuf = fs.readFileSync(filePath);
-      const orientation = await readExifOrientation(rawBuf);
-      const rawDims = readJpegRawDimensions(rawBuf);
-      let img = nativeImage.createFromPath(filePath);
-      if (img.isEmpty()) return null;
-      if (needsManualOrientation(img.getSize(), rawDims, orientation)) {
-        img = applyOrientation(img, orientation);
-      }
-      const small = img.resize({ width: THUMBNAIL_WIDTH });
-      const jpegBuffer = small.toJPEG(80);
-      const thumbPath = path.join(getThumbnailDir(), `${hashId(photoId)}.jpg`);
-      fs.writeFileSync(thumbPath, jpegBuffer);
-      const b64 = jpegBuffer.toString('base64');
-      return { thumbnailPath: thumbPath, thumbnailDataUrl: `data:image/jpeg;base64,${b64}` };
+      return persistThumbnail(photoId, thumbnailDataUrl);
+    } catch {
+      return null;
+    }
+  });
+
+  ipcMain.handle('photo:generateThumbnail', (event, photoId: string, thumbnailDataUrl: string) => {
+    validateEventFrame(event.senderFrame!);
+    try {
+      return persistThumbnail(photoId, thumbnailDataUrl);
     } catch {
       return null;
     }

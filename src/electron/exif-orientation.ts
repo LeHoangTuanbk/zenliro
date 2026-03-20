@@ -44,6 +44,16 @@ export function readJpegRawDimensions(buf: Buffer): { width: number; height: num
   return null;
 }
 
+export function getOrientedDimensions(
+  size: { width: number; height: number },
+  orientation: number,
+): { width: number; height: number } {
+  const swap = orientation >= 5 && orientation <= 8;
+  return swap
+    ? { width: size.height, height: size.width }
+    : size;
+}
+
 /**
  * Determine if manual EXIF orientation is needed by comparing
  * nativeImage dimensions with JPEG raw dimensions.

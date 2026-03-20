@@ -70,6 +70,7 @@ export type MaskInteractionProps =
   | RadialMaskInteractionProps;
 
 export type ImageCanvasProps = {
+  photoId?: string | null;
   dataUrl: string | null;
   orientation?: number;
   masks?: Mask[];

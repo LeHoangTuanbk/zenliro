@@ -20,6 +20,7 @@ import type { CropInteractionProps, HealInteractionProps, ImageCanvasHandle } fr
 import type { CropState } from '@/features/develop/crop';
 
 type Params = {
+  photoId?: string | null;
   dataUrl: string | null;
   orientation?: number;
   masks: Mask[];
@@ -35,6 +36,7 @@ type Params = {
 
 export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Params) {
   const {
+    photoId,
     dataUrl,
     orientation: precomputedOrientation,
     masks,
@@ -52,6 +54,12 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   const rendererRef = useRef<WebGLRenderer | null>(null);
   const originalImgRef = useRef<HTMLCanvasElement | null>(null);
   const imageDataRef = useRef<ImageData | null>(null);
+  const decodedImageCacheRef = useRef<Map<string, {
+    canvas: HTMLCanvasElement;
+    imageData: ImageData;
+    width: number;
+    height: number;
+  }>>(new Map());
   const gpuSpotsRef = useRef<SpotGPUData[]>([]);
   const uploadedStrokesRef = useRef<Map<string, number>>(new Map()); // maskId → count uploaded
   const prevSlotMaskIdsRef = useRef<(string | null)[]>([null, null, null, null]);
@@ -119,6 +127,59 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     renderer.setHealSpots(gpuData);
   }
 
+  function rememberDecodedImage(
+    key: string,
+    canvas: HTMLCanvasElement,
+    imageData: ImageData,
+    width: number,
+    height: number,
+  ) {
+    const cache = decodedImageCacheRef.current;
+    cache.delete(key);
+    cache.set(key, { canvas, imageData, width, height });
+    while (cache.size > 12) {
+      const oldestKey = cache.keys().next().value;
+      if (!oldestKey) break;
+      cache.delete(oldestKey);
+    }
+  }
+
+  function applyLoadedImage(
+    sourceCanvas: HTMLCanvasElement,
+    imageData: ImageData,
+    imgW: number,
+    imgH: number,
+  ) {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    const renderer = rendererRef.current;
+    if (!canvas || !container || !renderer) return;
+
+    onImageLoaded?.(imgW, imgH);
+
+    const dpr = window.devicePixelRatio || 1;
+    const cw = container.clientWidth || 800;
+    const ch = container.clientHeight || 600;
+    const scale = Math.min(cw / imgW, ch / imgH, 1);
+    const cssW = Math.max(1, Math.round(imgW * scale));
+    const cssH = Math.max(1, Math.round(imgH * scale));
+    canvas.width = Math.round(cssW * dpr);
+    canvas.height = Math.round(cssH * dpr);
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
+    setCanvasDims({ w: cssW, h: cssH });
+    onResetView();
+
+    imageDataRef.current = imageData;
+    originalImgRef.current = sourceCanvas;
+    gpuSpotsRef.current = [];
+
+    renderer.loadImage(sourceCanvas);
+    renderer.setHealSpots([]);
+    computeAndUploadSpots(healSpots);
+    renderToCanvas();
+  }
+
   // ── Init WebGL ───────────────────────────────────────────────────────────
   useEffect(() => {
     const canvas = canvasRef.current!;
@@ -138,6 +199,14 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   // ── Load image ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!dataUrl || !rendererRef.current) return;
+    const cacheKey = photoId ?? dataUrl;
+    const cached = decodedImageCacheRef.current.get(cacheKey);
+    if (cached) {
+      applyLoadedImage(cached.canvas, cached.imageData, cached.width, cached.height);
+      setIsLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setIsLoading(true);
 
@@ -164,29 +233,9 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
         const { w: imgW, h: imgH } = drawBitmapWithOrientation(ctx2d, bmp, orientation);
         bmp.close();
 
-        onImageLoaded?.(imgW, imgH);
-
-        const dpr = window.devicePixelRatio || 1;
-        const cw = container.clientWidth || 800;
-        const ch = container.clientHeight || 600;
-        const scale = Math.min(cw / imgW, ch / imgH, 1);
-        const cssW = Math.max(1, Math.round(imgW * scale));
-        const cssH = Math.max(1, Math.round(imgH * scale));
-        canvas.width = Math.round(cssW * dpr);
-        canvas.height = Math.round(cssH * dpr);
-        canvas.style.width = `${cssW}px`;
-        canvas.style.height = `${cssH}px`;
-        setCanvasDims({ w: cssW, h: cssH });
-        onResetView();
-
-        imageDataRef.current = ctx2d.getImageData(0, 0, imgW, imgH);
-        originalImgRef.current = tmp;
-        gpuSpotsRef.current = [];
-
-        rendererRef.current!.loadImage(tmp);
-        rendererRef.current!.setHealSpots([]);
-        computeAndUploadSpots(healSpots);
-        renderToCanvas();
+        const imageData = ctx2d.getImageData(0, 0, imgW, imgH);
+        rememberDecodedImage(cacheKey, tmp, imageData, imgW, imgH);
+        applyLoadedImage(tmp, imageData, imgW, imgH);
         if (!cancelled) setIsLoading(false);
       } catch (err) {
         console.error('[ImageCanvas] load error:', err);
@@ -198,7 +247,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataUrl]);
+  }, [dataUrl, photoId]);
 
   useEffect(() => {
     computeAndUploadSpots(healSpots);

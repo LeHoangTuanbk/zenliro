@@ -53,6 +53,43 @@ export function drawBitmapWithOrientation(
   return { w: cw, h: ch };
 }
 
+export async function generateThumbnailDataUrl(
+  dataUrl: string,
+  orientation: number,
+  maxWidth = 400,
+  quality = 0.8,
+): Promise<string> {
+  const blob = dataUrlToBlob(dataUrl);
+  const bmp = await createImageBitmap(blob, { imageOrientation: 'none' });
+
+  try {
+    const orientedCanvas = document.createElement('canvas');
+    const orientedCtx = orientedCanvas.getContext('2d');
+    if (!orientedCtx) return '';
+
+    const { w, h } = drawBitmapWithOrientation(orientedCtx, bmp, orientation);
+    const scale = Math.min(1, maxWidth / w);
+    const outW = Math.max(1, Math.round(w * scale));
+    const outH = Math.max(1, Math.round(h * scale));
+
+    if (outW === w && outH === h) {
+      return orientedCanvas.toDataURL('image/jpeg', quality);
+    }
+
+    const thumbCanvas = document.createElement('canvas');
+    thumbCanvas.width = outW;
+    thumbCanvas.height = outH;
+    const thumbCtx = thumbCanvas.getContext('2d');
+    if (!thumbCtx) return '';
+    thumbCtx.imageSmoothingEnabled = true;
+    thumbCtx.imageSmoothingQuality = 'high';
+    thumbCtx.drawImage(orientedCanvas, 0, 0, outW, outH);
+    return thumbCanvas.toDataURL('image/jpeg', quality);
+  } finally {
+    bmp.close();
+  }
+}
+
 /** Decode a data-URL to a Blob for createImageBitmap. */
 export function dataUrlToBlob(dataUrl: string): Blob {
   const mimeType = dataUrl.split(';')[0].slice(5) || 'image/jpeg';

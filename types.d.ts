@@ -100,7 +100,8 @@ interface Window {
     };
     photo: {
       loadFromPath: (filePath: string) => Promise<{ dataUrl: string } | null>;
-      generateThumbnail: (filePath: string, photoId: string) => Promise<{ thumbnailPath: string; thumbnailDataUrl: string } | null>;
+      saveThumbnail: (photoId: string, thumbnailDataUrl: string) => Promise<{ thumbnailPath: string; thumbnailDataUrl: string } | null>;
+      generateThumbnail: (photoId: string, thumbnailDataUrl: string) => Promise<{ thumbnailPath: string; thumbnailDataUrl: string } | null>;
       loadThumbnail: (thumbnailPath: string) => Promise<{ thumbnailDataUrl: string } | null>;
       deleteThumbnail: (thumbnailPath: string) => Promise<boolean>;
       deletePhoto: (photoId: string, thumbnailPath: string) => Promise<boolean>;
