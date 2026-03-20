@@ -120,8 +120,6 @@ export function WorkSpaceView({
     const selectedItem = itemRefs.current.get(selectedId);
     if (!container || !selectedItem) return;
 
-    const containerRect = container.getBoundingClientRect();
-    const itemRect = selectedItem.getBoundingClientRect();
     selectedItem.scrollIntoView({ block: 'center', behavior: 'instant' });
   }, [activeView, selectedId]);
 
