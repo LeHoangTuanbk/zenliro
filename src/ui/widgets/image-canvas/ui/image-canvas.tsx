@@ -30,7 +30,6 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
       hideOverlay = false,
       externalZoomPan,
       onImageLoaded,
-      onImageRendered,
     },
     ref,
   ) => {
@@ -50,7 +49,6 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
       cropInteractionProps,
       confirmedCropState,
       onImageLoaded,
-      onImageRendered,
       containerRef,
       zoomRef,
       onResetView: reset,
