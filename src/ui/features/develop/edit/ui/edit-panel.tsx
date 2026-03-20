@@ -60,6 +60,7 @@ export function EditPanel() {
                   min={s.min}
                   max={s.max}
                   step={s.step}
+                  gradient={s.gradient}
                   onChange={setAdjustment}
                   onReset={resetAdjustment}
                 />

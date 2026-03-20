@@ -88,7 +88,7 @@ export function LibraryToolbar({
               searchRef.current?.blur();
             }
           }}
-          className="pl-6 pr-2 py-1 w-[140px] text-[10px] bg-[#2a2a2a] border border-[#3a3a3a] rounded-[2px] text-[#f2f2f2] outline-none focus:border-[#4d9fec] placeholder:text-br-dim"
+          className="pl-6 pr-2 py-1 w-[140px] text-[10px] bg-br-input border border-br-elevated rounded-[2px] text-br-text outline-none focus:border-br-mark placeholder:text-br-muted"
         />
       </div>
 
