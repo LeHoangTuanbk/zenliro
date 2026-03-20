@@ -39,23 +39,27 @@ pnpm dev
 
 ### Build
 
+Only support Macos right now
+
 ```bash
 pnpm dist:mac    # macOS DMG (arm64)
-pnpm dist:win    # Windows (x64)
-pnpm dist:linux  # Linux AppImage (x64)
 ```
 
-### Install unsigned build on macOS
+### Installing from GitHub Releases (.dmg)
 
-macOS will block apps without a code signature. Run:
+#### Step 1: Download the `.dmg` from the [Releases](https://github.com/LeHoangTuanbk/zenliro/releases) page and install as usual.
+
+#### Step 2: Since this is an open-source app without code signing and notarization, macOS may block it on first launch:
+
+![Apple can not check it for malicious software](docs/releases/assets/apple-can-not-check-software.png)
+
+To fix this, open Terminal and run:
 
 ```bash
 xattr -cr /Applications/Zenliro.app
 ```
 
-Or: right-click the `.app` → **Open** → click **Open** in the dialog.
-
----
+#### Step 3: Launch Zenliro again.
 
 ## Inspired By
 
