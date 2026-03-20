@@ -49,9 +49,7 @@ export function WorkSpaceContainer() {
   } = usePhotos();
 
   const selectedResource = usePhotoResource(
-    activeView === 'develop' && selected
-      ? { id: selected.id, filePath: selected.filePath }
-      : null,
+    selected ? { id: selected.id, filePath: selected.filePath } : null,
   );
 
   const { histogramData, exifData } = useHistogram(
