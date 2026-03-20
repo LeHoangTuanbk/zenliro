@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { ImageCanvas, type ImageCanvasHandle } from '@widgets/image-canvas/ui/image-canvas';
 import { LibraryContainer } from '@features/library';
 import { EditPanel, ToolStrip } from '@/features/develop/edit';
@@ -105,11 +105,25 @@ export function WorkSpaceView({
   const comparePan = useCompareStore((s) => s.pan);
   const setZoomPan = useCompareStore((s) => s.setZoomPan);
 
+  const filmstripRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef(new Map<string, HTMLButtonElement>());
+
   const externalZoomPan: ExternalZoomPan = {
     zoom: compareZoom,
     pan: comparePan,
     onChange: setZoomPan,
   };
+
+  useEffect(() => {
+    if (activeView !== 'develop' || !selectedId) return;
+    const container = filmstripRef.current;
+    const selectedItem = itemRefs.current.get(selectedId);
+    if (!container || !selectedItem) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const itemRect = selectedItem.getBoundingClientRect();
+    selectedItem.scrollIntoView({ block: 'center', behavior: 'instant' });
+  }, [activeView, selectedId]);
 
   return (
     <div className="flex flex-col w-full h-screen bg-[#1a1a1a] text-[#929292] font-sans text-[11px]">
@@ -188,10 +202,14 @@ export function WorkSpaceView({
           >
             + Add
           </button>
-          <div className="flex-1 overflow-y-auto flex flex-col gap-1 px-1.5 pb-2">
+          <div ref={filmstripRef} className="flex-1 overflow-y-auto flex flex-col gap-1 px-1.5 pb-2">
             {photos.map((p) => (
               <button
                 key={p.id}
+                ref={(node) => {
+                  if (node) itemRefs.current.set(p.id, node);
+                  else itemRefs.current.delete(p.id);
+                }}
                 onClick={() => onSelectId(p.id)}
                 className={`bg-[#111] rounded-[2px] overflow-hidden cursor-pointer border-2 transition-colors p-0 shrink-0 ${
                   p.id === selectedId
