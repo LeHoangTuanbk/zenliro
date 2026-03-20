@@ -22,9 +22,12 @@ import type { ExternalZoomPan, MaskInteractionProps } from '@widgets/image-canva
 import { MaskPanel } from '@/features/develop/mask/ui/mask-panel';
 import type { Mask } from '@/features/develop/mask';
 import { CanvasToolbar } from './canvas-toolbar';
+import type { ImportProgress } from '../hook/use-photos';
 
 export type WorkSpaceViewProps = {
   photos: ImportedPhoto[];
+  catalogPhotos: CatalogPhoto[];
+  importProgress: ImportProgress;
   selectedId: string | null;
   selected: ImportedPhoto | null;
   activeView: ActiveView;
@@ -46,6 +49,10 @@ export type WorkSpaceViewProps = {
   onImageLoaded: (w: number, h: number) => void;
   onSelectId: (id: string) => void;
   onOpenDevelop: (id: string) => void;
+  onDelete: (id: string) => void;
+  onBulkDelete: (ids: Set<string>) => Promise<void>;
+  onReorder: (from: number, to: number) => void;
+  onRatingChange: (id: string, rating: number) => void;
   onActiveViewChange: (v: ActiveView) => void;
   onActiveToolChange: (t: ActiveTool) => void;
   onShowExportChange: (show: boolean) => void;
@@ -53,6 +60,8 @@ export type WorkSpaceViewProps = {
 
 export function WorkSpaceView({
   photos,
+  catalogPhotos,
+  importProgress,
   selectedId,
   selected,
   activeView,
@@ -74,6 +83,10 @@ export function WorkSpaceView({
   onImageLoaded,
   onSelectId,
   onOpenDevelop,
+  onDelete,
+  onBulkDelete,
+  onReorder,
+  onRatingChange,
   onActiveViewChange,
   onActiveToolChange,
   onShowExportChange,
@@ -142,6 +155,8 @@ export function WorkSpaceView({
       {activeView === 'library' && (
         <LibraryContainer
           photos={photos}
+          catalogPhotos={catalogPhotos}
+          importProgress={importProgress}
           selectedId={selectedId}
           selected={selected}
           histogramData={histogramData}
@@ -149,6 +164,10 @@ export function WorkSpaceView({
           onSelect={onSelectId}
           onImport={onImport}
           onOpenDevelop={onOpenDevelop}
+          onDelete={onDelete}
+          onBulkDelete={onBulkDelete}
+          onReorder={onReorder}
+          onRatingChange={onRatingChange}
         />
       )}
 
@@ -156,10 +175,10 @@ export function WorkSpaceView({
       {activeView === 'develop' && (
         <div className="flex flex-1 overflow-hidden">
           {/* Left filmstrip */}
-          <aside className="w-[120px] bg-[#1a1a1a] border-r border-black flex flex-col flex-shrink-0">
+          <aside className="w-[120px] bg-[#1a1a1a] border-r border-black flex flex-col shrink-0">
             <button
               onClick={onImport}
-              className="mx-2 my-2 py-1 text-[10px] text-[#929292] bg-[#2a2a2a] border border-[#3a3a3a] rounded-[2px] cursor-pointer hover:text-[#f2f2f2] transition-colors"
+              className="mx-2 my-2 py-1 text-[10px] text-br-muted bg-br-input border border-br-elevated rounded-[2px] cursor-pointer hover:text-br-text transition-colors"
             >
               + Add
             </button>
@@ -168,17 +187,18 @@ export function WorkSpaceView({
                 <button
                   key={p.id}
                   onClick={() => onSelectId(p.id)}
-                  className={`bg-[#111] rounded-[2px] overflow-hidden cursor-pointer border-2 transition-colors p-0 ${
+                  className={`bg-[#111] rounded-[2px] overflow-hidden cursor-pointer border-2 transition-colors p-0 shrink-0 ${
                     p.id === selectedId
-                      ? 'border-[#4d9fec]'
+                      ? 'border-br-accent'
                       : 'border-transparent hover:border-[#444]'
                   }`}
                   title={p.fileName}
                 >
                   <img
-                    src={p.dataUrl}
+                    src={p.thumbnailDataUrl || p.dataUrl}
                     alt={p.fileName}
-                    className="w-full aspect-[3/2] object-cover block"
+                    className="w-full object-contain block"
+                    loading="lazy"
                   />
                 </button>
               ))}

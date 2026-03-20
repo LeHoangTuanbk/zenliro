@@ -12,6 +12,10 @@ type CatalogStore = {
   setSelectedId: (id: string | null) => void;
   savePhotoEdits: (id: string, edits: PhotoEdits) => void;
   getPhotoEdits: (id: string) => PhotoEdits | undefined;
+  deletePhoto: (id: string) => void;
+  reorderPhotos: (fromIndex: number, toIndex: number) => void;
+  setPhotoRating: (id: string, rating: number) => void;
+  setPhotoTags: (id: string, tags: string[]) => void;
 };
 
 export const useCatalogStore = create<CatalogStore>((set, get) => ({
@@ -26,8 +30,15 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
       set({ isLoaded: true });
       return;
     }
+    // Migrate old catalog photos that lack new fields
+    const photos = (catalog.photos ?? []).map((p: CatalogPhoto) => ({
+      ...p,
+      thumbnailPath: p.thumbnailPath ?? '',
+      rating: p.rating ?? 0,
+      tags: p.tags ?? [],
+    }));
     set({
-      photos: catalog.photos ?? [],
+      photos,
       edits: catalog.edits ?? {},
       selectedId: catalog.selectedId ?? null,
       isLoaded: true,
@@ -36,7 +47,7 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
 
   saveToDisk: async () => {
     const { photos, edits, selectedId, isLoaded } = get();
-    if (!isLoaded) return; // never overwrite catalog before it's been read
+    if (!isLoaded) return;
     await window.electron.catalog.save({
       version: 1,
       photos,
@@ -60,4 +71,37 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
   },
 
   getPhotoEdits: (id) => get().edits[id],
+
+  deletePhoto: (id) => {
+    set((s) => {
+      const { [id]: _removed, ...restEdits } = s.edits;
+      return {
+        photos: s.photos.filter((p) => p.id !== id),
+        edits: restEdits,
+        selectedId: s.selectedId === id ? null : s.selectedId,
+      };
+    });
+  },
+
+  reorderPhotos: (fromIndex, toIndex) => {
+    set((s) => {
+      const next = [...s.photos];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return { photos: next };
+    });
+  },
+
+  setPhotoRating: (id, rating) => {
+    set((s) => ({
+      photos: s.photos.map((p) => (p.id === id ? { ...p, rating } : p)),
+    }));
+  },
+
+  setPhotoTags: (id, tags) => {
+    set((s) => ({
+      photos: s.photos.map((p) => (p.id === id ? { ...p, tags } : p)),
+    }));
+  },
+
 }));

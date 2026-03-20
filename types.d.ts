@@ -7,6 +7,7 @@ interface ImportedPhoto {
   width: number;
   height: number;
   dataUrl: string;
+  thumbnailDataUrl: string;
   importedAt: number;
 }
 
@@ -30,7 +31,19 @@ interface EventPayloadMapping {
   importPhotos: ImportedPhoto[];
 }
 
-type CatalogPhoto = Omit<ImportedPhoto, 'dataUrl'>;
+type CatalogPhoto = {
+  id: string;
+  filePath: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  width: number;
+  height: number;
+  importedAt: number;
+  thumbnailPath: string;
+  rating: number;
+  tags: string[];
+};
 
 type WheelData = { hue: number; sat: number; lum: number };
 
@@ -85,7 +98,12 @@ interface Window {
     };
     photo: {
       loadFromPath: (filePath: string) => Promise<{ dataUrl: string } | null>;
+      generateThumbnail: (filePath: string, photoId: string) => Promise<{ thumbnailPath: string; thumbnailDataUrl: string } | null>;
+      loadThumbnail: (thumbnailPath: string) => Promise<{ thumbnailDataUrl: string } | null>;
+      deleteThumbnail: (thumbnailPath: string) => Promise<boolean>;
+      deletePhoto: (photoId: string, thumbnailPath: string) => Promise<boolean>;
     };
+    onImportProgress: (cb: (progress: { current: number; total: number } | null) => void) => () => void;
     onRequestSave: (cb: () => void) => void;
     sendSaveDone: () => void;
   };

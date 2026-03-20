@@ -1,13 +1,27 @@
-import { app, ipcMain } from 'electron';
+import { app, ipcMain, nativeImage } from 'electron';
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import { validateEventFrame } from './utils.js';
+import { readExifOrientation, applyOrientation } from './exif-orientation.js';
 
 const MIME_MAP: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
   webp: 'image/webp', tiff: 'image/tiff', tif: 'image/tiff',
   bmp: 'image/bmp', gif: 'image/gif',
 };
+
+const THUMBNAIL_WIDTH = 400;
+
+function getThumbnailDir() {
+  const dir = path.join(app.getPath('userData'), 'thumbnails');
+  fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+function hashId(photoId: string) {
+  return crypto.createHash('md5').update(photoId).digest('hex');
+}
 
 export function registerCatalogHandlers() {
   const catalogPath = path.join(app.getPath('userData'), 'catalog.json');
@@ -41,6 +55,60 @@ export function registerCatalogHandlers() {
       return { dataUrl: `data:${mimeType};base64,${base64}` };
     } catch {
       return null;
+    }
+  });
+
+  ipcMain.handle('photo:generateThumbnail', (event, filePath: string, photoId: string) => {
+    validateEventFrame(event.senderFrame!);
+    try {
+      const rawBuf = fs.readFileSync(filePath);
+      const orientation = readExifOrientation(rawBuf);
+      const img = nativeImage.createFromPath(filePath);
+      if (img.isEmpty()) return null;
+      // Resize first (small), then rotate — much faster
+      const swap = orientation >= 5 && orientation <= 8;
+      const resizeW = swap ? undefined : THUMBNAIL_WIDTH;
+      const resizeH = swap ? THUMBNAIL_WIDTH : undefined;
+      const small = img.resize({ width: resizeW, height: resizeH });
+      const oriented = applyOrientation(small, orientation);
+      const jpegBuffer = oriented.toJPEG(80);
+      const thumbPath = path.join(getThumbnailDir(), `${hashId(photoId)}.jpg`);
+      fs.writeFileSync(thumbPath, jpegBuffer);
+      const b64 = jpegBuffer.toString('base64');
+      return { thumbnailPath: thumbPath, thumbnailDataUrl: `data:image/jpeg;base64,${b64}` };
+    } catch {
+      return null;
+    }
+  });
+
+  ipcMain.handle('photo:loadThumbnail', (event, thumbnailPath: string) => {
+    validateEventFrame(event.senderFrame!);
+    try {
+      if (!fs.existsSync(thumbnailPath)) return null;
+      const b64 = fs.readFileSync(thumbnailPath).toString('base64');
+      return { thumbnailDataUrl: `data:image/jpeg;base64,${b64}` };
+    } catch {
+      return null;
+    }
+  });
+
+  ipcMain.handle('photo:deleteThumbnail', (event, thumbnailPath: string) => {
+    validateEventFrame(event.senderFrame!);
+    try {
+      if (fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath);
+      return true;
+    } catch {
+      return false;
+    }
+  });
+
+  ipcMain.handle('photo:deletePhoto', (event, photoId: string, thumbnailPath: string) => {
+    validateEventFrame(event.senderFrame!);
+    try {
+      if (thumbnailPath && fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath);
+      return true;
+    } catch {
+      return false;
     }
   });
 }
