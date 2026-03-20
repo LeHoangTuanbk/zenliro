@@ -22,6 +22,7 @@ import type { ExternalZoomPan, MaskInteractionProps } from '@widgets/image-canva
 import { MaskPanel } from '@/features/develop/mask/ui/mask-panel';
 import type { Mask } from '@/features/develop/mask';
 import { CanvasToolbar } from './canvas-toolbar';
+import { HistoryPanel } from '@features/develop/history';
 import type { ImportProgress } from '../hook/use-photos';
 
 export type WorkSpaceViewProps = {
@@ -202,6 +203,9 @@ export function WorkSpaceView({
                   />
                 </button>
               ))}
+            </div>
+            <div className="border-t border-black shrink-0">
+              <HistoryPanel photoId={selectedId} />
             </div>
           </aside>
 

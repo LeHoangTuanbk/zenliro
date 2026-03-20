@@ -9,6 +9,7 @@ import { useCropInteraction } from './hook/use-crop-interaction';
 import { useMaskInteraction } from './hook/use-mask-interaction';
 import { useExport } from './hook/use-export';
 import { usePhotoEdits } from './hook/use-photo-edits';
+import { useHistoryTracking } from '@features/develop/history';
 import { useCatalogStore } from './store/catalog-store';
 import { useMaskStore } from '@/features/develop/mask';
 import type { Mask } from '@/features/develop/mask';
@@ -59,6 +60,7 @@ export function WorkSpaceContainer() {
 
   const handleExport = useExport(selected, selectedId, canvasRef);
   usePhotoEdits(selectedId);
+  useHistoryTracking(selectedId);
 
   const handleRatingChange = useCallback((id: string, rating: number) => {
     setPhotoRating(id, rating);
