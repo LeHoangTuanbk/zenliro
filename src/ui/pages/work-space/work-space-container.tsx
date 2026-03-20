@@ -4,6 +4,7 @@ import { WorkSpaceView } from './ui/work-space-view';
 import { SplashScreen } from './ui/splash-screen';
 import { ActiveTool } from '@features/develop/const';
 import { usePhotos } from './hook/use-photos';
+import { usePhotoResource } from './hook/use-photo-resource';
 import { useHistogram } from './hook/use-histogram';
 import { useHealInteraction } from './hook/use-heal-interaction';
 import { useCropInteraction } from './hook/use-crop-interaction';
@@ -47,7 +48,20 @@ export function WorkSpaceContainer() {
     openDevelop,
   } = usePhotos();
 
-  const { histogramData, exifData } = useHistogram(selected?.dataUrl, canvasRef);
+  const selectedResource = usePhotoResource(
+    activeView === 'develop' && selected
+      ? { id: selected.id, filePath: selected.filePath }
+      : null,
+  );
+
+  const { histogramData, exifData } = useHistogram(
+    activeView,
+    selectedId,
+    selected?.thumbnailDataUrl || null,
+    selectedResource.imageBuffer,
+    selectedResource.imageMimeType,
+    canvasRef,
+  );
   const { healInteractionProps, healSpots, previewOriginal } = useHealInteraction(
     activeTool,
     selectedId,
@@ -77,6 +91,9 @@ export function WorkSpaceContainer() {
       catalogPhotos={catalogPhotos}
       selectedId={selectedId}
       selected={selected}
+      selectedImageUrl={selectedResource.imageUrl}
+      selectedImageBuffer={selectedResource.imageBuffer}
+      selectedImageMimeType={selectedResource.imageMimeType}
       activeView={activeView}
       activeTool={activeTool}
       showExport={showExport}

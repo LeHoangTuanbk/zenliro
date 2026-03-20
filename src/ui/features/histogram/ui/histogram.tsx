@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import type { HistogramData } from '../lib/compute-histogram';
 import type { PhotoExif } from '../lib/read-exif';
 
@@ -69,7 +69,7 @@ const CANVAS_H = 90;
 export function Histogram({ data, exif }: HistogramProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d')!;

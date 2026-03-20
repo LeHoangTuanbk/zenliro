@@ -57,8 +57,8 @@ export function registerCatalogHandlers() {
     try {
       const ext = path.extname(filePath).toLowerCase().replace('.', '');
       const mimeType = MIME_MAP[ext] ?? 'image/jpeg';
-      const base64 = fs.readFileSync(filePath).toString('base64');
-      return { dataUrl: `data:${mimeType};base64,${base64}` };
+      const bytes = Uint8Array.from(fs.readFileSync(filePath));
+      return { mimeType, bytes };
     } catch {
       return null;
     }

@@ -16,7 +16,10 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
   (
     {
       photoId,
+      hasSelection = false,
       dataUrl,
+      imageBuffer,
+      imageMimeType,
       orientation,
       masks = [],
       healSpots = [],
@@ -27,6 +30,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
       hideOverlay = false,
       externalZoomPan,
       onImageLoaded,
+      onImageRendered,
     },
     ref,
   ) => {
@@ -37,6 +41,8 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
     const { canvasRef, canvasDims, isLoading, handleOverlayAddSpot } = useWebGLCanvas(ref, {
       photoId,
       dataUrl,
+      imageBuffer,
+      imageMimeType,
       orientation,
       masks,
       healSpots,
@@ -44,6 +50,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
       cropInteractionProps,
       confirmedCropState,
       onImageLoaded,
+      onImageRendered,
       containerRef,
       zoomRef,
       onResetView: reset,
@@ -58,6 +65,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
         containerRef={containerRef}
         canvasRef={canvasRef}
         canvasDims={canvasDims}
+        hasSelection={hasSelection}
         dataUrl={dataUrl}
         isLoading={isLoading}
         zoom={zoom}

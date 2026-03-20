@@ -71,7 +71,10 @@ export type MaskInteractionProps =
 
 export type ImageCanvasProps = {
   photoId?: string | null;
+  hasSelection?: boolean;
   dataUrl: string | null;
+  imageBuffer?: ArrayBuffer | null;
+  imageMimeType?: string | null;
   orientation?: number;
   masks?: Mask[];
   healSpots?: HealSpot[];
@@ -82,6 +85,7 @@ export type ImageCanvasProps = {
   hideOverlay?: boolean;
   externalZoomPan?: ExternalZoomPan;
   onImageLoaded?: (w: number, h: number) => void;
+  onImageRendered?: () => void;
 };
 
 export type { ExternalZoomPan };

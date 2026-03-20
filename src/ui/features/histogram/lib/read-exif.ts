@@ -11,8 +11,12 @@ export interface PhotoExif {
 }
 
 export async function readExifFromDataUrl(dataUrl: string): Promise<PhotoExif> {
+  return readExifFromBuffer(dataUrl);
+}
+
+export async function readExifFromBuffer(buffer: ArrayBuffer | string): Promise<PhotoExif> {
   try {
-    const data = await exifr.parse(dataUrl, {
+    const data = await exifr.parse(buffer, {
       pick: ['ISO', 'FNumber', 'ExposureTime', 'FocalLength', 'Make', 'Model', 'DateTimeOriginal', 'CreateDate'],
     });
     if (!data) return {};

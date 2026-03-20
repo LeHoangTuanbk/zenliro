@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingSaveResolvers: Array<() => void> = [];
+
 type CatalogStore = {
   photos: CatalogPhoto[];
   edits: Record<string, PhotoEdits>;
@@ -47,14 +50,30 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
   },
 
   saveToDisk: async () => {
-    const { photos, edits, selectedId, isLoaded } = get();
-    if (!isLoaded) return;
-    await window.electron.catalog.save({
-      version: 1,
-      photos,
-      edits,
-      selectedId,
-      lastOpenedAt: Date.now(),
+    return new Promise<void>((resolve) => {
+      pendingSaveResolvers.push(resolve);
+
+      if (saveTimer) {
+        clearTimeout(saveTimer);
+      }
+
+      saveTimer = setTimeout(async () => {
+        saveTimer = null;
+        const { photos, edits, selectedId, isLoaded } = get();
+        if (isLoaded) {
+          await window.electron.catalog.save({
+            version: 1,
+            photos,
+            edits,
+            selectedId,
+            lastOpenedAt: Date.now(),
+          });
+        }
+
+        const resolvers = pendingSaveResolvers;
+        pendingSaveResolvers = [];
+        resolvers.forEach((done) => done());
+      }, 250);
     });
   },
 

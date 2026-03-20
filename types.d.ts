@@ -12,6 +12,11 @@ interface ImportedPhoto {
   importedAt: number;
 }
 
+type LoadedPhotoBinary = {
+  mimeType: string;
+  bytes: Uint8Array;
+};
+
 interface ExportPhotoRequest {
   base64: string;
   mimeType: 'image/jpeg' | 'image/png' | 'image/webp';
@@ -99,7 +104,7 @@ interface Window {
       save: (data: Catalog) => Promise<boolean>;
     };
     photo: {
-      loadFromPath: (filePath: string) => Promise<{ dataUrl: string } | null>;
+      loadFromPath: (filePath: string) => Promise<LoadedPhotoBinary | null>;
       saveThumbnail: (photoId: string, thumbnailDataUrl: string) => Promise<{ thumbnailPath: string; thumbnailDataUrl: string } | null>;
       generateThumbnail: (photoId: string, thumbnailDataUrl: string) => Promise<{ thumbnailPath: string; thumbnailDataUrl: string } | null>;
       loadThumbnail: (thumbnailPath: string) => Promise<{ thumbnailDataUrl: string } | null>;

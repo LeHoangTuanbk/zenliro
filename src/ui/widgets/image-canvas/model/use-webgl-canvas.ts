@@ -11,6 +11,7 @@ import type { HslChannel } from '@/features/develop/edit/color-mixer';
 import { useColorGradingStore } from '@/features/develop/edit/color-grading';
 import { useEffectsStore } from '@/features/develop/edit/effects';
 import {
+  arrayBufferToBlob,
   dataUrlToBlob,
   dataUrlToArrayBuffer,
   drawBitmapWithOrientation,
@@ -22,6 +23,8 @@ import type { CropState } from '@/features/develop/crop';
 type Params = {
   photoId?: string | null;
   dataUrl: string | null;
+  imageBuffer?: ArrayBuffer | null;
+  imageMimeType?: string | null;
   orientation?: number;
   masks: Mask[];
   healSpots: HealSpot[];
@@ -29,6 +32,7 @@ type Params = {
   cropInteractionProps?: CropInteractionProps;
   confirmedCropState?: CropState | null;
   onImageLoaded?: (w: number, h: number) => void;
+  onImageRendered?: () => void;
   containerRef: RefObject<HTMLElement | null>;
   zoomRef: RefObject<number>;
   onResetView: () => void;
@@ -38,6 +42,8 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   const {
     photoId,
     dataUrl,
+    imageBuffer,
+    imageMimeType,
     orientation: precomputedOrientation,
     masks,
     healSpots,
@@ -45,6 +51,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     cropInteractionProps,
     confirmedCropState,
     onImageLoaded,
+    onImageRendered,
     containerRef,
     zoomRef,
     onResetView,
@@ -97,7 +104,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     getRenderedPixels: () => rendererRef.current?.readCurrentPixels() ?? null,
   }));
 
-  function renderToCanvas() {
+  const renderToCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     const renderer = rendererRef.current;
     if (!canvas || !renderer || !originalImgRef.current) return;
@@ -106,7 +113,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     } catch (err) {
       console.error('[ImageCanvas] render error:', err);
     }
-  }
+  }, []);
 
   function computeAndUploadSpots(spots: HealSpot[]) {
     const renderer = rendererRef.current;
@@ -185,7 +192,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     const canvas = canvasRef.current!;
     const renderer = new WebGLRenderer();
     try {
-      renderer.init(canvas);
+      renderer.init(canvas, { preserveDrawingBuffer: true });
       rendererRef.current = renderer;
     } catch (err) {
       console.error('[WebGL] init failed:', err);
@@ -198,8 +205,8 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
 
   // ── Load image ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!dataUrl || !rendererRef.current) return;
-    const cacheKey = photoId ?? dataUrl;
+    if ((!dataUrl && !imageBuffer) || !rendererRef.current) return;
+    const cacheKey = photoId ?? dataUrl ?? `${imageMimeType ?? 'image'}:${imageBuffer?.byteLength ?? 0}`;
     const cached = decodedImageCacheRef.current.get(cacheKey);
     if (cached) {
       applyLoadedImage(cached.canvas, cached.imageData, cached.width, cached.height);
@@ -212,8 +219,11 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
 
     (async () => {
       try {
-        const orientation = precomputedOrientation ?? await readExifOrientation(dataUrlToArrayBuffer(dataUrl));
-        const blob = dataUrlToBlob(dataUrl);
+        const sourceBuffer = imageBuffer ?? dataUrlToArrayBuffer(dataUrl!);
+        const orientation = precomputedOrientation ?? await readExifOrientation(sourceBuffer);
+        const blob = imageBuffer
+          ? arrayBufferToBlob(imageBuffer, imageMimeType ?? 'image/jpeg')
+          : dataUrlToBlob(dataUrl!);
         const bmp = await createImageBitmap(blob, { imageOrientation: 'none' });
 
         if (cancelled) {
@@ -247,12 +257,12 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dataUrl, photoId]);
+  }, [dataUrl, imageBuffer, imageMimeType, photoId]);
 
   useEffect(() => {
     computeAndUploadSpots(healSpots);
     renderToCanvas();
-  }, [healSpots]);
+  }, [healSpots, renderToCanvas]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -304,16 +314,12 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     }
     renderToCanvas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cropInteractionProps, confirmedCropState]);
+  }, [confirmedCropState, cropInteractionProps, renderToCanvas]);
 
   useEffect(() => {
     if (!canvasRef.current || !rendererRef.current) return;
-    try {
-      rendererRef.current.render(canvasRef.current, adjustments);
-    } catch (err) {
-      console.error('[WebGL] render failed:', err);
-    }
-  }, [adjustments]);
+    renderToCanvas();
+  }, [adjustments, renderToCanvas]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -325,7 +331,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     const bLut = combineLUTs(rgbLut, generateLUT(points.b));
     renderer.setToneCurveLUT(rLut, gLut, bLut);
     renderToCanvas();
-  }, [toneCurvePoints, toneCurveParametric]);
+  }, [renderToCanvas, toneCurveParametric, toneCurvePoints]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -346,7 +352,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       channels.map((c) => colorMixerLum[c]),
     );
     renderToCanvas();
-  }, [colorMixerHue, colorMixerSat, colorMixerLum]);
+  }, [colorMixerHue, colorMixerLum, colorMixerSat, renderToCanvas]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -364,7 +370,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       cgBalance / 100,
     );
     renderToCanvas();
-  }, [cgShadows, cgMidtones, cgHighlights, cgBlending, cgBalance]);
+  }, [cgBalance, cgBlending, cgHighlights, cgMidtones, cgShadows, renderToCanvas]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -380,7 +386,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       effects.grainRoughness / 100,
     );
     renderToCanvas();
-  }, [effects]);
+  }, [effects, renderToCanvas]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -460,7 +466,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     }
 
     renderToCanvas();
-  }, [masks]);
+  }, [masks, renderToCanvas]);
 
   // ── Heal: add spot with auto-source ─────────────────────────────────────
   const handleOverlayAddSpot = useCallback(

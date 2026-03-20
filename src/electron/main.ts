@@ -64,7 +64,6 @@ app.on('ready', () => {
         };
         const mimeType = mimeMap[ext] || 'image/jpeg';
         const rawBuf = fs.readFileSync(filePath);
-        const base64 = rawBuf.toString('base64');
         const photoId = `${filePath}-${stats.mtimeMs}`;
 
         const thumbnailDataUrl = '';
@@ -93,7 +92,7 @@ app.on('ready', () => {
           mimeType,
           width: photoWidth,
           height: photoHeight,
-          dataUrl: `data:${mimeType};base64,${base64}`,
+          dataUrl: '',
           thumbnailDataUrl,
           orientation,
           importedAt: Date.now(),
