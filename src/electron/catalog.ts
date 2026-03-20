@@ -3,7 +3,6 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { validateEventFrame } from './utils.js';
-import { readExifOrientation, applyOrientation } from './exif-orientation.js';
 
 const MIME_MAP: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
@@ -61,17 +60,11 @@ export function registerCatalogHandlers() {
   ipcMain.handle('photo:generateThumbnail', async (event, filePath: string, photoId: string) => {
     validateEventFrame(event.senderFrame!);
     try {
-      const rawBuf = fs.readFileSync(filePath);
-      const orientation = await readExifOrientation(rawBuf);
+      // createFromPath on macOS auto-applies EXIF orientation
       const img = nativeImage.createFromPath(filePath);
       if (img.isEmpty()) return null;
-      // Resize first (small), then rotate — much faster
-      const swap = orientation >= 5 && orientation <= 8;
-      const resizeW = swap ? undefined : THUMBNAIL_WIDTH;
-      const resizeH = swap ? THUMBNAIL_WIDTH : undefined;
-      const small = img.resize({ width: resizeW, height: resizeH });
-      const oriented = applyOrientation(small, orientation);
-      const jpegBuffer = oriented.toJPEG(80);
+      const small = img.resize({ width: THUMBNAIL_WIDTH });
+      const jpegBuffer = small.toJPEG(80);
       const thumbPath = path.join(getThumbnailDir(), `${hashId(photoId)}.jpg`);
       fs.writeFileSync(thumbPath, jpegBuffer);
       const b64 = jpegBuffer.toString('base64');

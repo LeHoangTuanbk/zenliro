@@ -27,25 +27,42 @@ export function usePhotos() {
     return unsub;
   }, []);
 
-  // On catalog load: load thumbnails only (fast), defer full-res
+  // On catalog load: show photos immediately, stream thumbnails in
   useEffect(() => {
     if (!isLoaded || catalogPhotos.length === 0) return;
 
+    // Show all photos instantly (no thumbnails yet)
+    setPhotos(catalogPhotos.map((p) => ({ ...p, dataUrl: '', thumbnailDataUrl: '' })));
+    if (catalogSelectedId) setSelectedId(catalogSelectedId);
+
+    // Stream thumbnails in batches
+    let cancelled = false;
+    const BATCH_SIZE = 10;
+
     const loadThumbnails = async () => {
-      const restored: ImportedPhoto[] = [];
-      for (const p of catalogPhotos) {
-        let thumbnailDataUrl = '';
-        if (p.thumbnailPath) {
-          const thumb = await window.electron.photo.loadThumbnail(p.thumbnailPath);
-          if (thumb) thumbnailDataUrl = thumb.thumbnailDataUrl;
-        }
-        restored.push({ ...p, dataUrl: '', thumbnailDataUrl });
+      for (let i = 0; i < catalogPhotos.length; i += BATCH_SIZE) {
+        if (cancelled) return;
+        const batch = catalogPhotos.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(
+          batch.map(async (p) => {
+            if (!p.thumbnailPath) return { id: p.id, thumbnailDataUrl: '' };
+            const thumb = await window.electron.photo.loadThumbnail(p.thumbnailPath);
+            return { id: p.id, thumbnailDataUrl: thumb?.thumbnailDataUrl ?? '' };
+          }),
+        );
+        if (cancelled) return;
+        const thumbMap = new Map(results.map((r) => [r.id, r.thumbnailDataUrl]));
+        setPhotos((prev) =>
+          prev.map((p) => {
+            const thumb = thumbMap.get(p.id);
+            return thumb != null ? { ...p, thumbnailDataUrl: thumb } : p;
+          }),
+        );
       }
-      setPhotos(restored);
-      if (catalogSelectedId) setSelectedId(catalogSelectedId);
     };
 
     loadThumbnails();
+    return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded]);
 

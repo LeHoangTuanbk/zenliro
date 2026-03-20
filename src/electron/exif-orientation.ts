@@ -15,6 +15,41 @@ export async function readExifOrientation(buf: Buffer): Promise<number> {
 }
 
 /**
+ * Read raw pixel dimensions from EXIF (before any orientation transform).
+ * Returns { width, height } or null if unavailable.
+ */
+export async function readExifDimensions(buf: Buffer): Promise<{ width: number; height: number } | null> {
+  try {
+    const exif = await exifr.parse(buf, { pick: ['ImageWidth', 'ImageHeight', 'ExifImageWidth', 'ExifImageHeight'] });
+    const w = exif?.ExifImageWidth ?? exif?.ImageWidth;
+    const h = exif?.ExifImageHeight ?? exif?.ImageHeight;
+    if (w && h) return { width: w, height: h };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if nativeImage already applied EXIF orientation by comparing
+ * its dimensions with raw EXIF dimensions and the orientation tag.
+ */
+export function isAlreadyOriented(
+  imgSize: { width: number; height: number },
+  rawDims: { width: number; height: number } | null,
+  orientation: number,
+): boolean {
+  if (!rawDims || orientation <= 1 || orientation > 8) return false;
+  const shouldSwap = orientation >= 5 && orientation <= 8;
+  if (!shouldSwap) return false;
+  // If orientation says swap but nativeImage dimensions are already swapped
+  // (width < height when raw is width > height, or vice versa), it was auto-applied
+  const rawIsLandscape = rawDims.width > rawDims.height;
+  const imgIsLandscape = imgSize.width > imgSize.height;
+  return rawIsLandscape !== imgIsLandscape;
+}
+
+/**
  * Apply EXIF orientation to a nativeImage, returning a correctly-oriented image.
  * Handles all 8 EXIF orientations including flips and rotations.
  */
