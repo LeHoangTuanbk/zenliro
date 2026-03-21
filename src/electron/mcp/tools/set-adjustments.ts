@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requestFromRenderer } from '../ipc-bridge.js';
+import { requestFromApp } from '../http-bridge.js';
 import { AGENT_CHANNELS } from '../const.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -27,7 +27,7 @@ export function registerSetAdjustments(server: McpServer) {
       },
     },
     async (params) => {
-      const result = await requestFromRenderer<{ applied: Record<string, number> }>(
+      const result = await requestFromApp<{ applied: Record<string, number> }>(
         AGENT_CHANNELS.SET_ADJUSTMENTS,
         params,
       );

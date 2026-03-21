@@ -1,5 +1,4 @@
-import { z } from 'zod';
-import { requestFromRenderer } from '../ipc-bridge.js';
+import { requestFromApp } from '../http-bridge.js';
 import { AGENT_CHANNELS } from '../const.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -13,7 +12,7 @@ export function registerGetEditState(server: McpServer) {
       inputSchema: {},
     },
     async () => {
-      const state = await requestFromRenderer<unknown>(
+      const state = await requestFromApp<unknown>(
         AGENT_CHANNELS.GET_EDIT_STATE,
       );
       return {

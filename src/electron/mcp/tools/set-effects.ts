@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requestFromRenderer } from '../ipc-bridge.js';
+import { requestFromApp } from '../http-bridge.js';
 import { AGENT_CHANNELS } from '../const.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -22,7 +22,7 @@ export function registerSetEffects(server: McpServer) {
       },
     },
     async (params) => {
-      await requestFromRenderer(AGENT_CHANNELS.SET_EFFECTS, params);
+      await requestFromApp(AGENT_CHANNELS.SET_EFFECTS, params);
       const keys = Object.keys(params).filter(
         (k) => params[k as keyof typeof params] !== undefined,
       );

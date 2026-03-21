@@ -1,6 +1,5 @@
 import { spawn, type ChildProcess } from 'child_process';
-import fs from 'fs';
-import { CLAUDE_CLI, getMcpConfigPath } from './const.js';
+import { CLAUDE_CLI } from './const.js';
 import { SYSTEM_PROMPT } from './system-prompt.js';
 import { StreamLineBuffer, parseStreamLine, type ParsedStreamEvent } from './stream-parser.js';
 
@@ -19,12 +18,11 @@ export class ClaudeCodeManager {
     if (this.isRunning()) return;
 
     this.onEvent = onEvent;
-    this.writeMcpConfig();
 
+    // MCP server is registered globally in ~/.claude.json — no need for --mcp-config
     const args = [
       '--output-format', 'stream-json',
       '--verbose',
-      '--mcp-config', getMcpConfigPath(),
       '--system-prompt', SYSTEM_PROMPT,
       '--allowedTools', 'mcp__zenliro__*',
     ];
@@ -84,26 +82,5 @@ export class ClaudeCodeManager {
     }
     this.process = null;
     this.onEvent = null;
-  }
-
-  private writeMcpConfig(): void {
-    const configPath = getMcpConfigPath();
-    const config = {
-      mcpServers: {
-        zenliro: {
-          command: 'node',
-          args: [this.getMcpServerPath()],
-        },
-      },
-    };
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  }
-
-  private getMcpServerPath(): string {
-    // In production, MCP server is in dist-electron; in dev, also dist-electron
-    const base = process.env.NODE_ENV === 'development'
-      ? process.cwd()
-      : process.resourcesPath ?? process.cwd();
-    return `${base}/dist-electron/mcp/zenliro-mcp-server.js`;
   }
 }

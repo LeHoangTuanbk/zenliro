@@ -4,6 +4,8 @@ import { getPreloadPath, getUIPath, getTrayIconPath } from './path-resolver.js';
 import { registerCatalogHandlers } from './catalog.js';
 import { registerAgentIpc } from './agent/agent-ipc.js';
 import { setMainWindow } from './mcp/ipc-bridge.js';
+import { startLocalServer, stopLocalServer } from './mcp/local-server.js';
+import { registerMcpGlobally } from './mcp/register-global.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -31,6 +33,13 @@ app.on('ready', () => {
   registerAgentIpc(mainWindow);
   setMainWindow(mainWindow);
   setupTray(mainWindow);
+
+  // Start local HTTP bridge for MCP server and register globally in Claude Code
+  startLocalServer().then(() => {
+    registerMcpGlobally();
+  }).catch((err) => {
+    console.error('[Zenliro] Failed to start local MCP bridge:', err);
+  });
 
   // ── Import ────────────────────────────────────────────────────────────────
   ipcMainHandle('importPhotos', async () => {
@@ -220,11 +229,13 @@ function handleCloseEvents(mainWindow: BrowserWindow) {
     if (!mainWindow.isVisible()) mainWindow.show();
   });
 
-  // Before quitting: ask renderer to save, wait for ack (max 3s) then quit
+  // Before quitting: clean up MCP bridge, ask renderer to save, wait for ack (max 3s) then quit
   app.on('before-quit', (e) => {
     if (quitting) return;
     e.preventDefault();
     quitting = true;
+
+    stopLocalServer();
 
     const timeout = setTimeout(() => app.quit(), 3000);
 

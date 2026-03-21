@@ -1,4 +1,4 @@
-import { requestFromRenderer } from '../ipc-bridge.js';
+import { requestFromApp } from '../http-bridge.js';
 import { AGENT_CHANNELS } from '../const.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -12,7 +12,7 @@ export function registerGetPhotoInfo(server: McpServer) {
       inputSchema: {},
     },
     async () => {
-      const info = await requestFromRenderer<unknown>(
+      const info = await requestFromApp<unknown>(
         AGENT_CHANNELS.GET_PHOTO_INFO,
       );
       return {

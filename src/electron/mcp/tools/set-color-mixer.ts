@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requestFromRenderer } from '../ipc-bridge.js';
+import { requestFromApp } from '../http-bridge.js';
 import { AGENT_CHANNELS } from '../const.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -19,7 +19,7 @@ export function registerSetColorMixer(server: McpServer) {
       },
     },
     async ({ mode, channel, value }) => {
-      await requestFromRenderer(AGENT_CHANNELS.SET_COLOR_MIXER, { mode, channel, value });
+      await requestFromApp(AGENT_CHANNELS.SET_COLOR_MIXER, { mode, channel, value });
       return {
         content: [
           {

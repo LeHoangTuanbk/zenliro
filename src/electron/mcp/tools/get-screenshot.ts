@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requestFromRenderer } from '../ipc-bridge.js';
+import { requestFromApp } from '../http-bridge.js';
 import { AGENT_CHANNELS } from '../const.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -20,7 +20,7 @@ export function registerGetScreenshot(server: McpServer) {
       },
     },
     async ({ quality }) => {
-      const base64 = await requestFromRenderer<string>(
+      const base64 = await requestFromApp<string>(
         AGENT_CHANNELS.GET_SCREENSHOT,
         { quality },
       );

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requestFromRenderer } from '../ipc-bridge.js';
+import { requestFromApp } from '../http-bridge.js';
 import { AGENT_CHANNELS } from '../const.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -18,7 +18,7 @@ export function registerSetColorGrading(server: McpServer) {
       },
     },
     async ({ range, hue, sat, lum }) => {
-      await requestFromRenderer(AGENT_CHANNELS.SET_COLOR_GRADING, { range, hue, sat, lum });
+      await requestFromApp(AGENT_CHANNELS.SET_COLOR_GRADING, { range, hue, sat, lum });
       const parts: string[] = [];
       if (hue !== undefined) parts.push(`hue=${hue}`);
       if (sat !== undefined) parts.push(`sat=${sat}`);

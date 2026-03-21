@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { requestFromRenderer } from '../ipc-bridge.js';
+import { requestFromApp } from '../http-bridge.js';
 import { AGENT_CHANNELS } from '../const.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
@@ -26,7 +26,7 @@ export function registerSetToneCurve(server: McpServer) {
       },
     },
     async ({ channel, points }) => {
-      await requestFromRenderer(AGENT_CHANNELS.SET_TONE_CURVE, { channel, points });
+      await requestFromApp(AGENT_CHANNELS.SET_TONE_CURVE, { channel, points });
       return {
         content: [
           {
