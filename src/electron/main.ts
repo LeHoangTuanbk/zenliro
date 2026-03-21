@@ -2,6 +2,8 @@ import { app, BrowserWindow, dialog, ipcMain, Tray, Menu, nativeImage } from 'el
 import { ipcMainHandle, isDev, validateEventFrame } from './utils.js';
 import { getPreloadPath, getUIPath, getTrayIconPath } from './path-resolver.js';
 import { registerCatalogHandlers } from './catalog.js';
+import { registerAgentIpc } from './agent/agent-ipc.js';
+import { setMainWindow } from './mcp/ipc-bridge.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -26,6 +28,8 @@ app.on('ready', () => {
   }
 
   registerCatalogHandlers();
+  registerAgentIpc(mainWindow);
+  setMainWindow(mainWindow);
   setupTray(mainWindow);
 
   // ── Import ────────────────────────────────────────────────────────────────
