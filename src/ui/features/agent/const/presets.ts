@@ -57,7 +57,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Boosted saturation and vivid colors for impact',
     category: 'landscape',
     prompt: 'Make colors pop — boost vibrance +40, saturation +15, increase clarity +25, moderate contrast boost, make blues deeper and greens richer',
-    thumbnail: 'https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=400&h=300&fit=crop',
   },
   // Row 2
   {
@@ -148,7 +148,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Soft pastel colors, low contrast, dreamy and ethereal feel',
     category: 'portrait',
     prompt: 'Create pastel dream — lift shadows +30, reduce contrast -20, desaturate -10, soft pink in highlights, light blue in shadows, dreamy low-contrast ethereal mood',
-    thumbnail: 'https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=400&h=300&fit=crop',
   },
   {
     id: 'analog-kodak',
@@ -172,7 +172,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Rich amber and orange tones evoking fall foliage',
     category: 'landscape',
     prompt: 'Create autumn warmth — warm temperature +15, boost orange and red saturation, shift greens toward yellow, amber highlights, rich warm tones, gentle contrast',
-    thumbnail: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&h=300&fit=crop',
   },
   {
     id: 'tropical-vibrant',
@@ -205,7 +205,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Ethereal soft glow with lifted blacks, pastel tints and gentle bloom',
     category: 'portrait',
     prompt: 'Create dreamy haze — reduce clarity -15, lift blacks with curve, slight dehaze negative, pastel pink highlights, soft low contrast, ethereal light bloom feel',
-    thumbnail: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=400&h=300&fit=crop',
   },
   {
     id: 'dark-moody',
@@ -213,7 +213,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Low-key dramatic, low lighting with crushed blacks and rich shadows',
     category: 'street',
     prompt: 'Apply dark moody — reduce exposure -0.5, crush blacks, boost contrast +30, cool shadows, desaturate -15, strong vignette, low-key dramatic lighting feel',
-    thumbnail: 'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1493397212122-2b85dda8106b?w=400&h=300&fit=crop',
   },
   {
     id: 'vintage-polaroid',
@@ -221,6 +221,6 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Faded retro Polaroid look with warm cast, soft vignette and light leak',
     category: 'film',
     prompt: 'Create Polaroid look — warm color cast, fade blacks with curve, reduce contrast, yellow tint in highlights, slight vignette, add grain amount 10, retro warm feel',
-    thumbnail: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1501004318855-b174af8812de?w=400&h=300&fit=crop',
   },
 ];

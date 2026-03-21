@@ -60,9 +60,7 @@ export function AgentPanelView({
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 shrink-0">
-        <span className="text-[12px] font-semibold text-[#e0e0e0] tracking-wide">
-          AI Agent
-        </span>
+        <span className="text-[12px] font-semibold text-[#e0e0e0] tracking-wide">Agent</span>
         <div className="flex items-center gap-2">
           {hasContent && (
             <button
@@ -92,7 +90,7 @@ export function AgentPanelView({
             title="Close"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-              <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path d="M2 6h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </button>
         </div>
@@ -102,9 +100,7 @@ export function AgentPanelView({
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3">
         {!hasContent ? (
           <div className="flex flex-col items-center justify-center h-full pb-4">
-            <p className="text-[12px] text-[#888] mb-5">
-              Ask me to edit your photo...
-            </p>
+            <p className="text-[12px] text-[#888] mb-5">Ask me to edit your photo...</p>
             <div className="flex flex-col gap-2 w-full max-w-[320px]">
               {SUGGESTIONS.map((s) => (
                 <button
@@ -137,11 +133,22 @@ export function AgentPanelView({
             {isStreaming && currentItems.length === 0 && (
               <div className="flex items-center gap-2 py-2">
                 <div className="flex gap-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce"
+                    style={{ animationDelay: '0ms' }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce"
+                    style={{ animationDelay: '300ms' }}
+                  />
                 </div>
-                <span className="text-[11px] text-[#c89b3c] animate-pulse">Connecting to AI...</span>
+                <span className="text-[11px] text-[#c89b3c] animate-pulse">
+                  Connecting to AI...
+                </span>
               </div>
             )}
           </div>
