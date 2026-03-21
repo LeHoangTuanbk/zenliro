@@ -1,4 +1,6 @@
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow, ipcMain, app } from 'electron';
+import fs from 'fs';
+import path from 'path';
 import { ClaudeCodeManager } from './claude-code-manager.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
 
@@ -54,5 +56,20 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
 
   ipcMain.handle('agent:get-status', async () => {
     return { running: manager?.isRunning() ?? false };
+  });
+
+  ipcMain.handle('agent:save-reference-image', async (_event, dataUrl: string) => {
+    try {
+      const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64, 'base64');
+      const tempDir = path.join(app.getPath('temp'), 'zenliro');
+      fs.mkdirSync(tempDir, { recursive: true });
+      const filePath = path.join(tempDir, `reference-${Date.now()}.jpg`);
+      fs.writeFileSync(filePath, buffer);
+      return filePath;
+    } catch (err) {
+      console.error('[Agent] Failed to save reference image:', err);
+      return null;
+    }
   });
 }

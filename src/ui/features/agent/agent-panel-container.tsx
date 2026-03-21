@@ -26,7 +26,12 @@ export function AgentPanelContainer() {
       const { modelId } = useAgentStore.getState();
       let message = text;
       if (ref.referenceBase64) {
-        message = `${text}\n\n[Reference image attached — match this style/mood]`;
+        const tempPath = await window.electron?.agent?.saveReferenceImage(ref.referenceBase64);
+        if (tempPath) {
+          message = `${text}\n\nReference image saved at: ${tempPath}\nPlease read this image file and match its style/mood/color palette to the current photo.`;
+        }
+        // Clear after sending — reference is per-message, not persistent
+        useReferenceStore.getState().clear();
       }
       await window.electron?.agent?.sendMessage(message, { model: modelId });
     },

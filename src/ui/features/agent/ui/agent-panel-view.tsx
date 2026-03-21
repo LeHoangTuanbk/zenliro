@@ -124,30 +124,24 @@ export function AgentPanelView({
               <div>
                 <StreamItems items={currentItems} />
                 {isStreaming && (
-                  <span className="inline-block w-1 h-3.5 bg-[#c89b3c] animate-pulse ml-0.5 rounded-sm" />
+                  <div className="inline-flex gap-1 ml-1 mt-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
                 )}
               </div>
             )}
 
-            {/* Initializing indicator — shown when streaming but no items yet */}
+            {/* Initializing indicator */}
             {isStreaming && currentItems.length === 0 && (
-              <div className="flex items-center gap-2 py-2">
-                <div className="flex gap-0.5">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce"
-                    style={{ animationDelay: '0ms' }}
-                  />
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce"
-                    style={{ animationDelay: '150ms' }}
-                  />
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce"
-                    style={{ animationDelay: '300ms' }}
-                  />
+              <div className="flex items-center gap-2.5 py-3">
+                <div className="relative w-4 h-4">
+                  <span className="absolute inset-0 rounded-full bg-[#c89b3c]/30 animate-ping" />
+                  <span className="absolute inset-[3px] rounded-full bg-[#c89b3c]" />
                 </div>
-                <span className="text-[11px] text-[#c89b3c] animate-pulse">
-                  Connecting to AI...
+                <span className="text-[11px] text-[#c89b3c]/80 italic">
+                  Analyzing...
                 </span>
               </div>
             )}

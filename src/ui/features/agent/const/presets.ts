@@ -221,6 +221,6 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Faded retro Polaroid look with warm cast, soft vignette and light leak',
     category: 'film',
     prompt: 'Create Polaroid look — warm color cast, fade blacks with curve, reduce contrast, yellow tint in highlights, slight vignette, add grain amount 10, retro warm feel',
-    thumbnail: 'https://images.unsplash.com/photo-1501004318855-b174af8812de?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1526045612212-70caf35c14df?w=400&h=300&fit=crop',
   },
 ];

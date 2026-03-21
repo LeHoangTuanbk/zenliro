@@ -53,26 +53,42 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
     el.style.height = `${Math.min(el.scrollHeight, 100)}px`;
   };
 
+  const processImageFile = async (file: File) => {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, 800 / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = new OffscreenCanvas(w, h);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close();
+    const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
+    const reader = new FileReader();
+    reader.onload = () => setReference(reader.result as string);
+    reader.readAsDataURL(blob);
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        if (file) processImageFile(file);
+        return;
+      }
+    }
+  };
+
   const handleAttach = () => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
-    input.onchange = async () => {
+    input.onchange = () => {
       const file = input.files?.[0];
-      if (!file) return;
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, 800 / Math.max(bitmap.width, bitmap.height));
-      const w = Math.round(bitmap.width * scale);
-      const h = Math.round(bitmap.height * scale);
-      const canvas = new OffscreenCanvas(w, h);
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      ctx.drawImage(bitmap, 0, 0, w, h);
-      bitmap.close();
-      const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
-      const reader = new FileReader();
-      reader.onload = () => setReference(reader.result as string);
-      reader.readAsDataURL(blob);
+      if (file) processImageFile(file);
     };
     input.click();
   };
@@ -96,6 +112,7 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           onInput={handleInput}
+          onPaste={handlePaste}
           placeholder="Edit your photo with AI..."
           rows={1}
           className="w-full bg-transparent text-[#ddd] text-[12px] px-3 pt-2.5 pb-2 resize-none focus:outline-none placeholder:text-[#555]"

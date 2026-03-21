@@ -120,6 +120,7 @@ interface Window {
       sendMessage: (text: string, options?: { model?: string }) => Promise<void>;
       stopSession: () => Promise<void>;
       getStatus: () => Promise<{ running: boolean }>;
+      saveReferenceImage: (dataUrl: string) => Promise<string | null>;
 
       onToolRequest: (
         channel: string,
