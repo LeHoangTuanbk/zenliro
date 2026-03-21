@@ -26,7 +26,7 @@ electron.contextBridge.exposeInMainWorld('electron', {
 
   agent: {
     startSession: () => electron.ipcRenderer.invoke('agent:start-session'),
-    sendMessage: (text: string) => electron.ipcRenderer.invoke('agent:send-message', text),
+    sendMessage: (text: string, options?: { model?: string }) => electron.ipcRenderer.invoke('agent:send-message', text, options),
     stopSession: () => electron.ipcRenderer.invoke('agent:stop-session'),
     getStatus: () => electron.ipcRenderer.invoke('agent:get-status'),
 

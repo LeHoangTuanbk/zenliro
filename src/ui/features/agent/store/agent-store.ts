@@ -23,22 +23,34 @@ export type AgentMessage = {
   timestamp: number;
 };
 
+export const AGENT_MODELS = [
+  { id: 'opus', label: 'Claude Opus 4.6', tag: 'Best' },
+  { id: 'sonnet', label: 'Claude Sonnet 4.6', tag: 'Fast' },
+  { id: 'haiku', label: 'Claude Haiku 4.5', tag: 'Fastest' },
+] as const;
+
+export type AgentModelId = (typeof AGENT_MODELS)[number]['id'];
+
 type AgentStore = {
   isOpen: boolean;
   isMaximized: boolean;
   isStreaming: boolean;
   isScanning: boolean;
   messages: AgentMessage[];
-  // Streaming state — items appear inline as they arrive
   currentItems: StreamItem[];
   currentThinking: string;
   actionToast: string | null;
+  // Settings
+  modelId: AgentModelId;
+  fastMode: boolean;
 
   toggle: () => void;
   setOpen: (open: boolean) => void;
   setMaximized: (max: boolean) => void;
   setStreaming: (v: boolean) => void;
   setScanning: (v: boolean) => void;
+  setModelId: (id: AgentModelId) => void;
+  toggleFastMode: () => void;
 
   addUserMessage: (text: string) => void;
   appendStreamText: (chunk: string) => void;
@@ -62,12 +74,16 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   currentItems: [],
   currentThinking: '',
   actionToast: null,
+  modelId: 'sonnet',
+  fastMode: true,
 
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),
   setOpen: (isOpen) => set({ isOpen }),
   setMaximized: (isMaximized) => set({ isMaximized }),
   setStreaming: (isStreaming) => set({ isStreaming }),
   setScanning: (isScanning) => set({ isScanning }),
+  setModelId: (modelId) => set({ modelId }),
+  toggleFastMode: () => set((s) => ({ fastMode: !s.fastMode })),
 
   addUserMessage: (text) =>
     set((s) => ({

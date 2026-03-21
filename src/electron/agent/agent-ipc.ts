@@ -42,9 +42,9 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
     if (!manager) manager = new ClaudeCodeManager();
   });
 
-  ipcMain.handle('agent:send-message', async (_event, text: string) => {
+  ipcMain.handle('agent:send-message', async (_event, text: string, options?: { model?: string }) => {
     if (!manager) manager = new ClaudeCodeManager();
-    manager.sendMessage(text, handleStreamEvent);
+    manager.sendMessage(text, handleStreamEvent, options);
   });
 
   ipcMain.handle('agent:stop-session', async () => {

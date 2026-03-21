@@ -117,7 +117,7 @@ interface Window {
 
     agent: {
       startSession: () => Promise<void>;
-      sendMessage: (text: string) => Promise<void>;
+      sendMessage: (text: string, options?: { model?: string }) => Promise<void>;
       stopSession: () => Promise<void>;
       getStatus: () => Promise<{ running: boolean }>;
 

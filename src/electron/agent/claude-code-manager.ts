@@ -15,7 +15,7 @@ export class ClaudeCodeManager {
     return this.process !== null && !this.process.killed;
   }
 
-  sendMessage(text: string, onEvent: StreamCallback): void {
+  sendMessage(text: string, onEvent: StreamCallback, options?: { model?: string }): void {
     // Kill any running process
     if (this.isRunning()) {
       this.process?.kill('SIGTERM');
@@ -33,6 +33,10 @@ export class ClaudeCodeManager {
       '--allowedTools', 'mcp__zenliro__*',
       '--dangerously-skip-permissions',
     ];
+
+    if (options?.model) {
+      args.push('--model', options.model);
+    }
 
     // Resume previous session for multi-turn context
     if (this.sessionId) {

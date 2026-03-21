@@ -21,11 +21,12 @@ export function AgentPanelContainer() {
     async (text: string) => {
       addUserMessage(text);
       const ref = useReferenceStore.getState();
+      const { modelId } = useAgentStore.getState();
       let message = text;
       if (ref.referenceBase64) {
         message = `${text}\n\n[Reference image attached — match this style/mood]`;
       }
-      await window.electron?.agent?.sendMessage(message);
+      await window.electron?.agent?.sendMessage(message, { model: modelId });
     },
     [addUserMessage],
   );
