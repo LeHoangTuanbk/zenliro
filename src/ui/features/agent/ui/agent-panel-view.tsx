@@ -132,6 +132,18 @@ export function AgentPanelView({
                 )}
               </div>
             )}
+
+            {/* Initializing indicator — shown when streaming but no items yet */}
+            {isStreaming && currentItems.length === 0 && (
+              <div className="flex items-center gap-2 py-2">
+                <div className="flex gap-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+                <span className="text-[11px] text-[#c89b3c] animate-pulse">Connecting to AI...</span>
+              </div>
+            )}
           </div>
         )}
       </div>

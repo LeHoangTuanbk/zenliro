@@ -20,6 +20,8 @@ export function AgentPanelContainer() {
   const handleSend = useCallback(
     async (text: string) => {
       addUserMessage(text);
+      // Show loading immediately while CLI spawns
+      useAgentStore.setState({ isStreaming: true });
       const ref = useReferenceStore.getState();
       const { modelId } = useAgentStore.getState();
       let message = text;
