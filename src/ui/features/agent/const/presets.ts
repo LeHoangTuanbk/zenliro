@@ -102,11 +102,11 @@ export const STYLE_PRESETS: StylePreset[] = [
   },
   // Row 3
   {
-    id: 'trong-treo',
-    label: 'Trong Trẻo',
+    id: 'airy-bright',
+    label: 'Airy Bright',
     description: 'Clear, airy, bright tones with lifted shadows and soft highlights',
     category: 'portrait',
-    prompt: 'Create trong trẻo look — lift shadows +40, reduce highlights -20, soft contrast, slightly cool temperature, boost clarity gently, pastel-like lifted blacks, airy bright feel',
+    prompt: 'Create airy bright look — lift shadows +40, reduce highlights -20, soft contrast, slightly cool temperature, boost clarity gently, pastel-like lifted blacks, airy bright feel',
     thumbnail: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop',
   },
   {
