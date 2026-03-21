@@ -42,11 +42,16 @@ export function useAgentIpc(
       [AGENT_CHANNELS.GET_SCREENSHOT]: (req) => {
         const payload = req.payload as { quality?: number } | undefined;
         const quality = payload?.quality ?? 0.7;
-        const dataUrl = canvasRef.current?.getExportDataUrl('image/jpeg', quality);
-        const base64 = dataUrl?.replace(/^data:image\/jpeg;base64,/, '') ?? '';
         useAgentStore.getState().setScanning(true);
-        setTimeout(() => useAgentStore.getState().setScanning(false), 1500);
-        respond(req.requestId, base64);
+        // Wait for WebGL to finish rendering latest adjustments before capturing
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const dataUrl = canvasRef.current?.getExportDataUrl('image/jpeg', quality);
+            const base64 = dataUrl?.replace(/^data:image\/jpeg;base64,/, '') ?? '';
+            setTimeout(() => useAgentStore.getState().setScanning(false), 1200);
+            respond(req.requestId, base64);
+          });
+        });
       },
 
       [AGENT_CHANNELS.GET_EDIT_STATE]: (req) => {

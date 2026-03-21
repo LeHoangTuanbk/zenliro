@@ -58,6 +58,12 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
     return { running: manager?.isRunning() ?? false };
   });
 
+  // Kill agent process when app is quitting
+  app.on('before-quit', () => {
+    manager?.stop();
+    manager = null;
+  });
+
   ipcMain.handle('agent:save-reference-image', async (_event, dataUrl: string) => {
     try {
       const base64 = dataUrl.replace(/^data:image\/\w+;base64,/, '');
