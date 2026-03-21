@@ -16,9 +16,7 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const modelId = useAgentStore((s) => s.modelId);
-  const fastMode = useAgentStore((s) => s.fastMode);
   const setModelId = useAgentStore((s) => s.setModelId);
-  const toggleFastMode = useAgentStore((s) => s.toggleFastMode);
 
   const referenceBase64 = useReferenceStore((s) => s.referenceBase64);
   const setReference = useReferenceStore((s) => s.setReference);
@@ -135,16 +133,14 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
               )}
             </div>
 
-            {/* 2x speed toggle */}
+            {/* 2x multi-agent (disabled, coming soon) */}
             <button
-              onClick={toggleFastMode}
-              className={`flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                fastMode ? 'text-[#f5c542]' : 'text-[#666] hover:text-[#999]'
-              }`}
-              title={fastMode ? 'Fast mode ON' : 'Fast mode OFF'}
+              disabled
+              className="flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-medium text-[#444] cursor-not-allowed"
+              title="2x Multi-agent analysis (coming soon)"
             >
               <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
-                <path d="M6 0.5L1 7h4l-1 4.5L9 5H5.5L6 0.5z" fill={fastMode ? '#f5c542' : 'currentColor'} />
+                <path d="M6 0.5L1 7h4l-1 4.5L9 5H5.5L6 0.5z" fill="currentColor" />
               </svg>
               <span>2x</span>
             </button>
