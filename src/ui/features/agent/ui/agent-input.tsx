@@ -13,6 +13,8 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
   const [text, setText] = useState('');
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
+  const [showAgentCount, setShowAgentCount] = useState(false);
+  const [agentCount, setAgentCount] = useState(1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const modelId = useAgentStore((s) => s.modelId);
@@ -133,17 +135,43 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
               )}
             </div>
 
-            {/* 2x multi-agent (disabled, coming soon) */}
-            <button
-              disabled
-              className="flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-medium text-[#444] cursor-not-allowed"
-              title="2x Multi-agent analysis (coming soon)"
-            >
-              <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
-                <path d="M6 0.5L1 7h4l-1 4.5L9 5H5.5L6 0.5z" fill="currentColor" />
-              </svg>
-              <span>2x</span>
-            </button>
+            {/* Parallel agents selector */}
+            <div className="relative">
+              <button
+                onClick={() => { setShowAgentCount(!showAgentCount); setShowModelMenu(false); setShowPresets(false); }}
+                className="flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-medium text-[#f5c542] hover:text-[#ffd966] transition-colors"
+                title="Parallel agents"
+              >
+                <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
+                  <path d="M6 0.5L1 7h4l-1 4.5L9 5H5.5L6 0.5z" fill="currentColor" />
+                </svg>
+                <span>{agentCount}x</span>
+              </button>
+
+              {showAgentCount && (
+                <div className="absolute bottom-full left-0 mb-1 w-[160px] bg-[#2a2a2a] border border-[#444] rounded-[6px] shadow-xl overflow-hidden z-50">
+                  <div className="px-3 py-1.5 text-[9px] text-[#666] uppercase tracking-wider border-b border-[#333]">
+                    Parallel Agents
+                  </div>
+                  {[1, 2, 3, 4, 5, 6].map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => { setAgentCount(n); setShowAgentCount(false); }}
+                      disabled={n > 1}
+                      className={`w-full text-left px-3 py-1.5 text-[12px] transition-colors ${
+                        n === agentCount
+                          ? 'text-white bg-[#333]'
+                          : n > 1
+                            ? 'text-[#555] cursor-not-allowed'
+                            : 'text-[#aaa] hover:bg-[#333] hover:text-white'
+                      }`}
+                    >
+                      {n}x
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-1">
