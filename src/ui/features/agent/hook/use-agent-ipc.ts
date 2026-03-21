@@ -18,10 +18,10 @@ import type { HealMode } from '@features/develop/heal/store/types';
 type AgentRequest = { requestId: string; payload?: unknown };
 
 /** Helper: wrap tool handler with history push */
-function withHistory(photoId: string, label: string, fn: () => void) {
+function withHistory(photoId: string, detail: string, fn: () => void) {
   useHistoryStore.getState().setIsApplying(true);
   fn();
-  useHistoryStore.getState().push(photoId, 'AI Agent', label, captureSnapshot(photoId));
+  useHistoryStore.getState().push(photoId, `AI: ${detail}`, detail, captureSnapshot(photoId));
   useHistoryStore.getState().setIsApplying(false);
 }
 
@@ -67,18 +67,23 @@ export function useAgentIpc(
         const applied: Record<string, number> = {};
         const details: string[] = [];
 
-        withHistory(photoId, '', () => {
+        // Build details first to know what changed
+        for (const [key, value] of Object.entries(params)) {
+          if (value !== undefined && key in store.adjustments) {
+            details.push(`${key} ${value >= 0 ? '+' : ''}${value}`);
+          }
+        }
+
+        const label = details.join(', ') || 'Adjustments';
+        withHistory(photoId, label, () => {
           for (const [key, value] of Object.entries(params)) {
             if (value !== undefined && key in store.adjustments) {
               store.setAdjustment(key as keyof typeof store.adjustments, value);
               applied[key] = value;
-              details.push(`${key} ${value >= 0 ? '+' : ''}${value}`);
             }
           }
         });
-        // Re-push with correct label
-        const label = details.join(', ');
-        useAgentStore.getState().showActionToast(`Adjustments: ${label}`);
+        useAgentStore.getState().showActionToast(label);
         respond(req.requestId, { applied });
       },
 
