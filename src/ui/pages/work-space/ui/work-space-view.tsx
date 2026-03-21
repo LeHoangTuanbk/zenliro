@@ -26,6 +26,8 @@ import { CanvasToolbar } from './canvas-toolbar';
 import { HistoryPanel } from '@features/develop/history';
 import { AgentPanelContainer } from '@/features/agent/agent-panel-container';
 import { AgentToggleButton } from '@/features/agent/ui/agent-toggle-button';
+import { ScanOverlay } from '@/features/agent/ui/scan-overlay';
+import { AgentActionToast } from '@/features/agent/ui/agent-action-toast';
 import type { ImportProgress } from '../hook/use-photos';
 
 export type WorkSpaceViewProps = {
@@ -266,10 +268,10 @@ export function WorkSpaceView({
                 onImageLoaded={onImageLoaded}
               />
 
-              {/* AI Agent panel */}
+              {/* AI Agent overlays */}
+              <ScanOverlay />
+              <AgentActionToast />
               <AgentPanelContainer />
-
-              {/* AI Agent toggle button */}
               <AgentToggleButton />
             </div>
           </main>
