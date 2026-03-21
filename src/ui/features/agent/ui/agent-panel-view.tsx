@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
-import type { AgentMessage as AgentMessageType } from '../store/agent-store';
+import type { AgentMessage as AgentMessageType, StreamItem } from '../store/agent-store';
 import { AgentMessage } from './agent-message';
 import { AgentInput } from './agent-input';
+import { StreamItems } from './stream-items';
 
 const SUGGESTIONS = [
   'Make this photo warmer and more cinematic',
@@ -14,7 +15,7 @@ type AgentPanelViewProps = {
   isMaximized: boolean;
   isStreaming: boolean;
   messages: AgentMessageType[];
-  currentStreamText: string;
+  currentItems: StreamItem[];
   onSend: (text: string) => void;
   onStop: () => void;
   onToggle: () => void;
@@ -26,7 +27,7 @@ export function AgentPanelView({
   isMaximized,
   isStreaming,
   messages,
-  currentStreamText,
+  currentItems,
   onSend,
   onStop,
   onToggle,
@@ -34,13 +35,13 @@ export function AgentPanelView({
   onClear,
 }: AgentPanelViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const hasMessages = messages.length > 0 || !!currentStreamText;
+  const hasContent = messages.length > 0 || currentItems.length > 0;
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, currentStreamText]);
+  }, [messages, currentItems]);
 
   const w = isMaximized ? 480 : 380;
   const h = isMaximized ? 560 : 420;
@@ -63,7 +64,7 @@ export function AgentPanelView({
           AI Agent
         </span>
         <div className="flex items-center gap-2">
-          {hasMessages && (
+          {hasContent && (
             <button
               onClick={onClear}
               className="text-[10px] text-[#666] hover:text-[#999] transition-colors"
@@ -99,8 +100,7 @@ export function AgentPanelView({
 
       {/* Content */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3">
-        {!hasMessages ? (
-          /* Empty state with suggestions */
+        {!hasContent ? (
           <div className="flex flex-col items-center justify-center h-full pb-4">
             <p className="text-[12px] text-[#888] mb-5">
               Ask me to edit your photo...
@@ -118,18 +118,18 @@ export function AgentPanelView({
             </div>
           </div>
         ) : (
-          /* Messages */
           <div className="space-y-2.5 py-2">
             {messages.map((msg) => (
               <AgentMessage key={msg.id} message={msg} />
             ))}
 
-            {currentStreamText && (
-              <div className="flex justify-start">
-                <div className="max-w-[85%] px-2.5 py-1.5 rounded-[6px] text-[11px] leading-relaxed bg-[#252525] text-[#ddd]">
-                  <p className="whitespace-pre-wrap break-words">{currentStreamText}</p>
+            {/* Live streaming items */}
+            {currentItems.length > 0 && (
+              <div>
+                <StreamItems items={currentItems} />
+                {isStreaming && (
                   <span className="inline-block w-1 h-3.5 bg-[#c89b3c] animate-pulse ml-0.5 rounded-sm" />
-                </div>
+                )}
               </div>
             )}
           </div>

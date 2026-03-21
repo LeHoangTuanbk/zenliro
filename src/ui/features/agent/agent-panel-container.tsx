@@ -11,7 +11,7 @@ export function AgentPanelContainer() {
   const isMaximized = useAgentStore((s) => s.isMaximized);
   const isStreaming = useAgentStore((s) => s.isStreaming);
   const messages = useAgentStore((s) => s.messages);
-  const currentStreamText = useAgentStore((s) => s.currentStreamText);
+  const currentItems = useAgentStore((s) => s.currentItems);
   const toggle = useAgentStore((s) => s.toggle);
   const setMaximized = useAgentStore((s) => s.setMaximized);
   const addUserMessage = useAgentStore((s) => s.addUserMessage);
@@ -47,7 +47,7 @@ export function AgentPanelContainer() {
       isMaximized={isMaximized}
       isStreaming={isStreaming}
       messages={messages}
-      currentStreamText={currentStreamText}
+      currentItems={currentItems}
       onSend={handleSend}
       onStop={handleStop}
       onToggle={toggle}

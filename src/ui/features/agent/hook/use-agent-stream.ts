@@ -15,11 +15,12 @@ export function useAgentStream() {
       }),
 
       api.onStreamToolUse((data) => {
+        useAgentStore.setState({ isStreaming: true });
         store().addToolCall({
           id: data.id,
           name: data.name,
           params: data.params,
-          status: 'pending',
+          status: 'done',
         });
       }),
 
@@ -33,7 +34,6 @@ export function useAgentStream() {
       }),
 
       api.onStreamError((error) => {
-        store().finalizeAssistantMessage();
         store().appendStreamText(`\n\nError: ${error}`);
         store().finalizeAssistantMessage();
         useAgentStore.setState({ isStreaming: false });

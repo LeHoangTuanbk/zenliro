@@ -9,11 +9,16 @@ export type AgentToolCall = {
   status: 'pending' | 'done' | 'error';
 };
 
+// Each stream item is either text or a tool call — rendered inline
+export type StreamItem =
+  | { type: 'text'; text: string }
+  | { type: 'tool'; toolCall: AgentToolCall };
+
 export type AgentMessage = {
   id: string;
   role: AgentMessageRole;
   text: string;
-  toolCalls?: AgentToolCall[];
+  items?: StreamItem[];
   thinking?: string;
   timestamp: number;
 };
@@ -24,8 +29,8 @@ type AgentStore = {
   isStreaming: boolean;
   isScanning: boolean;
   messages: AgentMessage[];
-  currentStreamText: string;
-  currentToolCalls: AgentToolCall[];
+  // Streaming state — items appear inline as they arrive
+  currentItems: StreamItem[];
   currentThinking: string;
   actionToast: string | null;
 
@@ -39,7 +44,6 @@ type AgentStore = {
   appendStreamText: (chunk: string) => void;
   setCurrentThinking: (text: string) => void;
   addToolCall: (tc: AgentToolCall) => void;
-  updateToolCallStatus: (id: string, status: AgentToolCall['status']) => void;
   finalizeAssistantMessage: () => void;
   clearMessages: () => void;
   showActionToast: (text: string) => void;
@@ -55,8 +59,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   isStreaming: false,
   isScanning: false,
   messages: [],
-  currentStreamText: '',
-  currentToolCalls: [],
+  currentItems: [],
   currentThinking: '',
   actionToast: null,
 
@@ -75,42 +78,54 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     })),
 
   appendStreamText: (chunk) =>
-    set((s) => ({ currentStreamText: s.currentStreamText + chunk })),
+    set((s) => {
+      const items = [...s.currentItems];
+      const last = items[items.length - 1];
+      // Append to existing text item or create new one
+      if (last && last.type === 'text') {
+        items[items.length - 1] = { type: 'text', text: last.text + chunk };
+      } else {
+        items.push({ type: 'text', text: chunk });
+      }
+      return { currentItems: items };
+    }),
 
   setCurrentThinking: (currentThinking) => set({ currentThinking }),
 
   addToolCall: (tc) =>
-    set((s) => ({ currentToolCalls: [...s.currentToolCalls, tc] })),
-
-  updateToolCallStatus: (id, status) =>
     set((s) => ({
-      currentToolCalls: s.currentToolCalls.map((tc) =>
-        tc.id === id ? { ...tc, status } : tc,
-      ),
+      // Flush any pending text, then add tool as separate item
+      currentItems: [...s.currentItems, { type: 'tool', toolCall: tc }],
     })),
 
   finalizeAssistantMessage: () => {
     const s = get();
-    if (!s.currentStreamText && s.currentToolCalls.length === 0) return;
+    if (s.currentItems.length === 0) return;
+
+    // Build full text from text items
+    const fullText = s.currentItems
+      .filter((i): i is StreamItem & { type: 'text' } => i.type === 'text')
+      .map((i) => i.text)
+      .join('');
+
     set({
       messages: [
         ...s.messages,
         {
           id: nextId(),
           role: 'assistant',
-          text: s.currentStreamText,
-          toolCalls: s.currentToolCalls.length > 0 ? [...s.currentToolCalls] : undefined,
+          text: fullText,
+          items: [...s.currentItems],
           thinking: s.currentThinking || undefined,
           timestamp: Date.now(),
         },
       ],
-      currentStreamText: '',
-      currentToolCalls: [],
+      currentItems: [],
       currentThinking: '',
     });
   },
 
-  clearMessages: () => set({ messages: [] }),
+  clearMessages: () => set({ messages: [], currentItems: [], currentThinking: '' }),
 
   showActionToast: (text) => {
     set({ actionToast: text });
