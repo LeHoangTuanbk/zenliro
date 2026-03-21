@@ -23,4 +23,46 @@ electron.contextBridge.exposeInMainWorld('electron', {
   },
   onRequestSave: (cb: () => void) => electron.ipcRenderer.on('app:request-save', cb),
   sendSaveDone: () => electron.ipcRenderer.send('app:save-done'),
+
+  agent: {
+    startSession: () => electron.ipcRenderer.invoke('agent:start-session'),
+    sendMessage: (text: string) => electron.ipcRenderer.invoke('agent:send-message', text),
+    stopSession: () => electron.ipcRenderer.invoke('agent:stop-session'),
+    getStatus: () => electron.ipcRenderer.invoke('agent:get-status'),
+
+    onToolRequest: (channel: string, cb: (req: { requestId: string; payload?: unknown }) => void) => {
+      const handler = (_event: unknown, data: { requestId: string; payload?: unknown }) => cb(data);
+      electron.ipcRenderer.on(channel, handler);
+      return () => electron.ipcRenderer.removeListener(channel, handler);
+    },
+    sendToolResult: (channel: string, data: unknown) => {
+      electron.ipcRenderer.send(channel, data);
+    },
+
+    onStreamText: (cb: (chunk: string) => void) => {
+      const handler = (_e: unknown, chunk: string) => cb(chunk);
+      electron.ipcRenderer.on('agent:stream-text', handler);
+      return () => electron.ipcRenderer.removeListener('agent:stream-text', handler);
+    },
+    onStreamToolUse: (cb: (data: { id: string; name: string; params: unknown }) => void) => {
+      const handler = (_e: unknown, data: { id: string; name: string; params: unknown }) => cb(data);
+      electron.ipcRenderer.on('agent:stream-tool-use', handler);
+      return () => electron.ipcRenderer.removeListener('agent:stream-tool-use', handler);
+    },
+    onStreamThinking: (cb: (text: string) => void) => {
+      const handler = (_e: unknown, text: string) => cb(text);
+      electron.ipcRenderer.on('agent:stream-thinking', handler);
+      return () => electron.ipcRenderer.removeListener('agent:stream-thinking', handler);
+    },
+    onStreamDone: (cb: () => void) => {
+      const handler = () => cb();
+      electron.ipcRenderer.on('agent:stream-done', handler);
+      return () => electron.ipcRenderer.removeListener('agent:stream-done', handler);
+    },
+    onStreamError: (cb: (error: string) => void) => {
+      const handler = (_e: unknown, error: string) => cb(error);
+      electron.ipcRenderer.on('agent:stream-error', handler);
+      return () => electron.ipcRenderer.removeListener('agent:stream-error', handler);
+    },
+  },
 });

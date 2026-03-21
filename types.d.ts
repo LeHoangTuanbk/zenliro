@@ -114,5 +114,24 @@ interface Window {
     onImportProgress: (cb: (progress: { current: number; total: number } | null) => void) => () => void;
     onRequestSave: (cb: () => void) => void;
     sendSaveDone: () => void;
+
+    agent: {
+      startSession: () => Promise<void>;
+      sendMessage: (text: string) => Promise<void>;
+      stopSession: () => Promise<void>;
+      getStatus: () => Promise<{ running: boolean }>;
+
+      onToolRequest: (
+        channel: string,
+        cb: (req: { requestId: string; payload?: unknown }) => void,
+      ) => () => void;
+      sendToolResult: (channel: string, data: unknown) => void;
+
+      onStreamText: (cb: (chunk: string) => void) => () => void;
+      onStreamToolUse: (cb: (data: { id: string; name: string; params: unknown }) => void) => () => void;
+      onStreamThinking: (cb: (text: string) => void) => () => void;
+      onStreamDone: (cb: () => void) => () => void;
+      onStreamError: (cb: (error: string) => void) => () => void;
+    };
   };
 }
