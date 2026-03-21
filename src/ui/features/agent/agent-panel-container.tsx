@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useAgentStore } from './store/agent-store';
+import { useReferenceStore } from './store/reference-store';
 import { useAgentStream } from './hook/use-agent-stream';
 import { AgentPanelView } from './ui/agent-panel-view';
 
@@ -19,7 +20,12 @@ export function AgentPanelContainer() {
   const handleSend = useCallback(
     async (text: string) => {
       addUserMessage(text);
-      await window.electron?.agent?.sendMessage(text);
+      const ref = useReferenceStore.getState();
+      let message = text;
+      if (ref.referenceBase64) {
+        message = `${text}\n\n[Reference image attached — match this style/mood]`;
+      }
+      await window.electron?.agent?.sendMessage(message);
     },
     [addUserMessage],
   );

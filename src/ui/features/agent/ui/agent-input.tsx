@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, type KeyboardEvent } from 'react';
+import { ReferencePicker } from './reference-picker';
 
 type AgentInputProps = {
   isStreaming: boolean;
@@ -34,6 +35,7 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
 
   return (
     <div className="flex items-end gap-1.5 p-2 border-t border-black/50">
+      <ReferencePicker />
       <textarea
         ref={textareaRef}
         value={text}
