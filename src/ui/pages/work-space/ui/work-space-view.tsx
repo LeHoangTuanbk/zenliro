@@ -24,6 +24,8 @@ import type { Mask } from '@/features/develop/mask';
 import { ModuleTab } from '@/shared/ui/base';
 import { CanvasToolbar } from './canvas-toolbar';
 import { HistoryPanel } from '@features/develop/history';
+import { AgentPanelContainer } from '@/features/agent/agent-panel-container';
+import { AgentToggleButton } from '@/features/agent/ui/agent-toggle-button';
 import type { ImportProgress } from '../hook/use-photos';
 
 export type WorkSpaceViewProps = {
@@ -263,6 +265,12 @@ export function WorkSpaceView({
                 externalZoomPan={isCompareMode ? externalZoomPan : undefined}
                 onImageLoaded={onImageLoaded}
               />
+
+              {/* AI Agent panel */}
+              <AgentPanelContainer />
+
+              {/* AI Agent toggle button */}
+              <AgentToggleButton />
             </div>
           </main>
 

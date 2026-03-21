@@ -1,0 +1,52 @@
+import { useCallback } from 'react';
+import { useAgentStore } from './store/agent-store';
+import { useAgentStream } from './hook/use-agent-stream';
+import { AgentPanelView } from './ui/agent-panel-view';
+
+export function AgentPanelContainer() {
+  useAgentStream();
+
+  const isOpen = useAgentStore((s) => s.isOpen);
+  const isMaximized = useAgentStore((s) => s.isMaximized);
+  const isStreaming = useAgentStore((s) => s.isStreaming);
+  const messages = useAgentStore((s) => s.messages);
+  const currentStreamText = useAgentStore((s) => s.currentStreamText);
+  const toggle = useAgentStore((s) => s.toggle);
+  const setMaximized = useAgentStore((s) => s.setMaximized);
+  const addUserMessage = useAgentStore((s) => s.addUserMessage);
+  const clearMessages = useAgentStore((s) => s.clearMessages);
+
+  const handleSend = useCallback(
+    async (text: string) => {
+      addUserMessage(text);
+      await window.electron?.agent?.sendMessage(text);
+    },
+    [addUserMessage],
+  );
+
+  const handleStop = useCallback(async () => {
+    await window.electron?.agent?.stopSession();
+    useAgentStore.getState().finalizeAssistantMessage();
+    useAgentStore.setState({ isStreaming: false });
+  }, []);
+
+  const handleMaximize = useCallback(() => {
+    setMaximized(!isMaximized);
+  }, [isMaximized, setMaximized]);
+
+  if (!isOpen) return null;
+
+  return (
+    <AgentPanelView
+      isMaximized={isMaximized}
+      isStreaming={isStreaming}
+      messages={messages}
+      currentStreamText={currentStreamText}
+      onSend={handleSend}
+      onStop={handleStop}
+      onToggle={toggle}
+      onMaximize={handleMaximize}
+      onClear={clearMessages}
+    />
+  );
+}
