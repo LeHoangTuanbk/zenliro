@@ -9,23 +9,38 @@ export class ClaudeCodeManager {
   private process: ChildProcess | null = null;
   private lineBuffer = new StreamLineBuffer();
   private onEvent: StreamCallback | null = null;
+  private sessionId: string | null = null;
 
   isRunning(): boolean {
     return this.process !== null && !this.process.killed;
   }
 
-  async start(onEvent: StreamCallback): Promise<void> {
-    if (this.isRunning()) return;
+  sendMessage(text: string, onEvent: StreamCallback): void {
+    // Kill any running process
+    if (this.isRunning()) {
+      this.process?.kill('SIGTERM');
+      this.process = null;
+    }
 
     this.onEvent = onEvent;
+    this.lineBuffer = new StreamLineBuffer();
 
-    // MCP server is registered globally in ~/.claude.json — no need for --mcp-config
     const args = [
+      '--print',
       '--output-format', 'stream-json',
       '--verbose',
       '--system-prompt', SYSTEM_PROMPT,
       '--allowedTools', 'mcp__zenliro__*',
+      '--dangerously-skip-permissions',
     ];
+
+    // Resume previous session for multi-turn context
+    if (this.sessionId) {
+      args.push('--resume', this.sessionId);
+    }
+
+    // Prompt as argument
+    args.push(text);
 
     this.process = spawn(CLAUDE_CLI, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -36,12 +51,17 @@ export class ClaudeCodeManager {
       const lines = this.lineBuffer.feed(data.toString());
       for (const line of lines) {
         const parsed = parseStreamLine(line);
-        if (parsed) this.onEvent?.(parsed);
+        if (parsed) {
+          this.onEvent?.(parsed);
+        }
       }
     });
 
     this.process.stderr?.on('data', (data: Buffer) => {
-      console.error('[ClaudeCode stderr]', data.toString());
+      const text = data.toString();
+      if (text.trim()) {
+        console.error('[ClaudeCode stderr]', text);
+      }
     });
 
     this.process.on('exit', (code) => {
@@ -62,17 +82,8 @@ export class ClaudeCodeManager {
     });
   }
 
-  sendMessage(text: string): void {
-    if (!this.process?.stdin?.writable) {
-      this.onEvent?.({ type: 'error', error: 'Claude Code process not running' });
-      return;
-    }
-    this.process.stdin.write(text + '\n');
-  }
-
   stop(): void {
     if (this.process && !this.process.killed) {
-      this.process.stdin?.end();
       this.process.kill('SIGTERM');
       setTimeout(() => {
         if (this.process && !this.process.killed) {
@@ -82,5 +93,14 @@ export class ClaudeCodeManager {
     }
     this.process = null;
     this.onEvent = null;
+  }
+
+  reset(): void {
+    this.stop();
+    this.sessionId = null;
+  }
+
+  setSessionId(id: string): void {
+    this.sessionId = id;
   }
 }

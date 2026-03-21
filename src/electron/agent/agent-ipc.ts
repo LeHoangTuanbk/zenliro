@@ -26,6 +26,9 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
           params: event.params,
         });
         break;
+      case 'session_id':
+        manager?.setSessionId(event.sessionId);
+        break;
       case 'done':
         send('agent:stream-done');
         break;
@@ -36,17 +39,12 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
   };
 
   ipcMain.handle('agent:start-session', async () => {
-    if (manager?.isRunning()) return;
-    manager = new ClaudeCodeManager();
-    await manager.start(handleStreamEvent);
+    if (!manager) manager = new ClaudeCodeManager();
   });
 
   ipcMain.handle('agent:send-message', async (_event, text: string) => {
-    if (!manager?.isRunning()) {
-      manager = new ClaudeCodeManager();
-      await manager.start(handleStreamEvent);
-    }
-    manager.sendMessage(text);
+    if (!manager) manager = new ClaudeCodeManager();
+    manager.sendMessage(text, handleStreamEvent);
   });
 
   ipcMain.handle('agent:stop-session', async () => {
