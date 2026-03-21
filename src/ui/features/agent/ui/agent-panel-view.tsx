@@ -55,6 +55,7 @@ export function AgentPanelView({
         borderRadius: 8,
         border: '1px solid #2a2a2a',
       }}
+      onKeyDown={(e) => e.stopPropagation()}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 shrink-0">
