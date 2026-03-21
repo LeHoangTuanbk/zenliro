@@ -43,15 +43,15 @@ export function useAgentIpc(
         const payload = req.payload as { quality?: number } | undefined;
         const quality = payload?.quality ?? 0.7;
         useAgentStore.getState().setScanning(true);
-        // Wait for WebGL to finish rendering latest adjustments before capturing
-        requestAnimationFrame(() => {
+        // Wait 300ms for WebGL pipeline to fully render latest adjustments
+        setTimeout(() => {
           requestAnimationFrame(() => {
             const dataUrl = canvasRef.current?.getExportDataUrl('image/jpeg', quality);
             const base64 = dataUrl?.replace(/^data:image\/jpeg;base64,/, '') ?? '';
-            setTimeout(() => useAgentStore.getState().setScanning(false), 1200);
+            setTimeout(() => useAgentStore.getState().setScanning(false), 800);
             respond(req.requestId, base64);
           });
-        });
+        }, 300);
       },
 
       [AGENT_CHANNELS.GET_EDIT_STATE]: (req) => {
