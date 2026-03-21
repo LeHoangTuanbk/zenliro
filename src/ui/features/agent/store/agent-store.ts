@@ -74,7 +74,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   currentItems: [],
   currentThinking: '',
   actionToast: null,
-  modelId: 'sonnet',
+  modelId: 'opus',
   fastMode: true,
 
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),
