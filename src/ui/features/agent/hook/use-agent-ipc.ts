@@ -5,7 +5,7 @@ import { useAdjustmentsStore } from '@features/develop/edit/store/adjustments-st
 import { useToneCurveStore } from '@features/develop/edit/tone-curve/store/tone-curve-store';
 import { useColorMixerStore } from '@features/develop/edit/color-mixer/store/color-mixer-store';
 import { useColorGradingStore } from '@features/develop/edit/color-grading/store/color-grading-store';
-import { useEffectsStore } from '@features/develop/edit/effects/model/effects-store';
+import { useEffectsStore, type EffectsState } from '@features/develop/edit/effects/model/effects-store';
 import { useHealStore } from '@features/develop/heal/store/heal-store';
 import { useMaskStore } from '@/features/develop/mask';
 import { useCropStore } from '@features/develop/crop/store/crop-store';
@@ -145,7 +145,7 @@ export function useAgentIpc(
           const store = useEffectsStore.getState();
           for (const [key, value] of Object.entries(params)) {
             if (value !== undefined) {
-              store.set(key as keyof typeof store, value);
+              store.set(key as keyof EffectsState, value);
               keys.push(key);
             }
           }

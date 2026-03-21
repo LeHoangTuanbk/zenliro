@@ -54,9 +54,9 @@ export function AgentToolCallBadge({ toolCall }: AgentToolCallBadgeProps) {
         </svg>
       </button>
 
-      {expanded && toolCall.params && (
+      {expanded && toolCall.params != null && (
         <pre className="mt-1 mx-1 px-2 py-1.5 text-[9px] text-[#888] bg-[#1a1a1a] rounded-[4px] overflow-x-auto max-h-[80px] overflow-y-auto">
-          {JSON.stringify(toolCall.params, null, 2)}
+          {String(JSON.stringify(toolCall.params, null, 2))}
         </pre>
       )}
     </div>
