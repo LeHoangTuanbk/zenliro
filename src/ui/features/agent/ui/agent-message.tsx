@@ -1,7 +1,7 @@
 import type { AgentMessage as AgentMessageType } from '../store/agent-store';
-import { AgentToolCallBadge } from './agent-tool-call-badge';
 import { AgentThinking } from './agent-thinking';
 import { StreamItems } from './stream-items';
+import { MarkdownText } from './markdown-text';
 
 type AgentMessageProps = {
   message: AgentMessageType;
@@ -20,18 +20,13 @@ export function AgentMessage({ message }: AgentMessageProps) {
     );
   }
 
-  // Assistant message — render items inline (text + tool calls interleaved)
   return (
     <div>
       {message.thinking && <AgentThinking text={message.thinking} />}
       {message.items ? (
         <StreamItems items={message.items} />
       ) : (
-        message.text && (
-          <p className="text-[11px] leading-relaxed text-[#ddd] whitespace-pre-wrap break-words">
-            {message.text}
-          </p>
-        )
+        message.text && <MarkdownText text={message.text} />
       )}
     </div>
   );
