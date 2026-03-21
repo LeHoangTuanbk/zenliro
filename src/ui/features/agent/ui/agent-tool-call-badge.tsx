@@ -11,6 +11,13 @@ const TOOL_LABELS: Record<string, string> = {
   set_color_grading: 'Color Grading',
   set_effects: 'Effects',
   reset_all: 'Reset All',
+  add_heal_spot: 'Heal/Clone/Fill',
+  clear_heal_spots: 'Clear Spots',
+  add_mask: 'Add Mask',
+  set_mask_adjustment: 'Mask Adjustment',
+  remove_mask: 'Remove Mask',
+  set_crop: 'Crop/Rotate',
+  reset_crop: 'Reset Crop',
 };
 
 type AgentToolCallBadgeProps = {
