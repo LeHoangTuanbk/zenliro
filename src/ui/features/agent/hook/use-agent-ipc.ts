@@ -17,6 +17,29 @@ import type { HealMode } from '@features/develop/heal/store/types';
 
 type AgentRequest = { requestId: string; payload?: unknown };
 
+/** Soft-clamp adjustment values so AI can't destroy the photo */
+const ADJ_LIMITS: Record<string, [number, number]> = {
+  exposure: [-2, 2],
+  contrast: [-40, 40],
+  highlights: [-60, 60],
+  shadows: [-60, 60],
+  whites: [-40, 40],
+  blacks: [-40, 40],
+  temp: [-30, 30],
+  tint: [-30, 30],
+  texture: [-30, 30],
+  clarity: [-30, 30],
+  dehaze: [-30, 30],
+  vibrance: [-40, 40],
+  saturation: [-30, 30],
+};
+
+function clampAdjustment(key: string, value: number): number {
+  const limits = ADJ_LIMITS[key];
+  if (!limits) return value;
+  return Math.max(limits[0], Math.min(limits[1], value));
+}
+
 /** Helper: wrap tool handler with history push */
 function withHistory(photoId: string, detail: string, fn: () => void) {
   useHistoryStore.getState().setIsApplying(true);
@@ -72,10 +95,11 @@ export function useAgentIpc(
         const applied: Record<string, number> = {};
         const details: string[] = [];
 
-        // Build details first to know what changed
+        // Build clamped values
         for (const [key, value] of Object.entries(params)) {
           if (value !== undefined && key in store.adjustments) {
-            details.push(`${key} ${value >= 0 ? '+' : ''}${value}`);
+            const clamped = clampAdjustment(key, value);
+            details.push(`${key} ${clamped >= 0 ? '+' : ''}${clamped}`);
           }
         }
 
@@ -83,8 +107,9 @@ export function useAgentIpc(
         withHistory(photoId, label, () => {
           for (const [key, value] of Object.entries(params)) {
             if (value !== undefined && key in store.adjustments) {
-              store.setAdjustment(key as keyof typeof store.adjustments, value);
-              applied[key] = value;
+              const clamped = clampAdjustment(key, value);
+              store.setAdjustment(key as keyof typeof store.adjustments, clamped);
+              applied[key] = clamped;
             }
           }
         });
