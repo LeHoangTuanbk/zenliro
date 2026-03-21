@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, type KeyboardEvent } from 'react';
 import { useAgentStore, AGENT_MODELS } from '../store/agent-store';
 import { useReferenceStore } from '../store/reference-store';
-import { STYLE_PRESETS } from '../const/presets';
+import { PresetBrowser } from './preset-browser';
 
 type AgentInputProps = {
   isStreaming: boolean;
@@ -75,11 +75,6 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
       reader.readAsDataURL(blob);
     };
     input.click();
-  };
-
-  const handlePresetClick = (prompt: string) => {
-    setShowPresets(false);
-    onSend(prompt);
   };
 
   return (
@@ -167,36 +162,26 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
               </svg>
             </button>
 
-            {/* Style presets */}
-            <div className="relative">
-              <button
-                onClick={() => { setShowPresets(!showPresets); setShowModelMenu(false); }}
-                className="w-6 h-6 flex items-center justify-center text-[#666] hover:text-[#999] transition-colors"
-                title="Style presets"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <circle cx="4" cy="4" r="1.5" stroke="currentColor" strokeWidth="1.1" />
-                  <circle cx="10" cy="4" r="1.5" stroke="currentColor" strokeWidth="1.1" />
-                  <circle cx="4" cy="10" r="1.5" stroke="currentColor" strokeWidth="1.1" />
-                  <circle cx="10" cy="10" r="1.5" stroke="currentColor" strokeWidth="1.1" />
-                </svg>
-              </button>
+            {/* Style presets browser */}
+            <button
+              onClick={() => { setShowPresets(true); setShowModelMenu(false); }}
+              className="w-6 h-6 flex items-center justify-center text-[#666] hover:text-[#999] transition-colors"
+              title="Style presets"
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <circle cx="4" cy="4" r="1.5" stroke="currentColor" strokeWidth="1.1" />
+                <circle cx="10" cy="4" r="1.5" stroke="currentColor" strokeWidth="1.1" />
+                <circle cx="4" cy="10" r="1.5" stroke="currentColor" strokeWidth="1.1" />
+                <circle cx="10" cy="10" r="1.5" stroke="currentColor" strokeWidth="1.1" />
+              </svg>
+            </button>
 
-              {showPresets && (
-                <div className="absolute bottom-full right-0 mb-1 w-[220px] max-h-[280px] overflow-y-auto bg-[#2a2a2a] border border-[#444] rounded-[6px] shadow-xl z-50">
-                  <div className="px-3 py-1.5 text-[10px] text-[#777] border-b border-[#333]">Style Presets</div>
-                  {STYLE_PRESETS.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => handlePresetClick(p.prompt)}
-                      className="w-full text-left px-3 py-1.5 text-[11px] text-[#bbb] hover:bg-[#333] hover:text-white transition-colors"
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {showPresets && (
+              <PresetBrowser
+                onApply={(prompt) => { setShowPresets(false); onSend(prompt); }}
+                onClose={() => setShowPresets(false)}
+              />
+            )}
 
             {/* Send / Stop */}
             {isStreaming ? (
