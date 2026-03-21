@@ -30,38 +30,55 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 80)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 100)}px`;
   };
 
   return (
-    <div className="flex items-end gap-1.5 p-2 border-t border-black/50">
-      <ReferencePicker />
-      <textarea
-        ref={textareaRef}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={handleKeyDown}
-        onInput={handleInput}
-        placeholder="Ask AI to edit your photo..."
-        rows={1}
-        className="flex-1 bg-br-input text-br-text text-[11px] px-2 py-1.5 rounded-[3px] border border-br-elevated resize-none focus:outline-none focus:border-br-accent/50 placeholder:text-br-muted/50"
-      />
-      {isStreaming ? (
-        <button
-          onClick={onStop}
-          className="px-2 py-1.5 text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 rounded-[3px] hover:bg-red-500/30 transition-colors shrink-0"
-        >
-          Stop
-        </button>
-      ) : (
-        <button
-          onClick={handleSend}
-          disabled={!text.trim()}
-          className="px-2 py-1.5 text-[10px] bg-br-accent/20 text-br-accent border border-br-accent/30 rounded-[3px] hover:bg-br-accent/30 transition-colors disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
-        >
-          Send
-        </button>
-      )}
+    <div className="px-3 pb-3 pt-1 shrink-0">
+      <div className="relative rounded-[8px] border border-[#333] bg-[#222] focus-within:border-[#555] transition-colors">
+        <textarea
+          ref={textareaRef}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onInput={handleInput}
+          placeholder="Edit your photo with AI..."
+          rows={1}
+          className="w-full bg-transparent text-[#ddd] text-[12px] px-3 pt-2.5 pb-8 resize-none focus:outline-none placeholder:text-[#555]"
+        />
+
+        {/* Bottom bar inside input */}
+        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <ReferencePicker />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {isStreaming ? (
+              <button
+                onClick={onStop}
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-[#555] hover:bg-[#666] transition-colors"
+                title="Stop"
+              >
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <rect x="1" y="1" width="8" height="8" rx="1" fill="#ddd" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!text.trim()}
+                className="w-6 h-6 flex items-center justify-center rounded-full bg-[#e0e0e0] hover:bg-white disabled:bg-[#333] disabled:cursor-not-allowed transition-colors"
+                title="Send"
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                  <path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" stroke={text.trim() ? '#1a1a1a' : '#666'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

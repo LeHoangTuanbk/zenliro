@@ -12,10 +12,10 @@ export function AgentMessage({ message }: AgentMessageProps) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] px-2.5 py-1.5 rounded-[4px] text-[11px] leading-relaxed ${
+        className={`max-w-[85%] px-2.5 py-1.5 rounded-[6px] text-[11px] leading-relaxed ${
           isUser
-            ? 'bg-br-accent/20 text-br-text'
-            : 'bg-br-elevated text-br-text'
+            ? 'bg-[#333] text-[#e0e0e0]'
+            : 'bg-[#252525] text-[#ddd]'
         }`}
       >
         {message.thinking && <AgentThinking text={message.thinking} />}
