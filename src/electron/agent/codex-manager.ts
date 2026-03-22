@@ -16,17 +16,56 @@ function parseCodexLine(line: string): ParsedStreamEvent | null {
       return { type: 'session_id', sessionId: event.thread_id };
     }
 
+    // Extract tool name from any item shape
+    const extractToolName = (item: Record<string, unknown>): string => {
+      // Try all known fields for tool name
+      for (const key of ['name', 'tool_name', 'server_label']) {
+        if (typeof item[key] === 'string' && item[key]) return item[key] as string;
+      }
+      const fn = item.function as Record<string, unknown> | undefined;
+      if (fn?.name) return fn.name as string;
+      // For command execution
+      if (typeof item.command === 'string') {
+        const cmd = item.command as string;
+        return cmd.length > 50 ? cmd.slice(0, 50) + '...' : cmd;
+      }
+      return String(item.type ?? 'tool');
+    };
+
+    const isToolItem = (type: string) =>
+      ['mcp_tool_call', 'tool_call', 'function_call', 'command_execution'].includes(type);
+
+    // Tool call started
+    if (event.type === 'item.started' && event.item) {
+      const item = event.item;
+      if (isToolItem(item.type)) {
+        return {
+          type: 'tool_use',
+          id: item.id ?? '',
+          name: extractToolName(item),
+          params: {},
+        };
+      }
+    }
+
+    // Item completed
     if (event.type === 'item.completed' && event.item) {
       const item = event.item;
       if (item.type === 'agent_message' && item.text) {
         return { type: 'text', text: item.text };
       }
-      if (item.type === 'tool_call') {
+      if (isToolItem(item.type)) {
+        let params = {};
+        try {
+          params = item.arguments
+            ? (typeof item.arguments === 'string' ? JSON.parse(item.arguments) : item.arguments)
+            : {};
+        } catch { /* ignore */ }
         return {
           type: 'tool_use',
           id: item.id ?? '',
-          name: item.name ?? '',
-          params: item.arguments ? JSON.parse(item.arguments) : {},
+          name: extractToolName(item),
+          params,
         };
       }
     }
@@ -98,8 +137,8 @@ export class CodexManager {
     });
 
     this.process.stderr?.on('data', (data: Buffer) => {
-      const text = data.toString().trim();
-      if (text) console.error('[Codex stderr]', text);
+      const txt = data.toString().trim();
+      if (txt) console.error('[Codex stderr]', txt);
     });
 
     this.process.on('exit', (code) => {

@@ -107,7 +107,7 @@ function InlineFormatted({ text }: { text: string }) {
             return <em key={i} className="italic text-[#ccc]">{p.content}</em>;
           case 'code':
             return (
-              <code key={i} className="px-1 py-0.5 bg-[#333] text-[#e8a854] rounded text-[10px] font-mono">
+              <code key={i} className="text-[#b0b0b0]">
                 {p.content}
               </code>
             );

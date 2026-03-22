@@ -79,6 +79,27 @@ type AgentStore = {
 let msgCounter = 0;
 const nextId = () => `msg-${++msgCounter}`;
 
+const STORAGE_KEY = 'zenliro-agent-model';
+
+function loadSavedModel(): { modelId: string; provider: AgentProvider } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const saved = JSON.parse(raw);
+      if (saved.modelId && saved.provider) return saved;
+    }
+  } catch { /* ignore */ }
+  return { modelId: 'opus', provider: 'claude' };
+}
+
+function saveModel(modelId: string, provider: AgentProvider) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ modelId, provider }));
+  } catch { /* ignore */ }
+}
+
+const savedModel = loadSavedModel();
+
 export const useAgentStore = create<AgentStore>((set, get) => ({
   isOpen: false,
   isMaximized: false,
@@ -90,8 +111,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   actionToast: null,
   models: DEFAULT_MODELS,
   modelsLoaded: false,
-  modelId: 'opus',
-  provider: 'claude' as AgentProvider,
+  modelId: savedModel.modelId,
+  provider: savedModel.provider,
   fastMode: true,
 
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),
@@ -99,7 +120,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   setMaximized: (isMaximized) => set({ isMaximized }),
   setStreaming: (isStreaming) => set({ isStreaming }),
   setScanning: (isScanning) => set({ isScanning }),
-  setModelId: (modelId, provider) => set({ modelId, provider }),
+  setModelId: (modelId, provider) => {
+    saveModel(modelId, provider);
+    set({ modelId, provider });
+  },
   loadModels: (models) => set({ models, modelsLoaded: true }),
   toggleFastMode: () => set((s) => ({ fastMode: !s.fastMode })),
 
