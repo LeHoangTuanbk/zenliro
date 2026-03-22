@@ -187,6 +187,7 @@ export function WorkSpaceView({
         <FilmstripPanel
           photos={photos}
           selectedId={selectedId}
+          isVisible={activeView === 'develop'}
           onSelect={onSelectId}
           onImport={onImport}
         />

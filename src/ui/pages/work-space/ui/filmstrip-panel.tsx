@@ -5,22 +5,31 @@ import { HistoryPanel } from '@features/develop/history';
 type FilmstripPanelProps = {
   photos: ImportedPhoto[];
   selectedId: string | null;
+  isVisible: boolean;
   onSelect: (id: string) => void;
   onImport: () => void;
 };
 
-export function FilmstripPanel({ photos, selectedId, onSelect, onImport }: FilmstripPanelProps) {
+export function FilmstripPanel({ photos, selectedId, isVisible, onSelect, onImport }: FilmstripPanelProps) {
   const filmstripRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef(new Map<string, HTMLButtonElement>());
   const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
-    if (!selectedId) return;
-    const container = filmstripRef.current;
-    const selectedItem = itemRefs.current.get(selectedId);
-    if (!container || !selectedItem) return;
-    selectedItem.scrollIntoView({ block: 'center', behavior: 'instant' });
-  }, [selectedId]);
+    if (!selectedId || !isVisible || !isOpen) return;
+    requestAnimationFrame(() => {
+      const container = filmstripRef.current;
+      const item = itemRefs.current.get(selectedId);
+      if (!container || !item) return;
+      const cRect = container.getBoundingClientRect();
+      const iRect = item.getBoundingClientRect();
+      const above = iRect.top < cRect.top;
+      const below = iRect.bottom > cRect.bottom;
+      if (above || below) {
+        container.scrollTop += iRect.top - cRect.top - cRect.height / 2 + iRect.height / 2;
+      }
+    });
+  }, [selectedId, isVisible, isOpen]);
 
   return (
     <div className="flex shrink-0 relative">
