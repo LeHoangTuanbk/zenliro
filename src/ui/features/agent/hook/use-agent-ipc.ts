@@ -72,7 +72,6 @@ export function useAgentIpc(
         const dataUrl = canvasRef.current?.getExportDataUrl('image/jpeg', quality);
         const base64 = dataUrl?.replace(/^data:image\/jpeg;base64,/, '') ?? '';
         respond(req.requestId, base64);
-        setTimeout(() => useAgentStore.getState().setScanning(false), 1200);
       },
 
       [AGENT_CHANNELS.GET_EDIT_STATE]: (req) => {
