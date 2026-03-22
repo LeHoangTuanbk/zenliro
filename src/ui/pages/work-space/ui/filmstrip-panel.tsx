@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { HistoryPanel } from '@features/develop/history';
 
 type FilmstripPanelProps = {
@@ -7,26 +8,6 @@ type FilmstripPanelProps = {
   onSelect: (id: string) => void;
   onImport: () => void;
 };
-
-function ToggleIcon({ isOpen }: { isOpen: boolean }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={`transition-transform duration-200 ${isOpen ? '' : 'rotate-180'}`}
-    >
-      {/* sidebar icon */}
-      <rect x="1" y="1" width="12" height="12" rx="1.5" />
-      <line x1="5" y1="1" x2="5" y2="13" />
-    </svg>
-  );
-}
 
 export function FilmstripPanel({ photos, selectedId, onSelect, onImport }: FilmstripPanelProps) {
   const filmstripRef = useRef<HTMLDivElement | null>(null);
@@ -87,7 +68,7 @@ export function FilmstripPanel({ photos, selectedId, onSelect, onImport }: Films
         className="absolute top-1.5 -right-7 z-20 w-6 h-6 flex items-center justify-center rounded-[3px] text-[#555] hover:text-[#ccc] hover:bg-white/5 transition-colors cursor-pointer"
         title={isOpen ? 'Hide panel (Tab)' : 'Show panel (Tab)'}
       >
-        <ToggleIcon isOpen={isOpen} />
+        {isOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
       </button>
     </div>
   );

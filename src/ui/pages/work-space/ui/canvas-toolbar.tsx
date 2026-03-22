@@ -1,4 +1,5 @@
 import { cn } from '@/shared/lib/utils';
+import { RectangleVertical, Columns2, X } from 'lucide-react';
 import { useCanvasZoomStore } from '@widgets/image-canvas/store/canvas-zoom-store';
 import { CanvasMode } from '../const';
 
@@ -41,22 +42,6 @@ function ToolbarBtn({
   );
 }
 
-function SingleIcon() {
-  return (
-    <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
-      <rect x="2" y="1" width="12" height="10" rx="1.5" opacity="0.9" />
-    </svg>
-  );
-}
-
-function CompareIcon() {
-  return (
-    <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
-      <rect x="1" y="1" width="6" height="10" rx="1.5" opacity="0.6" />
-      <rect x="9" y="1" width="6" height="10" rx="1.5" opacity="0.9" />
-    </svg>
-  );
-}
 
 function ZoomIndicator() {
   const zoom = useCanvasZoomStore((s) => s.zoom);
@@ -73,9 +58,7 @@ function ZoomIndicator() {
       title="Reset zoom (⌘0)"
     >
       <span>{pct}</span>
-      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">
-        <path d="M1.5 5h7M5 1.5v7" strokeLinecap="round" transform="rotate(45 5 5)" />
-      </svg>
+      <X size={10} />
     </button>
   );
 }
@@ -88,7 +71,7 @@ export function CanvasToolbar({ activeMode, onModeChange }: Props) {
         title="Loupe View"
         onClick={() => onModeChange(CanvasMode.Loupe)}
       >
-        <SingleIcon />
+        <RectangleVertical size={12} />
       </ToolbarBtn>
 
       <ToolbarBtn
@@ -100,7 +83,7 @@ export function CanvasToolbar({ activeMode, onModeChange }: Props) {
           )
         }
       >
-        <CompareIcon />
+        <Columns2 size={12} />
       </ToolbarBtn>
 
       <div className="flex-1" />
