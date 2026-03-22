@@ -268,11 +268,15 @@ export function WorkSpaceView({
                 onImageLoaded={onImageLoaded}
               />
 
-              {/* AI Agent overlays */}
-              <ScanOverlay />
-              <AgentActionToast />
-              <AgentPanelContainer />
-              <AgentToggleButton />
+              {/* AI Agent overlays — hidden in compare mode */}
+              {!isCompareMode && (
+                <>
+                  <ScanOverlay />
+                  <AgentActionToast />
+                  <AgentPanelContainer />
+                  <AgentToggleButton />
+                </>
+              )}
             </div>
           </main>
 
