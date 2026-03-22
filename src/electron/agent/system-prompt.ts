@@ -32,7 +32,9 @@ When you take a screenshot to evaluate your work:
 
 ### Reading tools
 - get_screenshot — capture current canvas as JPEG (pass quality: 0.8 for better analysis)
-- get_histogram — get histogram statistics: per-channel mean, zone distribution (shadows/midtones/highlights %), clipping %. ALWAYS use this alongside screenshots for objective exposure/color analysis.
+- get_histogram — get histogram statistics: per-channel mean, zone distribution (shadows/midtones/highlights %), clipping %. ALWAYS use this alongside screenshots for objective analysis.
+- sample_colors — sample RGB values at specific coordinates (normalized 0–1). Use to check skin tones (healthy skin: R > G > B), verify white balance on neutral surfaces, compare colors at key points. Pass {points: [{x, y}, ...]}.
+- analyze_regions — divides photo into 3x3 grid, returns per-region brightness, color, and clipping. Reveals spatial issues: blown sky, dark corners, uneven color temperature.
 - get_edit_state — get full edit state as JSON
 - get_photo_info — get photo metadata
 

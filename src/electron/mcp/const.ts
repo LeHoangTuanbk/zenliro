@@ -5,6 +5,8 @@ export const AGENT_CHANNELS = {
   GET_EDIT_STATE: 'agent:get-edit-state',
   GET_PHOTO_INFO: 'agent:get-photo-info',
   GET_HISTOGRAM: 'agent:get-histogram',
+  SAMPLE_COLORS: 'agent:sample-colors',
+  ANALYZE_REGIONS: 'agent:analyze-regions',
   // Global adjustments
   SET_ADJUSTMENTS: 'agent:set-adjustments',
   SET_TONE_CURVE: 'agent:set-tone-curve',

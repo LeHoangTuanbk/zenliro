@@ -58,6 +58,86 @@ function summarizeHistogram(r: Uint32Array, g: Uint32Array, b: Uint32Array) {
   };
 }
 
+/** Sample average RGB at specific normalized coordinates */
+function sampleColorAt(
+  data: Uint8ClampedArray, w: number, h: number,
+  normX: number, normY: number, radius = 3,
+) {
+  const cx = Math.round(normX * (w - 1));
+  const cy = Math.round(normY * (h - 1));
+  let rSum = 0, gSum = 0, bSum = 0, count = 0;
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const px = cx + dx;
+      const py = cy + dy;
+      if (px < 0 || px >= w || py < 0 || py >= h) continue;
+      const idx = (py * w + px) * 4;
+      rSum += data[idx];
+      gSum += data[idx + 1];
+      bSum += data[idx + 2];
+      count++;
+    }
+  }
+  return {
+    r: Math.round(rSum / count),
+    g: Math.round(gSum / count),
+    b: Math.round(bSum / count),
+  };
+}
+
+/** Analyze image in a 3x3 grid: per-region avg brightness, dominant color, clipping */
+function analyzeRegions(data: Uint8ClampedArray, w: number, h: number) {
+  const ROWS = 3, COLS = 3;
+  const regions: Array<{
+    position: string;
+    avgBrightness: number;
+    avgColor: { r: number; g: number; b: number };
+    clippedBlack: number;
+    clippedWhite: number;
+  }> = [];
+  const names = [
+    'top-left', 'top-center', 'top-right',
+    'mid-left', 'center', 'mid-right',
+    'bottom-left', 'bottom-center', 'bottom-right',
+  ];
+
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const x0 = Math.floor((col / COLS) * w);
+      const x1 = Math.floor(((col + 1) / COLS) * w);
+      const y0 = Math.floor((row / ROWS) * h);
+      const y1 = Math.floor(((row + 1) / ROWS) * h);
+
+      let rSum = 0, gSum = 0, bSum = 0, count = 0;
+      let blacks = 0, whites = 0;
+      // Sample every 4th pixel for speed
+      for (let y = y0; y < y1; y += 4) {
+        for (let x = x0; x < x1; x += 4) {
+          const idx = (y * w + x) * 4;
+          const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+          rSum += r; gSum += g; bSum += b;
+          const lum = r * 0.299 + g * 0.587 + b * 0.114;
+          if (lum < 3) blacks++;
+          if (lum > 252) whites++;
+          count++;
+        }
+      }
+
+      const avgR = Math.round(rSum / count);
+      const avgG = Math.round(gSum / count);
+      const avgB = Math.round(bSum / count);
+      regions.push({
+        position: names[row * COLS + col],
+        avgBrightness: Math.round(avgR * 0.299 + avgG * 0.587 + avgB * 0.114),
+        avgColor: { r: avgR, g: avgG, b: avgB },
+        clippedBlack: Math.round((blacks / count) * 100),
+        clippedWhite: Math.round((whites / count) * 100),
+      });
+    }
+  }
+  return regions;
+}
+
 type AgentRequest = { requestId: string; payload?: unknown };
 
 /** Soft-clamp adjustment values so AI can't destroy the photo */
@@ -128,6 +208,24 @@ export function useAgentIpc(
         if (!pixels) return respond(req.requestId, null);
         const { r, g, b } = computeHistogram(pixels.data, pixels.width, pixels.height);
         respond(req.requestId, summarizeHistogram(r, g, b));
+      },
+
+      [AGENT_CHANNELS.SAMPLE_COLORS]: (req) => {
+        const payload = req.payload as { points: Array<{ x: number; y: number }> } | undefined;
+        if (!payload?.points?.length) return respond(req.requestId, null);
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        const samples = payload.points.map((p) => ({
+          x: p.x, y: p.y,
+          ...sampleColorAt(pixels.data, pixels.width, pixels.height, p.x, p.y),
+        }));
+        respond(req.requestId, samples);
+      },
+
+      [AGENT_CHANNELS.ANALYZE_REGIONS]: (req) => {
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(req.requestId, analyzeRegions(pixels.data, pixels.width, pixels.height));
       },
 
       // ── Global adjustments ──────────────────────────────────────────

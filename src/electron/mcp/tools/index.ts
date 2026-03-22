@@ -3,6 +3,8 @@ import { registerGetScreenshot } from './get-screenshot.js';
 import { registerGetEditState } from './get-edit-state.js';
 import { registerGetPhotoInfo } from './get-photo-info.js';
 import { registerGetHistogram } from './get-histogram.js';
+import { registerSampleColors } from './sample-colors.js';
+import { registerAnalyzeRegions } from './analyze-regions.js';
 import { registerSetAdjustments } from './set-adjustments.js';
 import { registerSetToneCurve } from './set-tone-curve.js';
 import { registerSetColorMixer } from './set-color-mixer.js';
@@ -23,6 +25,8 @@ export function registerAllTools(server: McpServer) {
   registerGetEditState(server);
   registerGetPhotoInfo(server);
   registerGetHistogram(server);
+  registerSampleColors(server);
+  registerAnalyzeRegions(server);
   // Global adjustments
   registerSetAdjustments(server);
   registerSetToneCurve(server);
