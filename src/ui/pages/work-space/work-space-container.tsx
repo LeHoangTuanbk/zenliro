@@ -15,6 +15,7 @@ import { useHistoryTracking } from '@features/develop/history';
 import { useCatalogStore } from './store/catalog-store';
 import { useMaskStore } from '@/features/develop/mask';
 import type { Mask } from '@/features/develop/mask';
+import { useAgentIpc } from '@/features/agent/hook/use-agent-ipc';
 
 const EMPTY_MASKS: Mask[] = [];
 
@@ -75,6 +76,7 @@ export function WorkSpaceContainer() {
   const handleExport = useExport(selected, selectedId, canvasRef);
   usePhotoEdits(selectedId);
   useHistoryTracking(selectedId);
+  useAgentIpc(canvasRef, selectedId);
 
   const handleRatingChange = useCallback((id: string, rating: number) => {
     setPhotoRating(id, rating);

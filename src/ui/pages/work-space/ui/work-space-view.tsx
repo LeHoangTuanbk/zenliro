@@ -24,6 +24,10 @@ import type { Mask } from '@/features/develop/mask';
 import { ModuleTab } from '@/shared/ui/base';
 import { CanvasToolbar } from './canvas-toolbar';
 import { HistoryPanel } from '@features/develop/history';
+import { AgentPanelContainer } from '@/features/agent/agent-panel-container';
+import { AgentToggleButton } from '@/features/agent/ui/agent-toggle-button';
+import { ScanOverlay } from '@/features/agent/ui/scan-overlay';
+import { AgentActionToast } from '@/features/agent/ui/agent-action-toast';
 import type { ImportProgress } from '../hook/use-photos';
 
 export type WorkSpaceViewProps = {
@@ -263,6 +267,12 @@ export function WorkSpaceView({
                 externalZoomPan={isCompareMode ? externalZoomPan : undefined}
                 onImageLoaded={onImageLoaded}
               />
+
+              {/* AI Agent overlays */}
+              <ScanOverlay />
+              <AgentActionToast />
+              <AgentPanelContainer />
+              <AgentToggleButton />
             </div>
           </main>
 
