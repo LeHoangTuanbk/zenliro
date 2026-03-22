@@ -65,7 +65,7 @@ export function AgentPanelView({
           {hasContent && (
             <button
               onClick={onClear}
-              className="text-[10px] text-[#666] hover:text-[#999] transition-colors"
+              className="text-[10px] text-[#666] hover:text-[#999] transition-colors cursor-pointer"
               title="New Chat"
             >
               New Chat
@@ -73,7 +73,7 @@ export function AgentPanelView({
           )}
           <button
             onClick={onMaximize}
-            className="text-[#666] hover:text-[#999] transition-colors"
+            className="text-[#666] hover:text-[#999] transition-colors cursor-pointer"
             title={isMaximized ? 'Minimize' : 'Maximize'}
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -86,7 +86,7 @@ export function AgentPanelView({
           </button>
           <button
             onClick={onToggle}
-            className="text-[#666] hover:text-[#999] transition-colors"
+            className="text-[#666] hover:text-[#999] transition-colors cursor-pointer"
             title="Close"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -125,9 +125,18 @@ export function AgentPanelView({
                 <StreamItems items={currentItems} />
                 {isStreaming && (
                   <div className="inline-flex gap-1 ml-1 mt-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce"
+                      style={{ animationDelay: '0ms' }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce"
+                      style={{ animationDelay: '150ms' }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-[#c89b3c] animate-bounce"
+                      style={{ animationDelay: '300ms' }}
+                    />
                   </div>
                 )}
               </div>
@@ -140,9 +149,7 @@ export function AgentPanelView({
                   <span className="absolute inset-0 rounded-full bg-[#c89b3c]/30 animate-ping" />
                   <span className="absolute inset-[3px] rounded-full bg-[#c89b3c]" />
                 </div>
-                <span className="text-[11px] text-[#c89b3c]/80 italic">
-                  Analyzing...
-                </span>
+                <span className="text-[11px] text-[#c89b3c]/80 italic">Analyzing...</span>
               </div>
             )}
           </div>

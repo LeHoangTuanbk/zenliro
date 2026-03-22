@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useCanvasZoomStore } from './canvas-zoom-store';
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 16;
@@ -139,6 +140,16 @@ export function useZoomPan(
     };
     setIsPanning(true);
   };
+
+  // Sync zoom level to store for toolbar display
+  useEffect(() => {
+    useCanvasZoomStore.getState().setZoom(zoom);
+  }, [zoom]);
+
+  useEffect(() => {
+    useCanvasZoomStore.getState().setResetZoom(reset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [external]);
 
   return { zoom, pan, isSpaceDown, isPanning, zoomRef, reset, handleMouseDown };
 }

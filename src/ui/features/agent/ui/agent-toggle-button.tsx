@@ -9,7 +9,7 @@ export function AgentToggleButton() {
   return (
     <button
       onClick={toggle}
-      className="absolute bottom-3 left-3 z-20 w-9 h-9 rounded-full bg-br-accent/20 border border-br-accent/40 text-br-accent flex items-center justify-center hover:bg-br-accent/30 transition-colors shadow-lg"
+      className="absolute bottom-3 left-3 z-20 w-9 h-9 rounded-full bg-br-accent/20 border border-br-accent/40 text-br-accent flex items-center justify-center hover:bg-br-accent/30 transition-colors shadow-lg cursor-pointer"
       title="AI Agent"
     >
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">

@@ -1,4 +1,5 @@
 import { cn } from '@/shared/lib/utils';
+import { useCanvasZoomStore } from '@widgets/image-canvas/store/canvas-zoom-store';
 import { CanvasMode } from '../const';
 
 type Props = {
@@ -57,6 +58,28 @@ function CompareIcon() {
   );
 }
 
+function ZoomIndicator() {
+  const zoom = useCanvasZoomStore((s) => s.zoom);
+  const resetZoom = useCanvasZoomStore((s) => s.resetZoom);
+  const isZoomed = Math.abs(zoom - 1) > 0.01;
+  const pct = `${Math.round(zoom * 100)}%`;
+
+  if (!isZoomed) return null;
+
+  return (
+    <button
+      onClick={() => resetZoom?.()}
+      className="h-5 px-1.5 text-[10px] text-[#999] hover:text-br-text hover:bg-white/5 rounded-[2px] transition-colors flex items-center gap-1 tabular-nums"
+      title="Reset zoom (⌘0)"
+    >
+      <span>{pct}</span>
+      <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.2">
+        <path d="M1.5 5h7M5 1.5v7" strokeLinecap="round" transform="rotate(45 5 5)" />
+      </svg>
+    </button>
+  );
+}
+
 export function CanvasToolbar({ activeMode, onModeChange }: Props) {
   return (
     <div className="h-7 bg-[#161616] border-t border-black flex items-center justify-start gap-0.5 px-2 shrink-0">
@@ -79,6 +102,10 @@ export function CanvasToolbar({ activeMode, onModeChange }: Props) {
       >
         <CompareIcon />
       </ToolbarBtn>
+
+      <div className="flex-1" />
+
+      <ZoomIndicator />
     </div>
   );
 }
