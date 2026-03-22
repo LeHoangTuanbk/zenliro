@@ -17,6 +17,7 @@ interface HealActions {
   updateSpot(photoId: string, id: string, patch: Partial<HealSpot>): void;
   removeSpot(photoId: string, id: string): void;
   clearAll(photoId: string): void;
+  removePhoto(photoId: string): void;
   setActiveMode(mode: HealMode): void;
   setBrushSizePx(px: number): void;
   setFeather(f: number): void;
@@ -68,6 +69,12 @@ export const useHealStore = create<HealState & HealActions>((set, get) => ({
       spotsByPhoto: { ...s.spotsByPhoto, [photoId]: [] },
       selectedSpotId: null,
     })),
+
+  removePhoto: (photoId) =>
+    set((s) => {
+      const { [photoId]: _, ...rest } = s.spotsByPhoto;
+      return { spotsByPhoto: rest, selectedSpotId: null };
+    }),
 
   setActiveMode: (activeMode) => set({ activeMode }),
   setBrushSizePx: (brushSizePx) => set({ brushSizePx }),

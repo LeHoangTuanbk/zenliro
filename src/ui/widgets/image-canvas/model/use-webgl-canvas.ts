@@ -508,5 +508,61 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     [healInteractionProps, canvasDims.w, zoomRef],
   );
 
+  // Re-fit canvas when container resizes (e.g. entering/leaving compare mode)
+  const [containerSize, setContainerSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      setContainerSize((prev) =>
+        prev.w === Math.round(width) && prev.h === Math.round(height)
+          ? prev
+          : { w: Math.round(width), h: Math.round(height) },
+      );
+    });
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [containerRef]);
+
+  useEffect(() => {
+    if (containerSize.w === 0) return;
+    const renderer = rendererRef.current;
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!renderer || !canvas || !container || !renderer.imageWidth) return;
+
+    const cropState = cropInteractionProps?.cropState ?? confirmedCropState;
+    const steps = cropState?.rotationSteps ?? 0;
+    const swap = steps % 2 !== 0;
+    const imgW = renderer.imageWidth;
+    const imgH = renderer.imageHeight;
+    const cropRect = !cropInteractionProps && confirmedCropState ? confirmedCropState.rect : null;
+    const baseW = cropRect ? imgW * cropRect.w : imgW;
+    const baseH = cropRect ? imgH * cropRect.h : imgH;
+    const effectiveW = swap ? baseH : baseW;
+    const effectiveH = swap ? baseW : baseH;
+
+    if (effectiveW > 0 && effectiveH > 0) {
+      const dpr = window.devicePixelRatio || 1;
+      const scale = Math.min(containerSize.w / effectiveW, containerSize.h / effectiveH, 1);
+      const cssW = Math.max(1, Math.round(effectiveW * scale));
+      const cssH = Math.max(1, Math.round(effectiveH * scale));
+      const pxW = Math.round(cssW * dpr);
+      const pxH = Math.round(cssH * dpr);
+      if (canvas.width !== pxW || canvas.height !== pxH) {
+        canvas.width = pxW;
+        canvas.height = pxH;
+        canvas.style.width = `${cssW}px`;
+        canvas.style.height = `${cssH}px`;
+        setCanvasDims({ w: cssW, h: cssH });
+        renderToCanvas();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerSize]);
+
   return { canvasRef, canvasDims, isLoading, handleOverlayAddSpot };
 }

@@ -9,6 +9,7 @@ interface CropStoreActions {
   getCrop(photoId: string): CropState;
   setCrop(photoId: string, patch: Partial<CropState>): void;
   resetCrop(photoId: string): void;
+  removePhoto(photoId: string): void;
   /** Apply a new aspect ratio preset, adjusting the rect to maintain center */
   setAspectPreset(photoId: string, preset: AspectRatioPreset, imageAspect: number): void;
 }
@@ -30,6 +31,12 @@ export const useCropStore = create<CropStoreState & CropStoreActions>((set, get)
     set((s) => ({
       cropByPhoto: { ...s.cropByPhoto, [photoId]: { ...DEFAULT_CROP_STATE } },
     })),
+
+  removePhoto: (photoId) =>
+    set((s) => {
+      const { [photoId]: _, ...rest } = s.cropByPhoto;
+      return { cropByPhoto: rest };
+    }),
 
   setAspectPreset: (photoId, preset, imageAspect) => {
     const current = get().cropByPhoto[photoId] ?? { ...DEFAULT_CROP_STATE };

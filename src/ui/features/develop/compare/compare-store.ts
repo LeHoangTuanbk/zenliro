@@ -12,6 +12,10 @@ export const useCompareStore = create<CompareStore>((set) => ({
   isCompareMode: false,
   zoom: 1,
   pan: { x: 0, y: 0 },
-  toggle: () => set((s) => ({ isCompareMode: !s.isCompareMode })),
+  toggle: () => set((s) => ({
+    isCompareMode: !s.isCompareMode,
+    zoom: 1,
+    pan: { x: 0, y: 0 },
+  })),
   setZoomPan: (zoom, pan) => set({ zoom, pan }),
 }));
