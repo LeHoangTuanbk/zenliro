@@ -1,8 +1,15 @@
 # Zenliro
 
-> **Enhance, not alter.** A Lightroom Classic-inspired photo development app powered by AI.
+> **Enhance, not alter.** A Lightroom Classic-inspired photo development app powered by AI Agent.
 
 Zenliro is a desktop RAW processing and color grading tool built for photographers who care about mood, tone, and authenticity. Not a destructive editor — no object removal, no inpainting. Just light, color, and feel.
+
+---
+
+## Demo
+
+- Main workspace: ![main workspace](docs/releases/assets/main-workspace.png)
+- Compare mode: ![compare mode](docs/releases/assets/compare-mode.png)
 
 ---
 
@@ -60,6 +67,24 @@ xattr -cr /Applications/Zenliro.app
 ```
 
 #### Step 3: Launch Zenliro again.
+
+### AI Photo Editing
+
+To use the AI photo editing feature, you need to download and install Claude Code or Codex CLI or both:
+
+- **Claude Code**: https://code.claude.com/docs/en/overview
+- **Codex CLI**: https://developers.openai.com/codex/cli
+
+---
+
+## TODO
+
+- [ ] Fix bugs
+- [ ] Add better photo management features and more convenient shortcuts
+- [ ] Optimize image processing performance
+- [ ] Improve Agent photo editing
+
+---
 
 ## Inspired By
 
