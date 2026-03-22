@@ -14,9 +14,49 @@ import { useMaskStore } from '@/features/develop/mask';
 import { useCropStore } from '@features/develop/crop/store/crop-store';
 import { useHistoryStore } from '@features/develop/history';
 import { captureSnapshot } from '@features/develop/history/lib/snapshot';
+import { computeHistogram } from '@features/histogram/lib/compute-histogram';
 import { AGENT_CHANNELS, AGENT_RESPONSE_PREFIX } from '../const/channels';
 import { useAgentStore } from '../store/agent-store';
 import type { HealMode } from '@features/develop/heal/store/types';
+
+/** Summarize histogram into compact stats for AI analysis */
+function summarizeHistogram(r: Uint32Array, g: Uint32Array, b: Uint32Array) {
+  const summarizeChannel = (ch: Uint32Array) => {
+    let total = 0, sum = 0;
+    for (let i = 0; i < 256; i++) { total += ch[i]; sum += i * ch[i]; }
+    const mean = total > 0 ? Math.round(sum / total) : 0;
+
+    // Zone distribution: shadows (0-63), midtones (64-191), highlights (192-255)
+    let shadows = 0, midtones = 0, highlights = 0;
+    for (let i = 0; i < 64; i++) shadows += ch[i];
+    for (let i = 64; i < 192; i++) midtones += ch[i];
+    for (let i = 192; i < 256; i++) highlights += ch[i];
+    const pct = (v: number) => total > 0 ? Math.round((v / total) * 100) : 0;
+
+    // Clipping: pixels at absolute 0 or 255
+    const clippedBlack = ch[0] + ch[1];
+    const clippedWhite = ch[254] + ch[255];
+
+    return {
+      mean,
+      shadows: pct(shadows),
+      midtones: pct(midtones),
+      highlights: pct(highlights),
+      clippedBlack: pct(clippedBlack),
+      clippedWhite: pct(clippedWhite),
+    };
+  };
+
+  return {
+    red: summarizeChannel(r),
+    green: summarizeChannel(g),
+    blue: summarizeChannel(b),
+    // Overall luminosity approximation
+    luminosity: {
+      mean: Math.round((summarizeChannel(r).mean * 0.299 + summarizeChannel(g).mean * 0.587 + summarizeChannel(b).mean * 0.114)),
+    },
+  };
+}
 
 type AgentRequest = { requestId: string; payload?: unknown };
 
@@ -81,6 +121,13 @@ export function useAgentIpc(
 
       [AGENT_CHANNELS.GET_PHOTO_INFO]: (req) => {
         respond(req.requestId, photoId ? { photoId } : null);
+      },
+
+      [AGENT_CHANNELS.GET_HISTOGRAM]: (req) => {
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        const { r, g, b } = computeHistogram(pixels.data, pixels.width, pixels.height);
+        respond(req.requestId, summarizeHistogram(r, g, b));
       },
 
       // ── Global adjustments ──────────────────────────────────────────
