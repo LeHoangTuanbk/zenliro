@@ -1,5 +1,5 @@
-import { useState, useCallback, useRef, type KeyboardEvent } from 'react';
-import { useAgentStore, AGENT_MODELS } from '../store/agent-store';
+import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react';
+import { useAgentStore } from '../store/agent-store';
 import { useReferenceStore } from '../store/reference-store';
 import { PresetBrowser } from './preset-browser';
 
@@ -18,13 +18,36 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const modelId = useAgentStore((s) => s.modelId);
+  const provider = useAgentStore((s) => s.provider);
+  const models = useAgentStore((s) => s.models);
+  const modelsLoaded = useAgentStore((s) => s.modelsLoaded);
   const setModelId = useAgentStore((s) => s.setModelId);
+  const loadModelsAction = useAgentStore((s) => s.loadModels);
+  const messages = useAgentStore((s) => s.messages);
 
   const referenceBase64 = useReferenceStore((s) => s.referenceBase64);
   const setReference = useReferenceStore((s) => s.setReference);
   const clearReference = useReferenceStore((s) => s.clear);
 
-  const currentModel = AGENT_MODELS.find((m) => m.id === modelId) ?? AGENT_MODELS[0];
+  const currentModel = models.find((m) => m.id === modelId) ?? models[0];
+  const claudeModels = models.filter((m) => m.provider === 'claude');
+  const codexModels = models.filter((m) => m.provider === 'codex');
+  const hasMessages = messages.length > 0;
+
+  // Load models dynamically on first render
+  useEffect(() => {
+    if (modelsLoaded) return;
+    window.electron?.agent?.loadModels().then((loaded) => {
+      if (loaded && loaded.length > 0) {
+        loadModelsAction(loaded.map((m) => ({
+          id: m.id,
+          label: m.label,
+          description: m.description,
+          provider: m.provider as 'claude' | 'codex',
+        })));
+      }
+    });
+  }, [modelsLoaded, loadModelsAction]);
 
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
@@ -127,27 +150,54 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
                 onClick={() => { setShowModelMenu(!showModelMenu); setShowPresets(false); }}
                 className="flex items-center gap-1 text-[10px] text-[#999] hover:text-[#ccc] transition-colors px-1 py-0.5"
               >
-                <span>{currentModel.label.replace('Claude ', '')}</span>
-                <span className="text-[9px] text-[#666]">({currentModel.tag})</span>
+                <span>{currentModel?.label ?? modelId}</span>
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
                   <path d="M2 3l2 2 2-2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
 
               {showModelMenu && (
-                <div className="absolute bottom-full left-0 mb-1 w-[180px] bg-[#2a2a2a] border border-[#444] rounded-[6px] shadow-xl overflow-hidden z-50">
-                  {AGENT_MODELS.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => { setModelId(m.id); setShowModelMenu(false); }}
-                      className={`w-full flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-[#333] transition-colors ${
-                        m.id === modelId ? 'text-white' : 'text-[#aaa]'
-                      }`}
-                    >
-                      <span>{m.label}</span>
-                      <span className="text-[9px] text-[#666]">{m.tag}</span>
-                    </button>
-                  ))}
+                <div className="absolute bottom-full left-0 mb-1 w-[160px] bg-[#2a2a2a] border border-[#444] rounded-[6px] shadow-xl overflow-hidden z-50 max-h-[300px] overflow-y-auto">
+                  <div className="px-2.5 py-1 text-[9px] text-[#555] uppercase tracking-wider border-b border-[#333]">Claude</div>
+                  {claudeModels.map((m) => {
+                    const disabled = hasMessages && provider !== 'claude';
+                    return (
+                      <button
+                        key={m.id}
+                        disabled={disabled}
+                        onClick={() => { setModelId(m.id, 'claude'); setShowModelMenu(false); }}
+                        className={`w-full text-left px-2.5 py-1 text-[11px] ${
+                          disabled ? 'text-[#444] cursor-not-allowed'
+                            : m.id === modelId ? 'text-white bg-[#333]'
+                            : 'text-[#aaa] hover:bg-[#333]'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    );
+                  })}
+                  {codexModels.length > 0 && (
+                    <>
+                      <div className="px-2.5 py-1 text-[9px] text-[#555] uppercase tracking-wider border-b border-[#333] border-t">Codex</div>
+                      {codexModels.map((m) => {
+                        const disabled = hasMessages && provider !== 'codex';
+                        return (
+                          <button
+                            key={m.id}
+                            disabled={disabled}
+                            onClick={() => { setModelId(m.id, 'codex'); setShowModelMenu(false); }}
+                            className={`w-full text-left px-2.5 py-1 text-[11px] ${
+                              disabled ? 'text-[#444] cursor-not-allowed'
+                                : m.id === modelId ? 'text-white bg-[#333]'
+                                : 'text-[#aaa] hover:bg-[#333]'
+                            }`}
+                          >
+                            {m.label}
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
                 </div>
               )}
             </div>

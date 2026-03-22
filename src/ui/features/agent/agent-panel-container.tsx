@@ -33,7 +33,8 @@ export function AgentPanelContainer() {
         // Clear after sending — reference is per-message, not persistent
         useReferenceStore.getState().clear();
       }
-      await window.electron?.agent?.sendMessage(message, { model: modelId });
+      const { provider } = useAgentStore.getState();
+      await window.electron?.agent?.sendMessage(message, { model: modelId, provider });
     },
     [addUserMessage],
   );

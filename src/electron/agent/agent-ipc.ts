@@ -2,9 +2,25 @@ import { BrowserWindow, ipcMain, app } from 'electron';
 import fs from 'fs';
 import path from 'path';
 import { ClaudeCodeManager } from './claude-code-manager.js';
+import { CodexManager } from './codex-manager.js';
+import { loadAllModels } from './load-models.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
 
-let manager: ClaudeCodeManager | null = null;
+type AgentProvider = 'claude' | 'codex';
+
+type ManagerLike = {
+  isRunning(): boolean;
+  sendMessage(text: string, onEvent: (e: ParsedStreamEvent) => void, options?: { model?: string }): void;
+  stop(): void;
+  setSessionId(id: string): void;
+};
+
+let manager: ManagerLike | null = null;
+let currentProvider: AgentProvider | null = null;
+
+function createManager(provider: AgentProvider): ManagerLike {
+  return provider === 'codex' ? new CodexManager() : new ClaudeCodeManager();
+}
 
 export function registerAgentIpc(mainWindow: BrowserWindow) {
   const send = (channel: string, data?: unknown) => {
@@ -41,24 +57,46 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
   };
 
   ipcMain.handle('agent:start-session', async () => {
-    if (!manager) manager = new ClaudeCodeManager();
+    if (!manager) {
+      currentProvider = 'claude';
+      manager = createManager('claude');
+    }
   });
 
-  ipcMain.handle('agent:send-message', async (_event, text: string, options?: { model?: string }) => {
-    if (!manager) manager = new ClaudeCodeManager();
+  ipcMain.handle('agent:send-message', async (
+    _event, text: string, options?: { model?: string; provider?: AgentProvider },
+  ) => {
+    const provider = options?.provider ?? 'claude';
+
+    // Provider changed → must create new manager (new session)
+    if (provider !== currentProvider) {
+      manager?.stop();
+      manager = createManager(provider);
+      currentProvider = provider;
+    }
+
+    if (!manager) {
+      manager = createManager(provider);
+      currentProvider = provider;
+    }
+
     manager.sendMessage(text, handleStreamEvent, options);
   });
 
   ipcMain.handle('agent:stop-session', async () => {
     manager?.stop();
     manager = null;
+    currentProvider = null;
   });
 
   ipcMain.handle('agent:get-status', async () => {
     return { running: manager?.isRunning() ?? false };
   });
 
-  // Kill agent process when app is quitting
+  ipcMain.handle('agent:load-models', async () => {
+    return loadAllModels();
+  });
+
   app.on('before-quit', () => {
     manager?.stop();
     manager = null;

@@ -26,10 +26,11 @@ electron.contextBridge.exposeInMainWorld('electron', {
 
   agent: {
     startSession: () => electron.ipcRenderer.invoke('agent:start-session'),
-    sendMessage: (text: string, options?: { model?: string }) => electron.ipcRenderer.invoke('agent:send-message', text, options),
+    sendMessage: (text: string, options?: { model?: string; provider?: string }) => electron.ipcRenderer.invoke('agent:send-message', text, options),
     stopSession: () => electron.ipcRenderer.invoke('agent:stop-session'),
     getStatus: () => electron.ipcRenderer.invoke('agent:get-status'),
     saveReferenceImage: (dataUrl: string) => electron.ipcRenderer.invoke('agent:save-reference-image', dataUrl),
+    loadModels: () => electron.ipcRenderer.invoke('agent:load-models'),
 
     onToolRequest: (channel: string, cb: (req: { requestId: string; payload?: unknown }) => void) => {
       const handler = (_event: unknown, data: { requestId: string; payload?: unknown }) => cb(data);

@@ -117,10 +117,11 @@ interface Window {
 
     agent: {
       startSession: () => Promise<void>;
-      sendMessage: (text: string, options?: { model?: string }) => Promise<void>;
+      sendMessage: (text: string, options?: { model?: string; provider?: string }) => Promise<void>;
       stopSession: () => Promise<void>;
       getStatus: () => Promise<{ running: boolean }>;
       saveReferenceImage: (dataUrl: string) => Promise<string | null>;
+      loadModels: () => Promise<Array<{ id: string; label: string; description: string; provider: string }>>;
 
       onToolRequest: (
         channel: string,

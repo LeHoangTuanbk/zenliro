@@ -5,6 +5,7 @@ import { app } from 'electron';
 import { isDev } from '../utils.js';
 
 const CLAUDE_CONFIG_PATH = path.join(os.homedir(), '.claude.json');
+const CODEX_CONFIG_PATH = path.join(os.homedir(), '.codex', 'config.toml');
 const MCP_SERVER_NAME = 'zenliro';
 
 function getMcpServerCommand(): { command: string; args: string[] } {
@@ -15,9 +16,7 @@ function getMcpServerCommand(): { command: string; args: string[] } {
     };
   }
 
-  // Production: the MCP server JS is in the app's resources
   const appPath = app.getAppPath();
-  // In production, appPath is inside .asar, go one level up for unpacked files
   const serverPath = path.join(appPath, '..', 'dist-electron', 'mcp', 'zenliro-mcp-server.js');
 
   return {
@@ -26,7 +25,7 @@ function getMcpServerCommand(): { command: string; args: string[] } {
   };
 }
 
-export function registerMcpGlobally(): void {
+function registerInClaude(command: string, args: string[]): void {
   try {
     let config: Record<string, unknown> = {};
 
@@ -36,38 +35,76 @@ export function registerMcpGlobally(): void {
     }
 
     const mcpServers = (config.mcpServers ?? {}) as Record<string, unknown>;
-    const { command, args } = getMcpServerCommand();
-
-    mcpServers[MCP_SERVER_NAME] = {
-      command,
-      args,
-      env: {},
-      type: 'stdio',
-    };
-
+    mcpServers[MCP_SERVER_NAME] = { command, args, env: {}, type: 'stdio' };
     config.mcpServers = mcpServers;
 
     fs.writeFileSync(CLAUDE_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
-    console.log(`[Zenliro] Registered MCP server globally in ${CLAUDE_CONFIG_PATH}`);
+    console.log(`[Zenliro] Registered MCP in Claude: ${CLAUDE_CONFIG_PATH}`);
   } catch (err) {
-    console.error('[Zenliro] Failed to register MCP server globally:', err);
+    console.error('[Zenliro] Failed to register MCP in Claude:', err);
   }
 }
 
-export function unregisterMcpGlobally(): void {
+function registerInCodex(command: string, args: string[]): void {
   try {
-    if (!fs.existsSync(CLAUDE_CONFIG_PATH)) return;
+    if (!fs.existsSync(CODEX_CONFIG_PATH)) return;
 
-    const raw = fs.readFileSync(CLAUDE_CONFIG_PATH, 'utf-8');
-    const config = JSON.parse(raw);
-    const mcpServers = config.mcpServers as Record<string, unknown> | undefined;
+    let toml = fs.readFileSync(CODEX_CONFIG_PATH, 'utf-8');
 
-    if (mcpServers && MCP_SERVER_NAME in mcpServers) {
-      delete mcpServers[MCP_SERVER_NAME];
-      fs.writeFileSync(CLAUDE_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
-      console.log(`[Zenliro] Unregistered MCP server from ${CLAUDE_CONFIG_PATH}`);
+    // Check if zenliro section already exists
+    if (toml.includes(`[mcp_servers.${MCP_SERVER_NAME}]`)) {
+      // Replace existing section
+      const sectionRegex = new RegExp(
+        `\\[mcp_servers\\.${MCP_SERVER_NAME}\\][\\s\\S]*?(?=\\n\\[|$)`,
+      );
+      const newSection = buildCodexMcpSection(command, args);
+      toml = toml.replace(sectionRegex, newSection);
+    } else {
+      // Append new section
+      toml = toml.trimEnd() + '\n\n' + buildCodexMcpSection(command, args) + '\n';
     }
+
+    fs.writeFileSync(CODEX_CONFIG_PATH, toml, 'utf-8');
+    console.log(`[Zenliro] Registered MCP in Codex: ${CODEX_CONFIG_PATH}`);
   } catch (err) {
-    console.error('[Zenliro] Failed to unregister MCP server:', err);
+    console.error('[Zenliro] Failed to register MCP in Codex:', err);
   }
+}
+
+function buildCodexMcpSection(command: string, args: string[]): string {
+  const argsToml = args.map((a) => `"${a}"`).join(', ');
+  return `[mcp_servers.${MCP_SERVER_NAME}]\ncommand = "${command}"\nargs = [ ${argsToml} ]`;
+}
+
+export function registerMcpGlobally(): void {
+  const { command, args } = getMcpServerCommand();
+  registerInClaude(command, args);
+  registerInCodex(command, args);
+}
+
+export function unregisterMcpGlobally(): void {
+  // Claude
+  try {
+    if (fs.existsSync(CLAUDE_CONFIG_PATH)) {
+      const raw = fs.readFileSync(CLAUDE_CONFIG_PATH, 'utf-8');
+      const config = JSON.parse(raw);
+      const mcpServers = config.mcpServers as Record<string, unknown> | undefined;
+      if (mcpServers && MCP_SERVER_NAME in mcpServers) {
+        delete mcpServers[MCP_SERVER_NAME];
+        fs.writeFileSync(CLAUDE_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
+      }
+    }
+  } catch { /* ignore */ }
+
+  // Codex — remove section from TOML
+  try {
+    if (fs.existsSync(CODEX_CONFIG_PATH)) {
+      let toml = fs.readFileSync(CODEX_CONFIG_PATH, 'utf-8');
+      const sectionRegex = new RegExp(
+        `\\n*\\[mcp_servers\\.${MCP_SERVER_NAME}\\][\\s\\S]*?(?=\\n\\[|$)`,
+      );
+      toml = toml.replace(sectionRegex, '');
+      fs.writeFileSync(CODEX_CONFIG_PATH, toml, 'utf-8');
+    }
+  } catch { /* ignore */ }
 }

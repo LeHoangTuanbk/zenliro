@@ -23,13 +23,23 @@ export type AgentMessage = {
   timestamp: number;
 };
 
-export const AGENT_MODELS = [
-  { id: 'opus', label: 'Claude Opus 4.6', tag: 'Best' },
-  { id: 'sonnet', label: 'Claude Sonnet 4.6', tag: 'Fast' },
-  { id: 'haiku', label: 'Claude Haiku 4.5', tag: 'Fastest' },
-] as const;
+export type AgentProvider = 'claude' | 'codex';
 
-export type AgentModelId = (typeof AGENT_MODELS)[number]['id'];
+export type AgentModel = {
+  id: string;
+  label: string;
+  description: string;
+  provider: AgentProvider;
+};
+
+// Fallback models until dynamic load completes
+export const DEFAULT_MODELS: AgentModel[] = [
+  { id: 'opus', label: 'Claude Opus', description: 'Most capable', provider: 'claude' },
+  { id: 'sonnet', label: 'Claude Sonnet', description: 'Fast & capable', provider: 'claude' },
+  { id: 'haiku', label: 'Claude Haiku', description: 'Fastest', provider: 'claude' },
+];
+
+export type AgentModelId = string;
 
 type AgentStore = {
   isOpen: boolean;
@@ -41,7 +51,10 @@ type AgentStore = {
   currentThinking: string;
   actionToast: string | null;
   // Settings
+  models: AgentModel[];
+  modelsLoaded: boolean;
   modelId: AgentModelId;
+  provider: AgentProvider;
   fastMode: boolean;
 
   toggle: () => void;
@@ -49,7 +62,8 @@ type AgentStore = {
   setMaximized: (max: boolean) => void;
   setStreaming: (v: boolean) => void;
   setScanning: (v: boolean) => void;
-  setModelId: (id: AgentModelId) => void;
+  setModelId: (id: AgentModelId, provider: AgentProvider) => void;
+  loadModels: (models: AgentModel[]) => void;
   toggleFastMode: () => void;
 
   addUserMessage: (text: string) => void;
@@ -74,7 +88,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   currentItems: [],
   currentThinking: '',
   actionToast: null,
+  models: DEFAULT_MODELS,
+  modelsLoaded: false,
   modelId: 'opus',
+  provider: 'claude' as AgentProvider,
   fastMode: true,
 
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),
@@ -82,7 +99,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   setMaximized: (isMaximized) => set({ isMaximized }),
   setStreaming: (isStreaming) => set({ isStreaming }),
   setScanning: (isScanning) => set({ isScanning }),
-  setModelId: (modelId) => set({ modelId }),
+  setModelId: (modelId, provider) => set({ modelId, provider }),
+  loadModels: (models) => set({ models, modelsLoaded: true }),
   toggleFastMode: () => set((s) => ({ fastMode: !s.fastMode })),
 
   addUserMessage: (text) =>
