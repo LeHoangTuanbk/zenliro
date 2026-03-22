@@ -16,6 +16,20 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
   const [showAgentCount, setShowAgentCount] = useState(false);
   const [agentCount, setAgentCount] = useState(1);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const bottomBarRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdowns on click outside
+  useEffect(() => {
+    if (!showModelMenu && !showAgentCount) return;
+    const handler = (e: MouseEvent) => {
+      if (bottomBarRef.current && !bottomBarRef.current.contains(e.target as Node)) {
+        setShowModelMenu(false);
+        setShowAgentCount(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showModelMenu, showAgentCount]);
 
   const modelId = useAgentStore((s) => s.modelId);
   const provider = useAgentStore((s) => s.provider);
@@ -142,7 +156,7 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
         />
 
         {/* Bottom bar */}
-        <div className="flex items-center justify-between px-2 pb-1.5">
+        <div ref={bottomBarRef} className="flex items-center justify-between px-2 pb-1.5">
           <div className="flex items-center gap-1">
             {/* Model selector */}
             <div className="relative">
@@ -223,13 +237,14 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
                   {[1, 2, 3, 4, 5, 6].map((n) => (
                     <button
                       key={n}
-                      onClick={() => { setAgentCount(n); setShowAgentCount(false); }}
+                      onClick={() => { if (n === 1) { setAgentCount(n); setShowAgentCount(false); } }}
                       disabled={n > 1}
-                      className={`w-full text-left px-3 py-1.5 text-[12px] transition-colors ${
+                      title={n > 1 ? 'Coming soon' : undefined}
+                      className={`w-full text-left px-3 py-1 text-[11px] transition-colors ${
                         n === agentCount
                           ? 'text-white bg-[#333]'
                           : n > 1
-                            ? 'text-[#555] cursor-not-allowed'
+                            ? 'text-[#444] cursor-not-allowed'
                             : 'text-[#aaa] hover:bg-[#333] hover:text-white'
                       }`}
                     >
