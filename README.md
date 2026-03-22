@@ -15,11 +15,11 @@ Zenliro is a desktop RAW processing and color grading tool built for photographe
 
 ## Features
 
-- **RAW Processing** — Import RAW, JPG, PNG, TIFF and more. View EXIF metadata and overall histogram at a glance.
+- **RAW Processing** — Import JPG, PNG, WebP, BMP, GIF and TIFF photo format. View EXIF metadata and overall histogram at a glance.
 - **Develop Module** — Full panel parity with Lightroom Classic: Basic, Tone Curve, HSL, Color Grading, Detail, and more.
-- **AI Agent** — Claude-powered agent analyzes your photo, plans adjustments, and edits in real-time. Watch it work like a photographer at the controls. Can copy the style of a reference image or craft the best possible output autonomously.
+- **AI Agent** — Agent analyzes your photo, plans adjustments, and edits in real-time. Watch it work like a photographer at the controls. Can copy the style of a reference image or craft the best possible output autonomously.
 - **Non-destructive** — Full undo/redo history. Original file is never touched.
-- **Style Presets** — 10 curated looks for different moods and genres.
+- **Style Presets** — 20+ curated looks for different moods and genres.
 - **WebGL Rendering** — Custom-written shaders for real-time color processing entirely on the GPU.
 
 ---
@@ -32,7 +32,7 @@ Electron
 ├── Shadcn/ui + Tailwind CSS       → Component system
 ├── WebGL (custom shaders)         → Real-time GPU color processing
 ├── Zustand                        → State management
-└── Claude (MCP)                   → AI agent for intelligent photo editing
+└── MCP server                     → AI agent for intelligent photo editing
 ```
 
 ---
@@ -83,6 +83,7 @@ To use the AI photo editing feature, you need to download and install Claude Cod
 - [ ] Add better photo management features and more convenient shortcuts
 - [ ] Optimize image processing performance
 - [ ] Improve Agent photo editing
+- [ ] Support RAW photo format
 
 ---
 
