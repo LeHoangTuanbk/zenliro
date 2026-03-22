@@ -17,18 +17,7 @@ export function FilmstripPanel({ photos, selectedId, isVisible, onSelect, onImpo
 
   useEffect(() => {
     if (!selectedId || !isVisible || !isOpen) return;
-    requestAnimationFrame(() => {
-      const container = filmstripRef.current;
-      const item = itemRefs.current.get(selectedId);
-      if (!container || !item) return;
-      const cRect = container.getBoundingClientRect();
-      const iRect = item.getBoundingClientRect();
-      const above = iRect.top < cRect.top;
-      const below = iRect.bottom > cRect.bottom;
-      if (above || below) {
-        container.scrollTop += iRect.top - cRect.top - cRect.height / 2 + iRect.height / 2;
-      }
-    });
+    itemRefs.current.get(selectedId)?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
   }, [selectedId, isVisible, isOpen]);
 
   return (
