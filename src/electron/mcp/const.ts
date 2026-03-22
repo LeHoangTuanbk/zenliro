@@ -11,6 +11,7 @@ export const AGENT_CHANNELS = {
   MEASURE_SHARPNESS: 'agent:measure-sharpness',
   ESTIMATE_WHITE_BALANCE: 'agent:estimate-white-balance',
   ESTIMATE_NOISE: 'agent:estimate-noise',
+  DETECT_BLEMISHES: 'agent:detect-blemishes',
   // Global adjustments
   SET_ADJUSTMENTS: 'agent:set-adjustments',
   SET_TONE_CURVE: 'agent:set-tone-curve',

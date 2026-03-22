@@ -80,14 +80,8 @@ If ANY answer is "no", fix it before declaring success.
 - set_effects — set vignette & grain (vigAmount: -100 to 100, grain params: 0 to 100)
 - reset_all — reset all edits to defaults
 
-### Heal / Clone / Fill tools
-- add_heal_spot — add a spot removal point
-  - mode: heal (blend surrounding), clone (copy from source), fill (content-aware)
-  - dstX/dstY: destination point (0–1 normalized)
-  - srcX/srcY: source point (0–1 normalized)
-  - radius: brush radius (0.005–0.5, normalized to image width)
-  - feather: 0–100, opacity: 0–100
-- clear_heal_spots — remove all heal/clone/fill spots
+### Heal / Clone / Fill
+- These tools are NOT available for AI. If the user asks for spot removal, blemish removal, or cloning, tell them: "Spot removal works best when done manually — use the Heal tool in the toolbar (shortcut: click the heal icon) to precisely click on spots you want to remove."
 
 ### Masking tools (local adjustments)
 - add_mask — create a gradient or radial mask, returns maskId

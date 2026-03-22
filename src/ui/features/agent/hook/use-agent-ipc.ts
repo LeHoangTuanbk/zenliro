@@ -19,6 +19,7 @@ import { AGENT_CHANNELS, AGENT_RESPONSE_PREFIX } from '../const/channels';
 import { useAgentStore } from '../store/agent-store';
 import type { HealMode } from '@features/develop/heal/store/types';
 import type { PhotoExif } from '@features/histogram/lib/read-exif';
+import { detectBlemishesWithFace } from '../lib/face-blemish-detector';
 
 /** Summarize histogram into compact stats for AI analysis */
 function summarizeHistogram(r: Uint32Array, g: Uint32Array, b: Uint32Array) {
@@ -348,6 +349,108 @@ function estimateNoise(data: Uint8ClampedArray, w: number, h: number) {
   };
 }
 
+/** Detect skin blemishes by finding small anomalous spots on skin-toned areas */
+function detectBlemishes(data: Uint8ClampedArray, w: number, h: number, maxSpots = 10) {
+  // Step 1: Build a skin mask (pixels with skin-like hue/saturation)
+  const isSkin = (r: number, g: number, b: number) => {
+    // Skin detection in RGB: R > 80, G > 30, B > 15, R > G > B, R-G < 100
+    if (r < 80 || g < 30 || b < 15) return false;
+    if (r <= g || g <= b) return false;
+    if (r - g > 100) return false;
+    const maxC = Math.max(r, g, b);
+    const minC = Math.min(r, g, b);
+    if (maxC - minC < 15) return false; // too grey
+    return true;
+  };
+
+  // Step 2: For each skin pixel, compute local contrast vs surrounding area
+  // A blemish is a small dark/reddish spot that stands out from neighbors
+  const patchSize = Math.max(3, Math.round(Math.min(w, h) / 200)); // adaptive patch
+  const searchRadius = patchSize * 3;
+  const candidates: Array<{ x: number; y: number; score: number; radius: number }> = [];
+
+  // Sample grid — don't check every pixel (too slow)
+  const step = Math.max(2, Math.round(patchSize * 0.7));
+
+  for (let cy = searchRadius; cy < h - searchRadius; cy += step) {
+    for (let cx = searchRadius; cx < w - searchRadius; cx += step) {
+      const idx = (cy * w + cx) * 4;
+      const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+
+      // Only look at skin areas
+      if (!isSkin(r, g, b)) continue;
+
+      // Compute local average in surrounding ring (excluding center patch)
+      let ringR = 0, ringG = 0, ringB = 0, ringCount = 0;
+      for (let dy = -searchRadius; dy <= searchRadius; dy += step) {
+        for (let dx = -searchRadius; dx <= searchRadius; dx += step) {
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < patchSize || dist > searchRadius) continue;
+          const pi = ((cy + dy) * w + (cx + dx)) * 4;
+          if (!isSkin(data[pi], data[pi + 1], data[pi + 2])) continue;
+          ringR += data[pi]; ringG += data[pi + 1]; ringB += data[pi + 2];
+          ringCount++;
+        }
+      }
+      if (ringCount < 8) continue;
+
+      const avgR = ringR / ringCount;
+      const avgG = ringG / ringCount;
+      const avgB = ringB / ringCount;
+
+      // Center patch average
+      let patchR = 0, patchG = 0, patchB = 0, patchCount = 0;
+      for (let dy = -patchSize; dy <= patchSize; dy++) {
+        for (let dx = -patchSize; dx <= patchSize; dx++) {
+          const pi = ((cy + dy) * w + (cx + dx)) * 4;
+          patchR += data[pi]; patchG += data[pi + 1]; patchB += data[pi + 2];
+          patchCount++;
+        }
+      }
+      patchR /= patchCount; patchG /= patchCount; patchB /= patchCount;
+
+      // Blemish score: how much darker/redder is the center vs surrounding
+      const lumDiff = (avgR * 0.299 + avgG * 0.587 + avgB * 0.114) -
+                      (patchR * 0.299 + patchG * 0.587 + patchB * 0.114);
+      const redness = (patchR - patchG) - (avgR - avgG); // extra redness
+
+      // Blemishes are darker OR redder than surroundings
+      const score = Math.max(0, lumDiff * 0.7 + redness * 0.3);
+
+      if (score > 8) { // threshold
+        candidates.push({
+          x: cx, y: cy,
+          score,
+          radius: patchSize / w, // normalized
+        });
+      }
+    }
+  }
+
+  // Step 3: Non-maximum suppression — remove overlapping detections
+  candidates.sort((a, b) => b.score - a.score);
+  const selected: typeof candidates = [];
+  const minDist = patchSize * 2;
+
+  for (const c of candidates) {
+    const tooClose = selected.some((s) => {
+      const dx = c.x - s.x, dy = c.y - s.y;
+      return Math.sqrt(dx * dx + dy * dy) < minDist;
+    });
+    if (!tooClose) {
+      selected.push(c);
+      if (selected.length >= maxSpots) break;
+    }
+  }
+
+  return selected.map((s) => ({
+    x: Math.round((s.x / w) * 1000) / 1000,
+    y: Math.round((s.y / h) * 1000) / 1000,
+    confidence: Math.min(100, Math.round(s.score)),
+    suggestedRadius: Math.round(s.radius * 1000) / 1000,
+  }));
+}
+
 type AgentRequest = { requestId: string; payload?: unknown };
 
 /** Soft-clamp adjustment values so AI can't destroy the photo */
@@ -386,6 +489,7 @@ export function useAgentIpc(
   photoId: string | null,
   selected?: ImportedPhoto | null,
   exifData?: PhotoExif | null,
+  originalImageUrl?: string | null,
 ) {
   useEffect(() => {
     const api = window.electron?.agent;
@@ -475,6 +579,23 @@ export function useAgentIpc(
         const pixels = canvasRef.current?.getRenderedPixels();
         if (!pixels) return respond(req.requestId, null);
         respond(req.requestId, estimateNoise(pixels.data, pixels.width, pixels.height));
+      },
+
+      [AGENT_CHANNELS.DETECT_BLEMISHES]: async (req) => {
+        const payload = req.payload as { maxSpots?: number } | undefined;
+        const pixels = canvasRef.current?.getRenderedPixels();
+        // Use original image for face detection (not WebGL processed)
+        const imgUrl = originalImageUrl || canvasRef.current?.getExportDataUrl('image/jpeg', 0.95);
+        if (!imgUrl || !pixels) return respond(req.requestId, null);
+        try {
+          const result = await detectBlemishesWithFace(
+            imgUrl, pixels.data, pixels.width, pixels.height, payload?.maxSpots,
+          );
+          respond(req.requestId, result);
+        } catch (err) {
+          console.error('[DetectBlemishes] error:', err);
+          respond(req.requestId, { count: 0, spots: [], note: 'Detection failed' });
+        }
       },
 
       // ── Global adjustments ──────────────────────────────────────────
@@ -781,5 +902,5 @@ export function useAgentIpc(
     );
 
     return () => cleanups.forEach((cleanup) => cleanup());
-  }, [canvasRef, photoId, selected, exifData]);
+  }, [canvasRef, photoId, selected, exifData, originalImageUrl]);
 }

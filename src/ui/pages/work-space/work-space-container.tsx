@@ -76,7 +76,7 @@ export function WorkSpaceContainer() {
   const handleExport = useExport(selected, selectedId, canvasRef);
   usePhotoEdits(selectedId);
   useHistoryTracking(selectedId);
-  useAgentIpc(canvasRef, selectedId, selected, exifData);
+  useAgentIpc(canvasRef, selectedId, selected, exifData, selectedResource.imageUrl);
 
   const handleRatingChange = useCallback((id: string, rating: number) => {
     setPhotoRating(id, rating);
