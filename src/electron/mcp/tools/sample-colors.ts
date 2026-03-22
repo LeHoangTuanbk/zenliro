@@ -9,24 +9,14 @@ export function registerSampleColors(server: McpServer) {
     {
       title: 'Sample Colors at Points',
       description:
-        'Sample RGB color values at specific coordinates in the photo. Use this to check skin tones, verify white balance on neutral objects, or compare colors at different points. Each point returns average RGB in a 7x7 pixel area. Coordinates are normalized 0–1 (top-left = 0,0).',
+        'Sample RGB color values at specific coordinates in the photo. Use this to check skin tones (healthy skin: R > G > B), verify white balance on neutral surfaces, compare colors at key points. Coordinates are normalized 0–1 (top-left = 0,0). Returns average RGB in a 7x7 pixel area per point.',
       inputSchema: {
-        type: 'object' as const,
-        properties: {
-          points: {
-            type: 'array' as const,
-            description: 'Array of {x, y} points to sample (normalized 0–1)',
-            items: {
-              type: 'object' as const,
-              properties: {
-                x: { type: 'number' as const, description: 'Horizontal position (0=left, 1=right)' },
-                y: { type: 'number' as const, description: 'Vertical position (0=top, 1=bottom)' },
-              },
-              required: ['x', 'y'],
-            },
-          },
-        },
-        required: ['points'],
+        points: z.array(
+          z.object({
+            x: z.number().min(0).max(1).describe('Horizontal position (0=left, 1=right)'),
+            y: z.number().min(0).max(1).describe('Vertical position (0=top, 1=bottom)'),
+          }),
+        ).describe('Points to sample'),
       },
     },
     async (params: { points: Array<{ x: number; y: number }> }) => {

@@ -18,6 +18,7 @@ import { computeHistogram } from '@features/histogram/lib/compute-histogram';
 import { AGENT_CHANNELS, AGENT_RESPONSE_PREFIX } from '../const/channels';
 import { useAgentStore } from '../store/agent-store';
 import type { HealMode } from '@features/develop/heal/store/types';
+import type { PhotoExif } from '@features/histogram/lib/read-exif';
 
 /** Summarize histogram into compact stats for AI analysis */
 function summarizeHistogram(r: Uint32Array, g: Uint32Array, b: Uint32Array) {
@@ -138,6 +139,215 @@ function analyzeRegions(data: Uint8ClampedArray, w: number, h: number) {
   return regions;
 }
 
+/** Extract dominant colors using simple color quantization (median-cut-like) */
+function getDominantColors(data: Uint8ClampedArray, w: number, h: number, count = 5) {
+  // Sample pixels into buckets (quantize to 4-bit per channel = 4096 buckets)
+  const buckets = new Map<number, { r: number; g: number; b: number; count: number }>();
+  const step = Math.max(1, Math.floor((w * h) / 20000)); // sample ~20k pixels
+  for (let i = 0; i < w * h; i += step) {
+    const idx = i * 4;
+    const qr = (data[idx] >> 4) << 4;
+    const qg = (data[idx + 1] >> 4) << 4;
+    const qb = (data[idx + 2] >> 4) << 4;
+    const key = (qr << 16) | (qg << 8) | qb;
+    const b = buckets.get(key);
+    if (b) { b.r += data[idx]; b.g += data[idx + 1]; b.b += data[idx + 2]; b.count++; }
+    else buckets.set(key, { r: data[idx], g: data[idx + 1], b: data[idx + 2], count: 1 });
+  }
+
+  return Array.from(buckets.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, count)
+    .map((b) => ({
+      r: Math.round(b.r / b.count),
+      g: Math.round(b.g / b.count),
+      b: Math.round(b.b / b.count),
+      percentage: Math.round((b.count / (w * h / step)) * 100),
+      hex: '#' + [
+        Math.round(b.r / b.count),
+        Math.round(b.g / b.count),
+        Math.round(b.b / b.count),
+      ].map((c) => c.toString(16).padStart(2, '0')).join(''),
+    }));
+}
+
+/** Measure sharpness per region using Laplacian variance (edge detection) */
+function measureSharpness(data: Uint8ClampedArray, w: number, h: number) {
+  // Convert to grayscale luminance
+  const gray = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) {
+    const idx = i * 4;
+    gray[i] = data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
+  }
+
+  // Measure Laplacian variance in 3x3 grid regions
+  const ROWS = 3, COLS = 3;
+  const names = [
+    'top-left', 'top-center', 'top-right',
+    'mid-left', 'center', 'mid-right',
+    'bottom-left', 'bottom-center', 'bottom-right',
+  ];
+  const regions: Array<{ position: string; sharpness: number; detail: string }> = [];
+
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const x0 = Math.floor((col / COLS) * w) + 1;
+      const x1 = Math.floor(((col + 1) / COLS) * w) - 1;
+      const y0 = Math.floor((row / ROWS) * h) + 1;
+      const y1 = Math.floor(((row + 1) / ROWS) * h) - 1;
+
+      // Laplacian: L(x,y) = -4*center + top + bottom + left + right
+      let variance = 0, count = 0;
+      for (let y = y0; y < y1; y += 3) {
+        for (let x = x0; x < x1; x += 3) {
+          const lap = -4 * gray[y * w + x]
+            + gray[(y - 1) * w + x]
+            + gray[(y + 1) * w + x]
+            + gray[y * w + (x - 1)]
+            + gray[y * w + (x + 1)];
+          variance += lap * lap;
+          count++;
+        }
+      }
+      const score = Math.round(Math.sqrt(variance / count));
+      let detail: string;
+      if (score < 5) detail = 'very soft/blurry';
+      else if (score < 15) detail = 'soft';
+      else if (score < 30) detail = 'moderate';
+      else if (score < 50) detail = 'sharp';
+      else detail = 'very sharp/high detail';
+
+      regions.push({ position: names[row * COLS + col], sharpness: score, detail });
+    }
+  }
+
+  const avgScore = Math.round(regions.reduce((s, r) => s + r.sharpness, 0) / regions.length);
+  return { overall: avgScore, regions };
+}
+
+/** Estimate white balance by analyzing presumably neutral areas */
+function estimateWhiteBalance(data: Uint8ClampedArray, w: number, h: number) {
+  // Find pixels that are close to neutral (low saturation, mid-brightness)
+  let rSum = 0, gSum = 0, bSum = 0, count = 0;
+  let totalR = 0, totalG = 0, totalB = 0, totalCount = 0;
+  const step = Math.max(1, Math.floor((w * h) / 30000));
+
+  for (let i = 0; i < w * h; i += step) {
+    const idx = i * 4;
+    const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+    totalR += r; totalG += g; totalB += b; totalCount++;
+
+    // Check if pixel is roughly neutral (low chroma, mid-range brightness)
+    const maxC = Math.max(r, g, b);
+    const minC = Math.min(r, g, b);
+    const lum = r * 0.299 + g * 0.587 + b * 0.114;
+    const chroma = maxC - minC;
+
+    if (chroma < 25 && lum > 50 && lum < 220) {
+      rSum += r; gSum += g; bSum += b; count++;
+    }
+  }
+
+  // Average of neutral pixels (if enough found)
+  const hasNeutrals = count > 100;
+  const neutralAvg = hasNeutrals
+    ? { r: Math.round(rSum / count), g: Math.round(gSum / count), b: Math.round(bSum / count) }
+    : null;
+
+  // Overall average
+  const overallAvg = {
+    r: Math.round(totalR / totalCount),
+    g: Math.round(totalG / totalCount),
+    b: Math.round(totalB / totalCount),
+  };
+
+  // Estimate warmth: R-B difference indicates warm/cool
+  const ref = neutralAvg ?? overallAvg;
+  const warmth = ref.r - ref.b;
+  const tintBias = ref.g - (ref.r + ref.b) / 2;
+
+  let tempDescription: string;
+  if (warmth > 30) tempDescription = 'very warm (golden/orange cast)';
+  else if (warmth > 15) tempDescription = 'warm';
+  else if (warmth > -15) tempDescription = 'neutral';
+  else if (warmth > -30) tempDescription = 'cool';
+  else tempDescription = 'very cool (blue cast)';
+
+  let tintDescription: string;
+  if (tintBias > 15) tintDescription = 'green tint';
+  else if (tintBias < -15) tintDescription = 'magenta tint';
+  else tintDescription = 'neutral tint';
+
+  return {
+    temperature: tempDescription,
+    tint: tintDescription,
+    warmthScore: warmth,
+    tintScore: Math.round(tintBias),
+    neutralPixels: hasNeutrals ? count : 0,
+    overallAvgColor: overallAvg,
+    ...(neutralAvg && { neutralAvgColor: neutralAvg }),
+    suggestion: warmth > 20 ? 'Consider reducing temp by -5 to -10'
+      : warmth < -20 ? 'Consider increasing temp by +5 to +10'
+      : 'White balance looks acceptable',
+  };
+}
+
+/** Estimate noise by measuring local variance in dark/mid regions */
+function estimateNoise(data: Uint8ClampedArray, w: number, h: number) {
+  // Measure noise in shadow regions (where noise is most visible)
+  // Use local variance in 5x5 patches as noise indicator
+  let shadowNoise = 0, shadowCount = 0;
+  let midNoise = 0, midCount = 0;
+  const step = Math.max(5, Math.floor(Math.min(w, h) / 60));
+
+  for (let y = 2; y < h - 2; y += step) {
+    for (let x = 2; x < w - 2; x += step) {
+      const idx = (y * w + x) * 4;
+      const lum = data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
+
+      // Compute local variance in 5x5 patch
+      let sumSq = 0, sum = 0, count = 0;
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const pi = ((y + dy) * w + (x + dx)) * 4;
+          const pl = data[pi] * 0.299 + data[pi + 1] * 0.587 + data[pi + 2] * 0.114;
+          sum += pl;
+          sumSq += pl * pl;
+          count++;
+        }
+      }
+      const variance = (sumSq / count) - (sum / count) ** 2;
+      const stddev = Math.sqrt(Math.max(0, variance));
+
+      if (lum < 80) { shadowNoise += stddev; shadowCount++; }
+      else if (lum < 180) { midNoise += stddev; midCount++; }
+    }
+  }
+
+  const shadowAvg = shadowCount > 0 ? Math.round(shadowNoise / shadowCount * 10) / 10 : 0;
+  const midAvg = midCount > 0 ? Math.round(midNoise / midCount * 10) / 10 : 0;
+  const overall = Math.round(((shadowAvg * 0.6 + midAvg * 0.4)) * 10) / 10;
+
+  let level: string;
+  if (overall < 2) level = 'very clean (low ISO)';
+  else if (overall < 4) level = 'clean';
+  else if (overall < 7) level = 'moderate noise';
+  else if (overall < 12) level = 'noisy (high ISO likely)';
+  else level = 'very noisy';
+
+  return {
+    level,
+    overall,
+    shadows: shadowAvg,
+    midtones: midAvg,
+    suggestion: overall > 7
+      ? 'Consider minimal clarity/texture to avoid amplifying noise'
+      : overall > 4
+        ? 'Moderate noise — use texture carefully, avoid over-sharpening'
+        : 'Low noise — safe to use texture/clarity freely',
+  };
+}
+
 type AgentRequest = { requestId: string; payload?: unknown };
 
 /** Soft-clamp adjustment values so AI can't destroy the photo */
@@ -174,6 +384,8 @@ function withHistory(photoId: string, detail: string, fn: () => void) {
 export function useAgentIpc(
   canvasRef: RefObject<ImageCanvasHandle | null>,
   photoId: string | null,
+  selected?: ImportedPhoto | null,
+  exifData?: PhotoExif | null,
 ) {
   useEffect(() => {
     const api = window.electron?.agent;
@@ -200,7 +412,20 @@ export function useAgentIpc(
       },
 
       [AGENT_CHANNELS.GET_PHOTO_INFO]: (req) => {
-        respond(req.requestId, photoId ? { photoId } : null);
+        if (!photoId) return respond(req.requestId, null);
+        respond(req.requestId, {
+          photoId,
+          fileName: selected?.fileName,
+          width: selected?.width,
+          height: selected?.height,
+          ...(exifData && {
+            iso: exifData.iso,
+            aperture: exifData.aperture ? `f/${exifData.aperture}` : undefined,
+            shutterSpeed: exifData.shutterSpeed,
+            focalLength: exifData.focalLength ? `${exifData.focalLength}mm` : undefined,
+            camera: [exifData.make, exifData.model].filter(Boolean).join(' ') || undefined,
+          }),
+        });
       },
 
       [AGENT_CHANNELS.GET_HISTOGRAM]: (req) => {
@@ -226,6 +451,30 @@ export function useAgentIpc(
         const pixels = canvasRef.current?.getRenderedPixels();
         if (!pixels) return respond(req.requestId, null);
         respond(req.requestId, analyzeRegions(pixels.data, pixels.width, pixels.height));
+      },
+
+      [AGENT_CHANNELS.GET_DOMINANT_COLORS]: (req) => {
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(req.requestId, getDominantColors(pixels.data, pixels.width, pixels.height));
+      },
+
+      [AGENT_CHANNELS.MEASURE_SHARPNESS]: (req) => {
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(req.requestId, measureSharpness(pixels.data, pixels.width, pixels.height));
+      },
+
+      [AGENT_CHANNELS.ESTIMATE_WHITE_BALANCE]: (req) => {
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(req.requestId, estimateWhiteBalance(pixels.data, pixels.width, pixels.height));
+      },
+
+      [AGENT_CHANNELS.ESTIMATE_NOISE]: (req) => {
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(req.requestId, estimateNoise(pixels.data, pixels.width, pixels.height));
       },
 
       // ── Global adjustments ──────────────────────────────────────────
@@ -532,5 +781,5 @@ export function useAgentIpc(
     );
 
     return () => cleanups.forEach((cleanup) => cleanup());
-  }, [canvasRef, photoId]);
+  }, [canvasRef, photoId, selected, exifData]);
 }

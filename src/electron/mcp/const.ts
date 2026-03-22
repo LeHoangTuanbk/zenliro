@@ -7,6 +7,10 @@ export const AGENT_CHANNELS = {
   GET_HISTOGRAM: 'agent:get-histogram',
   SAMPLE_COLORS: 'agent:sample-colors',
   ANALYZE_REGIONS: 'agent:analyze-regions',
+  GET_DOMINANT_COLORS: 'agent:get-dominant-colors',
+  MEASURE_SHARPNESS: 'agent:measure-sharpness',
+  ESTIMATE_WHITE_BALANCE: 'agent:estimate-white-balance',
+  ESTIMATE_NOISE: 'agent:estimate-noise',
   // Global adjustments
   SET_ADJUSTMENTS: 'agent:set-adjustments',
   SET_TONE_CURVE: 'agent:set-tone-curve',
