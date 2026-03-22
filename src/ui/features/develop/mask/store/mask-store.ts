@@ -50,6 +50,7 @@ type MaskStore = {
 
   // Persistence
   setMasksForPhoto: (photoId: string, masks: Mask[]) => void;
+  removePhoto: (photoId: string) => void;
 };
 
 export const useMaskStore = create<MaskStore>((set, get) => ({
@@ -168,4 +169,10 @@ export const useMaskStore = create<MaskStore>((set, get) => ({
 
   setMasksForPhoto: (photoId, masks) =>
     set((s) => ({ masksByPhoto: { ...s.masksByPhoto, [photoId]: masks } })),
+
+  removePhoto: (photoId) =>
+    set((s) => {
+      const { [photoId]: _, ...rest } = s.masksByPhoto;
+      return { masksByPhoto: rest };
+    }),
 }));

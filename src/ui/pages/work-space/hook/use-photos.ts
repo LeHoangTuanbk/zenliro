@@ -4,6 +4,18 @@ import { ActiveView } from '../const';
 import { useCatalogStore } from '../store/catalog-store';
 import { generateThumbnailDataUrlFromArrayBuffer } from '@/widgets/image-canvas/lib/image-utils';
 import { photoResourceQueryOptions } from './use-photo-resource';
+import { useHistoryStore } from '@/features/develop/history';
+import { useMaskStore } from '@/features/develop/mask';
+import { useCropStore } from '@/features/develop/crop';
+import { useHealStore } from '@/features/develop/heal';
+
+/** Remove all edit data for a photo from every zustand store */
+function cleanupPhotoEdits(photoId: string) {
+  useHistoryStore.getState().clearPhoto(photoId);
+  useMaskStore.getState().removePhoto(photoId);
+  useCropStore.getState().removePhoto(photoId);
+  useHealStore.getState().removePhoto(photoId);
+}
 
 export type ImportProgress = { current: number; total: number } | null;
 const PREFETCH_RADIUS = 2;
@@ -219,6 +231,7 @@ export function usePhotos() {
       const thumbPath = catalogPhoto?.thumbnailPath ?? '';
       await window.electron.photo.deletePhoto(id, thumbPath);
       queryClient.removeQueries({ queryKey: ['photo-resource', id] });
+      cleanupPhotoEdits(id);
       setPhotos((prev) => prev.filter((p) => p.id !== id));
       if (selectedId === id) {
         setSelectedId(null);
@@ -237,6 +250,7 @@ export function usePhotos() {
         const thumbPath = catalogPhoto?.thumbnailPath ?? '';
         await window.electron.photo.deletePhoto(id, thumbPath);
         queryClient.removeQueries({ queryKey: ['photo-resource', id] });
+        cleanupPhotoEdits(id);
         catalogDeletePhoto(id);
       }
       setPhotos((prev) => prev.filter((p) => !ids.has(p.id)));

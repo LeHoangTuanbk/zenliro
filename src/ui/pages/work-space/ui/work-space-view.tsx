@@ -1,4 +1,4 @@
-import { useEffect, useRef, type RefObject } from 'react';
+import type { RefObject } from 'react';
 import { ImageCanvas, type ImageCanvasHandle } from '@widgets/image-canvas/ui/image-canvas';
 import { LibraryContainer } from '@features/library';
 import { EditPanel, ToolStrip } from '@/features/develop/edit';
@@ -23,7 +23,7 @@ import { MaskPanel } from '@/features/develop/mask/ui/mask-panel';
 import type { Mask } from '@/features/develop/mask';
 import { ModuleTab } from '@/shared/ui/base';
 import { CanvasToolbar } from './canvas-toolbar';
-import { HistoryPanel } from '@features/develop/history';
+import { FilmstripPanel } from './filmstrip-panel';
 import { AgentPanelContainer } from '@/features/agent/agent-panel-container';
 import { AgentToggleButton } from '@/features/agent/ui/agent-toggle-button';
 import { ScanOverlay } from '@/features/agent/ui/scan-overlay';
@@ -109,23 +109,11 @@ export function WorkSpaceView({
   const comparePan = useCompareStore((s) => s.pan);
   const setZoomPan = useCompareStore((s) => s.setZoomPan);
 
-  const filmstripRef = useRef<HTMLDivElement | null>(null);
-  const itemRefs = useRef(new Map<string, HTMLButtonElement>());
-
   const externalZoomPan: ExternalZoomPan = {
     zoom: compareZoom,
     pan: comparePan,
     onChange: setZoomPan,
   };
-
-  useEffect(() => {
-    if (activeView !== 'develop' || !selectedId) return;
-    const container = filmstripRef.current;
-    const selectedItem = itemRefs.current.get(selectedId);
-    if (!container || !selectedItem) return;
-
-    selectedItem.scrollIntoView({ block: 'center', behavior: 'instant' });
-  }, [activeView, selectedId]);
 
   return (
     <div className="flex flex-col w-full h-screen bg-[#1a1a1a] text-[#929292] font-sans text-[11px]">
@@ -196,43 +184,13 @@ export function WorkSpaceView({
 
       {/* ── Develop view ─────────────────────────────────────────────────────── */}
       <div className={activeView === 'develop' ? 'flex flex-1 overflow-hidden' : 'hidden'}>
-        {/* Left filmstrip */}
-        <aside className="w-[180px] bg-br-bg border-r border-black flex flex-col shrink-0">
-          <button
-            onClick={onImport}
-            className="mx-2 my-2 py-1 text-[10px] text-br-muted bg-br-input border border-br-elevated rounded-[2px] cursor-pointer hover:text-br-text transition-colors"
-          >
-            + Add
-          </button>
-          <div ref={filmstripRef} className="flex-1 overflow-y-auto flex flex-col gap-1 px-1.5 pb-2">
-            {photos.map((p) => (
-              <button
-                key={p.id}
-                ref={(node) => {
-                  if (node) itemRefs.current.set(p.id, node);
-                  else itemRefs.current.delete(p.id);
-                }}
-                onClick={() => onSelectId(p.id)}
-                className={`bg-[#111] rounded-[2px] overflow-hidden cursor-pointer border-2 transition-colors p-0 shrink-0 ${
-                  p.id === selectedId
-                    ? 'border-br-accent'
-                    : 'border-transparent hover:border-[#444]'
-                }`}
-                title={p.fileName}
-              >
-                <img
-                  src={p.thumbnailDataUrl || p.dataUrl}
-                  alt={p.fileName}
-                  className="w-full h-[90px] object-cover block"
-                  loading="lazy"
-                />
-              </button>
-            ))}
-          </div>
-          <div className="border-t border-black shrink-0">
-            <HistoryPanel photoId={selectedId} />
-          </div>
-        </aside>
+        <FilmstripPanel
+          photos={photos}
+          selectedId={selectedId}
+          isVisible={activeView === 'develop'}
+          onSelect={onSelectId}
+          onImport={onImport}
+        />
 
         {/* Canvas + toolbar */}
         <div className="flex-1 flex flex-col overflow-hidden">
