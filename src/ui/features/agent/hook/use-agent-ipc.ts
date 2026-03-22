@@ -24,16 +24,22 @@ import { detectBlemishesWithFace } from '../lib/face-blemish-detector';
 /** Summarize histogram into compact stats for AI analysis */
 function summarizeHistogram(r: Uint32Array, g: Uint32Array, b: Uint32Array) {
   const summarizeChannel = (ch: Uint32Array) => {
-    let total = 0, sum = 0;
-    for (let i = 0; i < 256; i++) { total += ch[i]; sum += i * ch[i]; }
+    let total = 0,
+      sum = 0;
+    for (let i = 0; i < 256; i++) {
+      total += ch[i];
+      sum += i * ch[i];
+    }
     const mean = total > 0 ? Math.round(sum / total) : 0;
 
     // Zone distribution: shadows (0-63), midtones (64-191), highlights (192-255)
-    let shadows = 0, midtones = 0, highlights = 0;
+    let shadows = 0,
+      midtones = 0,
+      highlights = 0;
     for (let i = 0; i < 64; i++) shadows += ch[i];
     for (let i = 64; i < 192; i++) midtones += ch[i];
     for (let i = 192; i < 256; i++) highlights += ch[i];
-    const pct = (v: number) => total > 0 ? Math.round((v / total) * 100) : 0;
+    const pct = (v: number) => (total > 0 ? Math.round((v / total) * 100) : 0);
 
     // Clipping: pixels at absolute 0 or 255
     const clippedBlack = ch[0] + ch[1];
@@ -55,19 +61,30 @@ function summarizeHistogram(r: Uint32Array, g: Uint32Array, b: Uint32Array) {
     blue: summarizeChannel(b),
     // Overall luminosity approximation
     luminosity: {
-      mean: Math.round((summarizeChannel(r).mean * 0.299 + summarizeChannel(g).mean * 0.587 + summarizeChannel(b).mean * 0.114)),
+      mean: Math.round(
+        summarizeChannel(r).mean * 0.299 +
+          summarizeChannel(g).mean * 0.587 +
+          summarizeChannel(b).mean * 0.114,
+      ),
     },
   };
 }
 
 /** Sample average RGB at specific normalized coordinates */
 function sampleColorAt(
-  data: Uint8ClampedArray, w: number, h: number,
-  normX: number, normY: number, radius = 3,
+  data: Uint8ClampedArray,
+  w: number,
+  h: number,
+  normX: number,
+  normY: number,
+  radius = 3,
 ) {
   const cx = Math.round(normX * (w - 1));
   const cy = Math.round(normY * (h - 1));
-  let rSum = 0, gSum = 0, bSum = 0, count = 0;
+  let rSum = 0,
+    gSum = 0,
+    bSum = 0,
+    count = 0;
   for (let dy = -radius; dy <= radius; dy++) {
     for (let dx = -radius; dx <= radius; dx++) {
       const px = cx + dx;
@@ -89,7 +106,8 @@ function sampleColorAt(
 
 /** Analyze image in a 3x3 grid: per-region avg brightness, dominant color, clipping */
 function analyzeRegions(data: Uint8ClampedArray, w: number, h: number) {
-  const ROWS = 3, COLS = 3;
+  const ROWS = 3,
+    COLS = 3;
   const regions: Array<{
     position: string;
     avgBrightness: number;
@@ -98,9 +116,15 @@ function analyzeRegions(data: Uint8ClampedArray, w: number, h: number) {
     clippedWhite: number;
   }> = [];
   const names = [
-    'top-left', 'top-center', 'top-right',
-    'mid-left', 'center', 'mid-right',
-    'bottom-left', 'bottom-center', 'bottom-right',
+    'top-left',
+    'top-center',
+    'top-right',
+    'mid-left',
+    'center',
+    'mid-right',
+    'bottom-left',
+    'bottom-center',
+    'bottom-right',
   ];
 
   for (let row = 0; row < ROWS; row++) {
@@ -110,14 +134,22 @@ function analyzeRegions(data: Uint8ClampedArray, w: number, h: number) {
       const y0 = Math.floor((row / ROWS) * h);
       const y1 = Math.floor(((row + 1) / ROWS) * h);
 
-      let rSum = 0, gSum = 0, bSum = 0, count = 0;
-      let blacks = 0, whites = 0;
+      let rSum = 0,
+        gSum = 0,
+        bSum = 0,
+        count = 0;
+      let blacks = 0,
+        whites = 0;
       // Sample every 4th pixel for speed
       for (let y = y0; y < y1; y += 4) {
         for (let x = x0; x < x1; x += 4) {
           const idx = (y * w + x) * 4;
-          const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-          rSum += r; gSum += g; bSum += b;
+          const r = data[idx],
+            g = data[idx + 1],
+            b = data[idx + 2];
+          rSum += r;
+          gSum += g;
+          bSum += b;
           const lum = r * 0.299 + g * 0.587 + b * 0.114;
           if (lum < 3) blacks++;
           if (lum > 252) whites++;
@@ -152,8 +184,12 @@ function getDominantColors(data: Uint8ClampedArray, w: number, h: number, count 
     const qb = (data[idx + 2] >> 4) << 4;
     const key = (qr << 16) | (qg << 8) | qb;
     const b = buckets.get(key);
-    if (b) { b.r += data[idx]; b.g += data[idx + 1]; b.b += data[idx + 2]; b.count++; }
-    else buckets.set(key, { r: data[idx], g: data[idx + 1], b: data[idx + 2], count: 1 });
+    if (b) {
+      b.r += data[idx];
+      b.g += data[idx + 1];
+      b.b += data[idx + 2];
+      b.count++;
+    } else buckets.set(key, { r: data[idx], g: data[idx + 1], b: data[idx + 2], count: 1 });
   }
 
   return Array.from(buckets.values())
@@ -163,12 +199,12 @@ function getDominantColors(data: Uint8ClampedArray, w: number, h: number, count 
       r: Math.round(b.r / b.count),
       g: Math.round(b.g / b.count),
       b: Math.round(b.b / b.count),
-      percentage: Math.round((b.count / (w * h / step)) * 100),
-      hex: '#' + [
-        Math.round(b.r / b.count),
-        Math.round(b.g / b.count),
-        Math.round(b.b / b.count),
-      ].map((c) => c.toString(16).padStart(2, '0')).join(''),
+      percentage: Math.round((b.count / ((w * h) / step)) * 100),
+      hex:
+        '#' +
+        [Math.round(b.r / b.count), Math.round(b.g / b.count), Math.round(b.b / b.count)]
+          .map((c) => c.toString(16).padStart(2, '0'))
+          .join(''),
     }));
 }
 
@@ -182,11 +218,18 @@ function measureSharpness(data: Uint8ClampedArray, w: number, h: number) {
   }
 
   // Measure Laplacian variance in 3x3 grid regions
-  const ROWS = 3, COLS = 3;
+  const ROWS = 3,
+    COLS = 3;
   const names = [
-    'top-left', 'top-center', 'top-right',
-    'mid-left', 'center', 'mid-right',
-    'bottom-left', 'bottom-center', 'bottom-right',
+    'top-left',
+    'top-center',
+    'top-right',
+    'mid-left',
+    'center',
+    'mid-right',
+    'bottom-left',
+    'bottom-center',
+    'bottom-right',
   ];
   const regions: Array<{ position: string; sharpness: number; detail: string }> = [];
 
@@ -198,14 +241,16 @@ function measureSharpness(data: Uint8ClampedArray, w: number, h: number) {
       const y1 = Math.floor(((row + 1) / ROWS) * h) - 1;
 
       // Laplacian: L(x,y) = -4*center + top + bottom + left + right
-      let variance = 0, count = 0;
+      let variance = 0,
+        count = 0;
       for (let y = y0; y < y1; y += 3) {
         for (let x = x0; x < x1; x += 3) {
-          const lap = -4 * gray[y * w + x]
-            + gray[(y - 1) * w + x]
-            + gray[(y + 1) * w + x]
-            + gray[y * w + (x - 1)]
-            + gray[y * w + (x + 1)];
+          const lap =
+            -4 * gray[y * w + x] +
+            gray[(y - 1) * w + x] +
+            gray[(y + 1) * w + x] +
+            gray[y * w + (x - 1)] +
+            gray[y * w + (x + 1)];
           variance += lap * lap;
           count++;
         }
@@ -229,14 +274,25 @@ function measureSharpness(data: Uint8ClampedArray, w: number, h: number) {
 /** Estimate white balance by analyzing presumably neutral areas */
 function estimateWhiteBalance(data: Uint8ClampedArray, w: number, h: number) {
   // Find pixels that are close to neutral (low saturation, mid-brightness)
-  let rSum = 0, gSum = 0, bSum = 0, count = 0;
-  let totalR = 0, totalG = 0, totalB = 0, totalCount = 0;
+  let rSum = 0,
+    gSum = 0,
+    bSum = 0,
+    count = 0;
+  let totalR = 0,
+    totalG = 0,
+    totalB = 0,
+    totalCount = 0;
   const step = Math.max(1, Math.floor((w * h) / 30000));
 
   for (let i = 0; i < w * h; i += step) {
     const idx = i * 4;
-    const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-    totalR += r; totalG += g; totalB += b; totalCount++;
+    const r = data[idx],
+      g = data[idx + 1],
+      b = data[idx + 2];
+    totalR += r;
+    totalG += g;
+    totalB += b;
+    totalCount++;
 
     // Check if pixel is roughly neutral (low chroma, mid-range brightness)
     const maxC = Math.max(r, g, b);
@@ -245,7 +301,10 @@ function estimateWhiteBalance(data: Uint8ClampedArray, w: number, h: number) {
     const chroma = maxC - minC;
 
     if (chroma < 25 && lum > 50 && lum < 220) {
-      rSum += r; gSum += g; bSum += b; count++;
+      rSum += r;
+      gSum += g;
+      bSum += b;
+      count++;
     }
   }
 
@@ -287,9 +346,12 @@ function estimateWhiteBalance(data: Uint8ClampedArray, w: number, h: number) {
     neutralPixels: hasNeutrals ? count : 0,
     overallAvgColor: overallAvg,
     ...(neutralAvg && { neutralAvgColor: neutralAvg }),
-    suggestion: warmth > 20 ? 'Consider reducing temp by -5 to -10'
-      : warmth < -20 ? 'Consider increasing temp by +5 to +10'
-      : 'White balance looks acceptable',
+    suggestion:
+      warmth > 20
+        ? 'Consider reducing temp by -5 to -10'
+        : warmth < -20
+          ? 'Consider increasing temp by +5 to +10'
+          : 'White balance looks acceptable',
   };
 }
 
@@ -297,8 +359,10 @@ function estimateWhiteBalance(data: Uint8ClampedArray, w: number, h: number) {
 function estimateNoise(data: Uint8ClampedArray, w: number, h: number) {
   // Measure noise in shadow regions (where noise is most visible)
   // Use local variance in 5x5 patches as noise indicator
-  let shadowNoise = 0, shadowCount = 0;
-  let midNoise = 0, midCount = 0;
+  let shadowNoise = 0,
+    shadowCount = 0;
+  let midNoise = 0,
+    midCount = 0;
   const step = Math.max(5, Math.floor(Math.min(w, h) / 60));
 
   for (let y = 2; y < h - 2; y += step) {
@@ -307,7 +371,9 @@ function estimateNoise(data: Uint8ClampedArray, w: number, h: number) {
       const lum = data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114;
 
       // Compute local variance in 5x5 patch
-      let sumSq = 0, sum = 0, count = 0;
+      let sumSq = 0,
+        sum = 0,
+        count = 0;
       for (let dy = -2; dy <= 2; dy++) {
         for (let dx = -2; dx <= 2; dx++) {
           const pi = ((y + dy) * w + (x + dx)) * 4;
@@ -317,17 +383,22 @@ function estimateNoise(data: Uint8ClampedArray, w: number, h: number) {
           count++;
         }
       }
-      const variance = (sumSq / count) - (sum / count) ** 2;
+      const variance = sumSq / count - (sum / count) ** 2;
       const stddev = Math.sqrt(Math.max(0, variance));
 
-      if (lum < 80) { shadowNoise += stddev; shadowCount++; }
-      else if (lum < 180) { midNoise += stddev; midCount++; }
+      if (lum < 80) {
+        shadowNoise += stddev;
+        shadowCount++;
+      } else if (lum < 180) {
+        midNoise += stddev;
+        midCount++;
+      }
     }
   }
 
-  const shadowAvg = shadowCount > 0 ? Math.round(shadowNoise / shadowCount * 10) / 10 : 0;
-  const midAvg = midCount > 0 ? Math.round(midNoise / midCount * 10) / 10 : 0;
-  const overall = Math.round(((shadowAvg * 0.6 + midAvg * 0.4)) * 10) / 10;
+  const shadowAvg = shadowCount > 0 ? Math.round((shadowNoise / shadowCount) * 10) / 10 : 0;
+  const midAvg = midCount > 0 ? Math.round((midNoise / midCount) * 10) / 10 : 0;
+  const overall = Math.round((shadowAvg * 0.6 + midAvg * 0.4) * 10) / 10;
 
   let level: string;
   if (overall < 2) level = 'very clean (low ISO)';
@@ -341,114 +412,13 @@ function estimateNoise(data: Uint8ClampedArray, w: number, h: number) {
     overall,
     shadows: shadowAvg,
     midtones: midAvg,
-    suggestion: overall > 7
-      ? 'Consider minimal clarity/texture to avoid amplifying noise'
-      : overall > 4
-        ? 'Moderate noise — use texture carefully, avoid over-sharpening'
-        : 'Low noise — safe to use texture/clarity freely',
+    suggestion:
+      overall > 7
+        ? 'Consider minimal clarity/texture to avoid amplifying noise'
+        : overall > 4
+          ? 'Moderate noise — use texture carefully, avoid over-sharpening'
+          : 'Low noise — safe to use texture/clarity freely',
   };
-}
-
-/** Detect skin blemishes by finding small anomalous spots on skin-toned areas */
-function detectBlemishes(data: Uint8ClampedArray, w: number, h: number, maxSpots = 10) {
-  // Step 1: Build a skin mask (pixels with skin-like hue/saturation)
-  const isSkin = (r: number, g: number, b: number) => {
-    // Skin detection in RGB: R > 80, G > 30, B > 15, R > G > B, R-G < 100
-    if (r < 80 || g < 30 || b < 15) return false;
-    if (r <= g || g <= b) return false;
-    if (r - g > 100) return false;
-    const maxC = Math.max(r, g, b);
-    const minC = Math.min(r, g, b);
-    if (maxC - minC < 15) return false; // too grey
-    return true;
-  };
-
-  // Step 2: For each skin pixel, compute local contrast vs surrounding area
-  // A blemish is a small dark/reddish spot that stands out from neighbors
-  const patchSize = Math.max(3, Math.round(Math.min(w, h) / 200)); // adaptive patch
-  const searchRadius = patchSize * 3;
-  const candidates: Array<{ x: number; y: number; score: number; radius: number }> = [];
-
-  // Sample grid — don't check every pixel (too slow)
-  const step = Math.max(2, Math.round(patchSize * 0.7));
-
-  for (let cy = searchRadius; cy < h - searchRadius; cy += step) {
-    for (let cx = searchRadius; cx < w - searchRadius; cx += step) {
-      const idx = (cy * w + cx) * 4;
-      const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-
-      // Only look at skin areas
-      if (!isSkin(r, g, b)) continue;
-
-      // Compute local average in surrounding ring (excluding center patch)
-      let ringR = 0, ringG = 0, ringB = 0, ringCount = 0;
-      for (let dy = -searchRadius; dy <= searchRadius; dy += step) {
-        for (let dx = -searchRadius; dx <= searchRadius; dx += step) {
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist < patchSize || dist > searchRadius) continue;
-          const pi = ((cy + dy) * w + (cx + dx)) * 4;
-          if (!isSkin(data[pi], data[pi + 1], data[pi + 2])) continue;
-          ringR += data[pi]; ringG += data[pi + 1]; ringB += data[pi + 2];
-          ringCount++;
-        }
-      }
-      if (ringCount < 8) continue;
-
-      const avgR = ringR / ringCount;
-      const avgG = ringG / ringCount;
-      const avgB = ringB / ringCount;
-
-      // Center patch average
-      let patchR = 0, patchG = 0, patchB = 0, patchCount = 0;
-      for (let dy = -patchSize; dy <= patchSize; dy++) {
-        for (let dx = -patchSize; dx <= patchSize; dx++) {
-          const pi = ((cy + dy) * w + (cx + dx)) * 4;
-          patchR += data[pi]; patchG += data[pi + 1]; patchB += data[pi + 2];
-          patchCount++;
-        }
-      }
-      patchR /= patchCount; patchG /= patchCount; patchB /= patchCount;
-
-      // Blemish score: how much darker/redder is the center vs surrounding
-      const lumDiff = (avgR * 0.299 + avgG * 0.587 + avgB * 0.114) -
-                      (patchR * 0.299 + patchG * 0.587 + patchB * 0.114);
-      const redness = (patchR - patchG) - (avgR - avgG); // extra redness
-
-      // Blemishes are darker OR redder than surroundings
-      const score = Math.max(0, lumDiff * 0.7 + redness * 0.3);
-
-      if (score > 8) { // threshold
-        candidates.push({
-          x: cx, y: cy,
-          score,
-          radius: patchSize / w, // normalized
-        });
-      }
-    }
-  }
-
-  // Step 3: Non-maximum suppression — remove overlapping detections
-  candidates.sort((a, b) => b.score - a.score);
-  const selected: typeof candidates = [];
-  const minDist = patchSize * 2;
-
-  for (const c of candidates) {
-    const tooClose = selected.some((s) => {
-      const dx = c.x - s.x, dy = c.y - s.y;
-      return Math.sqrt(dx * dx + dy * dy) < minDist;
-    });
-    if (!tooClose) {
-      selected.push(c);
-      if (selected.length >= maxSpots) break;
-    }
-  }
-
-  return selected.map((s) => ({
-    x: Math.round((s.x / w) * 1000) / 1000,
-    y: Math.round((s.y / h) * 1000) / 1000,
-    confidence: Math.min(100, Math.round(s.score)),
-    suggestedRadius: Math.round(s.radius * 1000) / 1000,
-  }));
 }
 
 type AgentRequest = { requestId: string; payload?: unknown };
@@ -545,7 +515,8 @@ export function useAgentIpc(
         const pixels = canvasRef.current?.getRenderedPixels();
         if (!pixels) return respond(req.requestId, null);
         const samples = payload.points.map((p) => ({
-          x: p.x, y: p.y,
+          x: p.x,
+          y: p.y,
           ...sampleColorAt(pixels.data, pixels.width, pixels.height, p.x, p.y),
         }));
         respond(req.requestId, samples);
@@ -589,7 +560,11 @@ export function useAgentIpc(
         if (!imgUrl || !pixels) return respond(req.requestId, null);
         try {
           const result = await detectBlemishesWithFace(
-            imgUrl, pixels.data, pixels.width, pixels.height, payload?.maxSpots,
+            imgUrl,
+            pixels.data,
+            pixels.width,
+            pixels.height,
+            payload?.maxSpots,
           );
           respond(req.requestId, result);
         } catch (err) {
