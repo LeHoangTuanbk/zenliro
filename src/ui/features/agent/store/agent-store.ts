@@ -151,10 +151,18 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   setCurrentThinking: (currentThinking) => set({ currentThinking }),
 
   addToolCall: (tc) =>
-    set((s) => ({
-      // Flush any pending text, then add tool as separate item
-      currentItems: [...s.currentItems, { type: 'tool', toolCall: tc }],
-    })),
+    set((s) => {
+      // If tool with same id already exists (e.g. item.started → item.completed), update it
+      const existing = s.currentItems.findIndex(
+        (item) => item.type === 'tool' && item.toolCall.id === tc.id,
+      );
+      if (existing >= 0) {
+        const items = [...s.currentItems];
+        items[existing] = { type: 'tool', toolCall: tc };
+        return { currentItems: items };
+      }
+      return { currentItems: [...s.currentItems, { type: 'tool', toolCall: tc }] };
+    }),
 
   finalizeAssistantMessage: () => {
     const s = get();

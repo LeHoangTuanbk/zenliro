@@ -5,7 +5,10 @@ import { useAdjustmentsStore } from '@features/develop/edit/store/adjustments-st
 import { useToneCurveStore } from '@features/develop/edit/tone-curve/store/tone-curve-store';
 import { useColorMixerStore } from '@features/develop/edit/color-mixer/store/color-mixer-store';
 import { useColorGradingStore } from '@features/develop/edit/color-grading/store/color-grading-store';
-import { useEffectsStore, type EffectsState } from '@features/develop/edit/effects/model/effects-store';
+import {
+  useEffectsStore,
+  type EffectsState,
+} from '@features/develop/edit/effects/model/effects-store';
 import { useHealStore } from '@features/develop/heal/store/heal-store';
 import { useMaskStore } from '@/features/develop/mask';
 import { useCropStore } from '@features/develop/crop/store/crop-store';
@@ -64,17 +67,11 @@ export function useAgentIpc(
       // ── Read tools ──────────────────────────────────────────────────
       [AGENT_CHANNELS.GET_SCREENSHOT]: (req) => {
         const payload = req.payload as { quality?: number } | undefined;
-        const quality = payload?.quality ?? 0.7;
+        const quality = payload?.quality ?? 0.6;
         useAgentStore.getState().setScanning(true);
-        // Wait 300ms for WebGL pipeline to fully render latest adjustments
-        setTimeout(() => {
-          requestAnimationFrame(() => {
-            const dataUrl = canvasRef.current?.getExportDataUrl('image/jpeg', quality);
-            const base64 = dataUrl?.replace(/^data:image\/jpeg;base64,/, '') ?? '';
-            setTimeout(() => useAgentStore.getState().setScanning(false), 800);
-            respond(req.requestId, base64);
-          });
-        }, 300);
+        const dataUrl = canvasRef.current?.getExportDataUrl('image/jpeg', quality);
+        const base64 = dataUrl?.replace(/^data:image\/jpeg;base64,/, '') ?? '';
+        respond(req.requestId, base64);
       },
 
       [AGENT_CHANNELS.GET_EDIT_STATE]: (req) => {
@@ -119,7 +116,8 @@ export function useAgentIpc(
 
       [AGENT_CHANNELS.SET_TONE_CURVE]: (req) => {
         const { channel, points } = (req.payload ?? {}) as {
-          channel?: string; points?: Array<{ x: number; y: number }>;
+          channel?: string;
+          points?: Array<{ x: number; y: number }>;
         };
         if (!channel || !points || !photoId) return respond(req.requestId, null);
 
@@ -132,12 +130,17 @@ export function useAgentIpc(
 
       [AGENT_CHANNELS.SET_COLOR_MIXER]: (req) => {
         const { mode, channel, value } = (req.payload ?? {}) as {
-          mode?: string; channel?: string; value?: number;
+          mode?: string;
+          channel?: string;
+          value?: number;
         };
-        if (!mode || !channel || value === undefined || !photoId) return respond(req.requestId, null);
+        if (!mode || !channel || value === undefined || !photoId)
+          return respond(req.requestId, null);
 
         withHistory(photoId, `Color mixer ${mode}/${channel} = ${value}`, () => {
-          useColorMixerStore.getState().setValue(mode as 'hue' | 'saturation' | 'luminance', channel as 'red', value);
+          useColorMixerStore
+            .getState()
+            .setValue(mode as 'hue' | 'saturation' | 'luminance', channel as 'red', value);
         });
         useAgentStore.getState().showActionToast(`Color mixer: ${mode}/${channel} = ${value}`);
         respond(req.requestId, { ok: true });
@@ -145,7 +148,10 @@ export function useAgentIpc(
 
       [AGENT_CHANNELS.SET_COLOR_GRADING]: (req) => {
         const { range, hue, sat, lum } = (req.payload ?? {}) as {
-          range?: string; hue?: number; sat?: number; lum?: number;
+          range?: string;
+          hue?: number;
+          sat?: number;
+          lum?: number;
         };
         if (!range || !photoId) return respond(req.requestId, null);
 
@@ -155,7 +161,9 @@ export function useAgentIpc(
         if (lum !== undefined) patch.lum = lum;
 
         withHistory(photoId, `Color grading ${range}`, () => {
-          useColorGradingStore.getState().setWheel(range as 'shadows' | 'midtones' | 'highlights', patch);
+          useColorGradingStore
+            .getState()
+            .setWheel(range as 'shadows' | 'midtones' | 'highlights', patch);
         });
         useAgentStore.getState().showActionToast(`Color grading: ${range}`);
         respond(req.requestId, { ok: true });
@@ -196,9 +204,14 @@ export function useAgentIpc(
       // ── Heal / Clone / Fill ──────────────────────────────────────────
       [AGENT_CHANNELS.ADD_HEAL_SPOT]: (req) => {
         const p = req.payload as {
-          mode: HealMode; dstX: number; dstY: number;
-          srcX: number; srcY: number; radius: number;
-          feather?: number; opacity?: number;
+          mode: HealMode;
+          dstX: number;
+          dstY: number;
+          srcX: number;
+          srcY: number;
+          radius: number;
+          feather?: number;
+          opacity?: number;
         };
         if (!p || !photoId) return respond(req.requestId, null);
 
@@ -232,9 +245,17 @@ export function useAgentIpc(
       [AGENT_CHANNELS.ADD_MASK]: (req) => {
         const p = req.payload as {
           type: 'linear' | 'radial';
-          x1?: number; y1?: number; x2?: number; y2?: number;
-          cx?: number; cy?: number; rx?: number; ry?: number;
-          angle?: number; invert?: boolean; feather?: number;
+          x1?: number;
+          y1?: number;
+          x2?: number;
+          y2?: number;
+          cx?: number;
+          cy?: number;
+          rx?: number;
+          ry?: number;
+          angle?: number;
+          invert?: boolean;
+          feather?: number;
         };
         if (!p || !photoId) return respond(req.requestId, null);
 
@@ -244,15 +265,19 @@ export function useAgentIpc(
           // Set custom geometry if provided
           if (p.type === 'linear' && (p.x1 !== undefined || p.y1 !== undefined)) {
             useMaskStore.getState().setLinearData(photoId, maskId, {
-              x1: p.x1 ?? 0.5, y1: p.y1 ?? 0.2,
-              x2: p.x2 ?? 0.5, y2: p.y2 ?? 0.8,
+              x1: p.x1 ?? 0.5,
+              y1: p.y1 ?? 0.2,
+              x2: p.x2 ?? 0.5,
+              y2: p.y2 ?? 0.8,
               feather: p.feather ?? 0.3,
             });
           }
           if (p.type === 'radial' && (p.cx !== undefined || p.cy !== undefined)) {
             useMaskStore.getState().setRadialData(photoId, maskId, {
-              cx: p.cx ?? 0.5, cy: p.cy ?? 0.5,
-              rx: p.rx ?? 0.25, ry: p.ry ?? 0.2,
+              cx: p.cx ?? 0.5,
+              cy: p.cy ?? 0.5,
+              rx: p.rx ?? 0.25,
+              ry: p.ry ?? 0.2,
               angle: p.angle ?? 0,
               feather: p.feather ?? 0.3,
               invert: p.invert ?? false,
@@ -267,8 +292,21 @@ export function useAgentIpc(
         const p = req.payload as { maskId: string } & Record<string, number | string | undefined>;
         if (!p?.maskId || !photoId) return respond(req.requestId, null);
 
-        const adjKeys = ['exposure', 'contrast', 'highlights', 'shadows', 'whites', 'blacks',
-          'temp', 'tint', 'texture', 'clarity', 'dehaze', 'vibrance', 'saturation'] as const;
+        const adjKeys = [
+          'exposure',
+          'contrast',
+          'highlights',
+          'shadows',
+          'whites',
+          'blacks',
+          'temp',
+          'tint',
+          'texture',
+          'clarity',
+          'dehaze',
+          'vibrance',
+          'saturation',
+        ] as const;
 
         withHistory(photoId, 'Mask adjustment', () => {
           for (const key of adjKeys) {
@@ -296,9 +334,14 @@ export function useAgentIpc(
       // ── Crop, Rotate & Flip ──────────────────────────────────────────
       [AGENT_CHANNELS.SET_CROP]: (req) => {
         const p = req.payload as {
-          x?: number; y?: number; w?: number; h?: number;
-          rotation?: number; rotationSteps?: number;
-          flipH?: boolean; flipV?: boolean;
+          x?: number;
+          y?: number;
+          w?: number;
+          h?: number;
+          rotation?: number;
+          rotationSteps?: number;
+          flipH?: boolean;
+          flipV?: boolean;
           aspectPreset?: string;
         };
         if (!p || !photoId) return respond(req.requestId, null);

@@ -1,7 +1,6 @@
-import { useRef } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import type { ExternalZoomPan } from '@widgets/image-canvas/ui/image-canvas';
 import { useZoomPan } from '@widgets/image-canvas/store/use-zoom-pan';
-import { cn } from '@/shared/lib/utils';
 
 type Props = {
   dataUrl: string | null;
@@ -11,9 +10,25 @@ type Props = {
 export function CompareBeforePanel({ dataUrl, externalZoomPan }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { isSpaceDown, isPanning, handleMouseDown } = useZoomPan(containerRef, externalZoomPan);
+  const [imgDims, setImgDims] = useState<{ w: number; h: number } | null>(null);
 
   const { zoom, pan } = externalZoomPan;
   const cursor = isPanning ? 'grabbing' : isSpaceDown ? 'grab' : 'default';
+
+  const handleLoad = useCallback((e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const cw = container.clientWidth;
+    const ch = container.clientHeight;
+    const nw = img.naturalWidth;
+    const nh = img.naturalHeight;
+
+    // Fit image to container, same logic as WebGL canvas
+    const scale = Math.min(cw / nw, ch / nh, 1);
+    setImgDims({ w: Math.round(nw * scale), h: Math.round(nh * scale) });
+  }, []);
 
   return (
     <div
@@ -29,17 +44,17 @@ export function CompareBeforePanel({ dataUrl, externalZoomPan }: Props) {
         <img
           src={dataUrl}
           alt="original"
-          className={cn('block shadow-[0_4px_32px_rgba(0,0,0,0.6)] select-none')}
+          className="block shadow-[0_4px_32px_rgba(0,0,0,0.6)] select-none"
           style={{
+            width: imgDims?.w,
+            height: imgDims?.h,
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: 'center center',
             willChange: 'transform',
-            maxWidth: '100%',
-            maxHeight: '100%',
-            objectFit: 'contain',
             pointerEvents: isSpaceDown ? 'none' : 'auto',
           }}
           draggable={false}
+          onLoad={handleLoad}
         />
       )}
     </div>
