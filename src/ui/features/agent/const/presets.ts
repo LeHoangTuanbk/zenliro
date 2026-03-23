@@ -256,7 +256,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Vivid red maple leaves, clean contrast, Japanese garden aesthetic',
     category: 'seasonal',
     prompt: 'Create a Japanese maple autumn style — vivid reds against clean backgrounds. Analyze the image first. Then: set temperature +5 (slight warmth, not too heavy). Boost contrast +18 for crisp leaf edges. In color mixer: boost red saturation +35, shift red hue slightly toward orange +5 for vivid crimson. Reduce green saturation -15, shift green hue toward yellow +20. Boost orange saturation +15. Keep blue and aqua clean — reduce saturation -10. Increase clarity +20 for sharp leaf detail. Color grading: subtle warm red in highlights (hue ~5, sat 12), cool blue-black in shadows (hue ~220, sat 8). Vibrance +15. The aesthetic is clean, precise — Japanese garden with brilliant red maples against muted backgrounds.',
-    thumbnail: 'https://images.unsplash.com/photo-1528164344885-47b852f56fd7?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1606958955675-1a42178361a0?w=400&h=300&fit=crop',
   },
   {
     id: 'autumn-cozy-evening',
@@ -322,7 +322,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Soft pink cherry blossoms, fresh greens, gentle spring light',
     category: 'seasonal',
     prompt: 'Create a fresh spring blossom look. Analyze the image first. Then: set temperature +5 for gentle warmth. Lift shadows +15 for airy brightness. Reduce contrast -8 for soft spring light. In color mixer: boost magenta and purple saturation +20 for blossoms. Shift green hue toward yellow +10 for fresh spring green, boost green saturation +15. Reduce orange saturation -10. Increase magenta luminance +10 for glowing petals. Color grading: soft pink in highlights (hue ~330, sat 20), fresh green in shadows (hue ~130, sat 10, lum +5). Set vibrance +12 for lively colors. Reduce clarity -5 for soft petal texture. The mood is fresh spring — cherry blossoms, new growth, gentle warm light, renewal.',
-    thumbnail: 'https://images.unsplash.com/photo-1462275646964-a0e3c11f18a6?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1489537235181-fc05daed5805?w=400&h=300&fit=crop',
   },
   {
     id: 'sakura-bloom',
@@ -346,7 +346,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Brilliant yellow ginkgo trees lining European streets, warm and vivid',
     category: 'seasonal',
     prompt: 'Create a vivid ginkgo avenue autumn look — rows of brilliant yellow trees in an urban setting. Analyze the image first. Then: set temperature +14 for warm but not orange-heavy tone. In color mixer: boost yellow saturation +35, boost yellow luminance +10 for glowing ginkgo leaves. Boost orange saturation +15. Shift green hue toward yellow +45 so any remaining green leaves turn golden. Reduce blue saturation -10 for clean sky, increase blue luminance +5. Reduce aqua saturation -8. Color grading: bright gold in highlights (hue ~48, sat 25), warm brown in shadows (hue ~32, sat 15). Set contrast +12, clarity +15 for crisp leaf and architecture detail. Vibrance +10 to make yellows sing. Lift shadows +8 to keep street detail. The aesthetic is a European autumn boulevard — brilliant yellow canopy overhead, warm urban atmosphere, vivid but natural.',
-    thumbnail: 'https://images.unsplash.com/photo-1542640244-7e672d6cef4e?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1702224602449-65fdeb64f5f4?w=400&h=300&fit=crop',
   },
   {
     id: 'autumn-rainy-street',
