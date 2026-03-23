@@ -510,6 +510,7 @@ export function useAgentIpc(
       },
 
       [AGENT_CHANNELS.SAMPLE_COLORS]: (req) => {
+        useAgentStore.getState().setScanning(true);
         const payload = req.payload as { points: Array<{ x: number; y: number }> } | undefined;
         if (!payload?.points?.length) return respond(req.requestId, null);
         const pixels = canvasRef.current?.getRenderedPixels();
@@ -523,30 +524,35 @@ export function useAgentIpc(
       },
 
       [AGENT_CHANNELS.ANALYZE_REGIONS]: (req) => {
+        useAgentStore.getState().setScanning(true);
         const pixels = canvasRef.current?.getRenderedPixels();
         if (!pixels) return respond(req.requestId, null);
         respond(req.requestId, analyzeRegions(pixels.data, pixels.width, pixels.height));
       },
 
       [AGENT_CHANNELS.GET_DOMINANT_COLORS]: (req) => {
+        useAgentStore.getState().setScanning(true);
         const pixels = canvasRef.current?.getRenderedPixels();
         if (!pixels) return respond(req.requestId, null);
         respond(req.requestId, getDominantColors(pixels.data, pixels.width, pixels.height));
       },
 
       [AGENT_CHANNELS.MEASURE_SHARPNESS]: (req) => {
+        useAgentStore.getState().setScanning(true);
         const pixels = canvasRef.current?.getRenderedPixels();
         if (!pixels) return respond(req.requestId, null);
         respond(req.requestId, measureSharpness(pixels.data, pixels.width, pixels.height));
       },
 
       [AGENT_CHANNELS.ESTIMATE_WHITE_BALANCE]: (req) => {
+        useAgentStore.getState().setScanning(true);
         const pixels = canvasRef.current?.getRenderedPixels();
         if (!pixels) return respond(req.requestId, null);
         respond(req.requestId, estimateWhiteBalance(pixels.data, pixels.width, pixels.height));
       },
 
       [AGENT_CHANNELS.ESTIMATE_NOISE]: (req) => {
+        useAgentStore.getState().setScanning(true);
         const pixels = canvasRef.current?.getRenderedPixels();
         if (!pixels) return respond(req.requestId, null);
         respond(req.requestId, estimateNoise(pixels.data, pixels.width, pixels.height));
