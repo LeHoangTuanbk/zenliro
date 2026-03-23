@@ -168,27 +168,33 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
 
     onImageLoaded?.(imgW, imgH);
 
+    // Prepare refs before touching the canvas (no visual change yet)
+    imageDataRef.current = imageData;
+    originalImgRef.current = sourceCanvas;
+    gpuSpotsRef.current = [];
+
     const dpr = window.devicePixelRatio || 1;
     const cw = container.clientWidth || 800;
     const ch = container.clientHeight || 600;
     const scale = Math.min(cw / imgW, ch / imgH, 1);
     const cssW = Math.max(1, Math.round(imgW * scale));
     const cssH = Math.max(1, Math.round(imgH * scale));
-    canvas.width = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
-    canvas.style.width = `${cssW}px`;
-    canvas.style.height = `${cssH}px`;
-    setCanvasDims({ w: cssW, h: cssH });
-    onResetView();
 
-    imageDataRef.current = imageData;
-    originalImgRef.current = sourceCanvas;
-    gpuSpotsRef.current = [];
+    // Batch resize + GPU upload + render in a single frame
+    // to avoid the blank flash between canvas clear and first render
+    requestAnimationFrame(() => {
+      canvas.width = Math.round(cssW * dpr);
+      canvas.height = Math.round(cssH * dpr);
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+      setCanvasDims({ w: cssW, h: cssH });
+      onResetView();
 
-    renderer.loadImage(sourceCanvas);
-    renderer.setHealSpots([]);
-    computeAndUploadSpots(healSpots);
-    renderToCanvas();
+      renderer.loadImage(sourceCanvas);
+      renderer.setHealSpots([]);
+      computeAndUploadSpots(healSpots);
+      renderToCanvas();
+    });
   }
 
   // ── Init WebGL ───────────────────────────────────────────────────────────
