@@ -47,7 +47,7 @@ export function useHistogram(
     gcTime: 30 * 60_000,
   });
 
-  // Debounced live histogram from canvas pixels (reacts to adjustment changes)
+  // Debounced live histogram from canvas pixels (reacts to adjustment changes + image load)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (activeView !== 'develop') return;
@@ -62,7 +62,7 @@ export function useHistogram(
       if (timerRef.current) clearTimeout(timerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adjustments, selectedId, activeView]);
+  }, [adjustments, selectedId, activeView, imageBuffer]);
 
   // Clear live histogram when switching photos
   const prevPhotoRef = useRef(selectedId);

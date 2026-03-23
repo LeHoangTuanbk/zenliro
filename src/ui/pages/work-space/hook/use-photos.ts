@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ActiveView } from '../const';
 import { useCatalogStore } from '../store/catalog-store';
 import { generateThumbnailDataUrlFromArrayBuffer } from '@/widgets/image-canvas/lib/image-utils';
+import { isRawMimeType, extractRawThumbnail } from '@shared/lib/raw';
 import { photoResourceQueryOptions } from './use-photo-resource';
 import { useHistoryStore } from '@/features/develop/history';
 import { useMaskStore } from '@/features/develop/mask';
@@ -40,6 +41,10 @@ export function usePhotos() {
   const buildThumbnail = useCallback(
     async (buffer: ArrayBuffer, mimeType: string, orientation: number) => {
       try {
+        if (isRawMimeType(mimeType)) {
+          const result = await extractRawThumbnail(buffer);
+          return result?.dataUrl ?? '';
+        }
         return await generateThumbnailDataUrlFromArrayBuffer(buffer, mimeType, orientation);
       } catch (err) {
         console.error('Failed to build thumbnail:', err);
