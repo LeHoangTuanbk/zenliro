@@ -4,6 +4,11 @@ import path from 'path';
 import crypto from 'crypto';
 import { validateEventFrame } from './utils.js';
 
+const RAW_EXTENSIONS = new Set([
+  'cr2', 'cr3', 'nef', 'arw', 'dng', 'raf', 'orf', 'rw2', 'pef',
+  'srw', 'x3f', '3fr', 'rwl', 'mrw', 'kdc', 'dcr', 'raw',
+]);
+
 const MIME_MAP: Record<string, string> = {
   jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
   webp: 'image/webp', tiff: 'image/tiff', tif: 'image/tiff',
@@ -56,7 +61,7 @@ export function registerCatalogHandlers() {
     validateEventFrame(event.senderFrame!);
     try {
       const ext = path.extname(filePath).toLowerCase().replace('.', '');
-      const mimeType = MIME_MAP[ext] ?? 'image/jpeg';
+      const mimeType = RAW_EXTENSIONS.has(ext) ? 'image/x-raw' : (MIME_MAP[ext] ?? 'image/jpeg');
       const bytes = Uint8Array.from(fs.readFileSync(filePath));
       return { mimeType, bytes };
     } catch {

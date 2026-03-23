@@ -49,7 +49,11 @@ app.on('ready', () => {
       filters: [
         {
           name: 'Images',
-          extensions: ['jpg', 'jpeg', 'png', 'webp', 'tiff', 'tif', 'bmp', 'gif'],
+          extensions: [
+            'jpg', 'jpeg', 'png', 'webp', 'tiff', 'tif', 'bmp', 'gif',
+            'cr2', 'cr3', 'nef', 'arw', 'dng', 'raf', 'orf', 'rw2', 'pef',
+            'srw', 'x3f', '3fr', 'rwl', 'mrw', 'kdc', 'dcr', 'raw',
+          ],
         },
       ],
     });
@@ -75,25 +79,33 @@ app.on('ready', () => {
           bmp: 'image/bmp',
           gif: 'image/gif',
         };
-        const mimeType = mimeMap[ext] || 'image/jpeg';
+        const RAW_EXTENSIONS = new Set([
+          'cr2', 'cr3', 'nef', 'arw', 'dng', 'raf', 'orf', 'rw2', 'pef',
+          'srw', 'x3f', '3fr', 'rwl', 'mrw', 'kdc', 'dcr', 'raw',
+        ]);
+        const isRaw = RAW_EXTENSIONS.has(ext);
+        const mimeType = isRaw ? 'image/x-raw' : (mimeMap[ext] || 'image/jpeg');
         const rawBuf = fs.readFileSync(filePath);
         const photoId = `${filePath}-${stats.mtimeMs}`;
 
         const thumbnailDataUrl = '';
         let photoWidth = 0;
         let photoHeight = 0;
-        const orientation = await readExifOrientation(rawBuf);
-        const rawDims = readJpegRawDimensions(rawBuf);
-        if (rawDims) {
-          const orientedDims = getOrientedDimensions(rawDims, orientation);
-          photoWidth = orientedDims.width;
-          photoHeight = orientedDims.height;
-        } else {
-          const img = nativeImage.createFromPath(filePath);
-          if (!img.isEmpty()) {
-            const imgSize = getOrientedDimensions(img.getSize(), orientation);
-            photoWidth = imgSize.width;
-            photoHeight = imgSize.height;
+        // RAW files: skip dimension detection here, renderer will update via onImageLoaded
+        const orientation = isRaw ? 1 : await readExifOrientation(rawBuf);
+        if (!isRaw) {
+          const rawDims = readJpegRawDimensions(rawBuf);
+          if (rawDims) {
+            const orientedDims = getOrientedDimensions(rawDims, orientation);
+            photoWidth = orientedDims.width;
+            photoHeight = orientedDims.height;
+          } else {
+            const img = nativeImage.createFromPath(filePath);
+            if (!img.isEmpty()) {
+              const imgSize = getOrientedDimensions(img.getSize(), orientation);
+              photoWidth = imgSize.width;
+              photoHeight = imgSize.height;
+            }
           }
         }
 

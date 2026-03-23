@@ -2,7 +2,7 @@
 
 > **Enhance, not alter.** A Lightroom Classic-inspired photo development app powered by AI Agent.
 
-Zenliro is a desktop RAW processing and color grading tool built for photographers who care about mood, tone, and authenticity. Not a destructive editor — no object removal, no inpainting. Just light, color, and feel.
+Zenliro is a desktop photo processing and color grading tool built for photographers who care about mood, tone, and authenticity. Not a destructive editor — no object removal, no inpainting. Just light, color, and feel.
 
 ---
 
@@ -15,7 +15,7 @@ Zenliro is a desktop RAW processing and color grading tool built for photographe
 
 ## Features
 
-- **RAW Processing** — Import JPG, PNG, WebP, BMP, GIF and TIFF photo format. View EXIF metadata and overall histogram at a glance.
+- **Photo Processing** — Import Raw, JPG, PNG, WebP, BMP, GIF and TIFF photo format. View EXIF metadata and overall histogram at a glance.
 - **Develop Module** — Full panel parity with Lightroom Classic: Basic, Tone Curve, HSL, Color Grading, Detail, and more.
 - **AI Agent** — Agent analyzes your photo, plans adjustments, and edits in real-time. Watch it work like a photographer at the controls. Can copy the style of a reference image or craft the best possible output autonomously.
 - **Non-destructive** — Full undo/redo history. Original file is never touched.
@@ -83,7 +83,7 @@ To use the AI photo editing feature, you need to download and install Claude Cod
 - [ ] Add better photo management features and more convenient shortcuts
 - [ ] Optimize image processing performance
 - [ ] Improve Agent photo editing
-- [ ] Support RAW photo format
+- [x] Support RAW photo format
 
 ---
 

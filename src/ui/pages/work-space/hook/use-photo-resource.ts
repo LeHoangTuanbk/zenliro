@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { queryOptions, useQuery, useQueryClient } from '@tanstack/react-query';
+import { isRawMimeType, decodeRawToCanvas } from '@shared/lib/raw';
 
 export type PhotoBinaryData = {
   mimeType: string;
@@ -10,6 +11,10 @@ type PhotoQueryInput = {
   id: string;
   filePath: string;
 };
+
+/** Cache decoded RAW → JPEG blob URLs to avoid re-decoding */
+const rawBlobUrlCache = new Map<string, string>();
+const MAX_RAW_BLOB_CACHE = 12;
 
 export function photoResourceQueryOptions(photo: PhotoQueryInput) {
   return queryOptions({
@@ -52,13 +57,54 @@ export function usePhotoResource(photo: PhotoQueryInput | null) {
       return;
     }
 
-    const objectUrl = URL.createObjectURL(
-      new Blob([query.data.buffer], { type: query.data.mimeType }),
-    );
-    queueMicrotask(() => setImageUrl(objectUrl));
+    let revoke: (() => void) | null = null;
+    let cancelled = false;
+    const photoId = photo?.id ?? '';
+
+    (async () => {
+      let objectUrl: string;
+
+      if (isRawMimeType(query.data.mimeType)) {
+        // Check cache first
+        const cached = rawBlobUrlCache.get(photoId);
+        if (cached) {
+          objectUrl = cached;
+        } else {
+          const result = await decodeRawToCanvas(query.data.buffer);
+          if (cancelled) return;
+          const blob = await new Promise<Blob>((resolve) =>
+            result.canvas.toBlob((b) => resolve(b!), 'image/jpeg', 0.92),
+          );
+          objectUrl = URL.createObjectURL(blob);
+          // Evict oldest if cache is full
+          if (rawBlobUrlCache.size >= MAX_RAW_BLOB_CACHE) {
+            const oldest = rawBlobUrlCache.keys().next().value;
+            if (oldest) {
+              URL.revokeObjectURL(rawBlobUrlCache.get(oldest)!);
+              rawBlobUrlCache.delete(oldest);
+            }
+          }
+          rawBlobUrlCache.set(photoId, objectUrl);
+        }
+        // RAW blob URLs are managed by cache, not by cleanup
+        revoke = null;
+      } else {
+        objectUrl = URL.createObjectURL(
+          new Blob([query.data.buffer], { type: query.data.mimeType }),
+        );
+        revoke = () => URL.revokeObjectURL(objectUrl);
+      }
+
+      if (cancelled) {
+        revoke?.();
+        return;
+      }
+      queueMicrotask(() => setImageUrl(objectUrl));
+    })();
 
     return () => {
-      URL.revokeObjectURL(objectUrl);
+      cancelled = true;
+      revoke?.();
     };
   }, [query.data]);
 

@@ -17,6 +17,7 @@ import {
   drawBitmapWithOrientation,
   readExifOrientation,
 } from '../lib/image-utils';
+import { isRawMimeType, decodeRawToCanvas } from '@shared/lib/raw';
 import type { CropInteractionProps, HealInteractionProps, ImageCanvasHandle } from '../store/types';
 import type { CropState } from '@/features/develop/crop';
 
@@ -224,32 +225,44 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     (async () => {
       try {
         const sourceBuffer = imageBuffer ?? dataUrlToArrayBuffer(dataUrl!);
-        const orientation = precomputedOrientation ?? (await readExifOrientation(sourceBuffer));
-        const blob = imageBuffer
-          ? arrayBufferToBlob(imageBuffer, imageMimeType ?? 'image/jpeg')
-          : dataUrlToBlob(dataUrl!);
-        const bmp = await createImageBitmap(blob, { imageOrientation: 'none' });
+        const useRawDecode = imageMimeType && isRawMimeType(imageMimeType);
 
-        if (cancelled) {
+        if (useRawDecode) {
+          // RAW file: decode with libraw-wasm
+          const result = await decodeRawToCanvas(sourceBuffer);
+          if (cancelled) return;
+          if (!canvasRef.current || !containerRef.current || !rendererRef.current) return;
+          rememberDecodedImage(cacheKey, result.canvas, result.imageData, result.width, result.height);
+          applyLoadedImage(result.canvas, result.imageData, result.width, result.height);
+        } else {
+          // Standard image: decode with createImageBitmap
+          const orientation = precomputedOrientation ?? (await readExifOrientation(sourceBuffer));
+          const blob = imageBuffer
+            ? arrayBufferToBlob(imageBuffer, imageMimeType ?? 'image/jpeg')
+            : dataUrlToBlob(dataUrl!);
+          const bmp = await createImageBitmap(blob, { imageOrientation: 'none' });
+
+          if (cancelled) {
+            bmp.close();
+            return;
+          }
+
+          const canvas = canvasRef.current;
+          const container = containerRef.current;
+          if (!canvas || !container || !rendererRef.current) {
+            bmp.close();
+            return;
+          }
+
+          const tmp = document.createElement('canvas');
+          const ctx2d = tmp.getContext('2d')!;
+          const { w: imgW, h: imgH } = drawBitmapWithOrientation(ctx2d, bmp, orientation);
           bmp.close();
-          return;
+
+          const imageData = ctx2d.getImageData(0, 0, imgW, imgH);
+          rememberDecodedImage(cacheKey, tmp, imageData, imgW, imgH);
+          applyLoadedImage(tmp, imageData, imgW, imgH);
         }
-
-        const canvas = canvasRef.current;
-        const container = containerRef.current;
-        if (!canvas || !container || !rendererRef.current) {
-          bmp.close();
-          return;
-        }
-
-        const tmp = document.createElement('canvas');
-        const ctx2d = tmp.getContext('2d')!;
-        const { w: imgW, h: imgH } = drawBitmapWithOrientation(ctx2d, bmp, orientation);
-        bmp.close();
-
-        const imageData = ctx2d.getImageData(0, 0, imgW, imgH);
-        rememberDecodedImage(cacheKey, tmp, imageData, imgW, imgH);
-        applyLoadedImage(tmp, imageData, imgW, imgH);
         if (!cancelled) setIsLoading(false);
       } catch (err) {
         console.error('[ImageCanvas] load error:', err);
