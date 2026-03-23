@@ -1,4 +1,4 @@
-export type PresetCategory = 'all' | 'portrait' | 'landscape' | 'street' | 'film';
+export type PresetCategory = 'all' | 'portrait' | 'landscape' | 'street' | 'film' | 'seasonal' | 'ocean';
 
 export type StylePreset = {
   id: string;
@@ -15,6 +15,8 @@ export const PRESET_CATEGORIES: { id: PresetCategory; label: string }[] = [
   { id: 'landscape', label: 'Landscape' },
   { id: 'street', label: 'Street' },
   { id: 'film', label: 'Film' },
+  { id: 'seasonal', label: 'Seasonal' },
+  { id: 'ocean', label: 'Ocean & Beach' },
 ];
 
 export const STYLE_PRESETS: StylePreset[] = [
@@ -24,7 +26,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     label: 'Cinematic Teal & Orange',
     description: 'Warm highlights with cool shadows for a cinematic look',
     category: 'film',
-    prompt: 'Apply cinematic teal & orange color grade — warm orange highlights, teal/cyan shadows, moderate contrast, slight desaturation in midtones, subtle vignette',
+    prompt: 'Apply cinematic teal & orange color grade. Analyze histogram first. Then: boost contrast +20. Color grading: set highlights hue ~35, sat 35 for warm orange; set shadows hue ~190, sat 30 for teal/cyan. In color mixer: reduce green saturation -15, boost orange saturation +15. Desaturate midtones slightly via vibrance -5 while keeping saturation +5. Add vignette amount -12, feather 50. Set clarity +8 for cinematic sharpness. The look should feel like a Hollywood color grade — complementary warm/cool split.',
     thumbnail: 'https://images.unsplash.com/photo-1615868175326-cd888cf737f0?w=400&h=300&fit=crop',
   },
   {
@@ -32,7 +34,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     label: 'Film Noir B&W',
     description: 'High contrast black and white with deep blacks',
     category: 'film',
-    prompt: 'Convert to high contrast black and white — full desaturation, crush blacks, boost whites, strong contrast, add subtle film grain, slight vignette for drama',
+    prompt: 'Convert to high contrast film noir B&W. Analyze histogram first. Then: set saturation -100 for full desaturation. Boost contrast +35. Crush blacks via tone curve (lower shadow point). Boost whites +15. In color mixer: adjust red and orange luminance to control skin tone brightness. Set clarity +20 for sharp textures. Add grain amount 15, size 30, roughness 60 for classic film grain. Add vignette amount -15, midpoint 35 for dramatic framing. The look should be deep dramatic blacks, bright highlights, heavy film noir atmosphere.',
     thumbnail: 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=400&h=300&fit=crop',
   },
   {
@@ -40,7 +42,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     label: 'Golden Hour Warm',
     description: 'Warm golden tones mimicking sunset lighting',
     category: 'landscape',
-    prompt: 'Apply golden hour warmth — boost temperature +25, add warm orange to highlights, lift shadows slightly, increase vibrance, soft warm glow feel',
+    prompt: 'Apply golden hour warmth. Analyze the image first. Then: set temperature +22 for deep warm sunlight. Lift shadows +15, reduce highlights -10 for soft dynamic range. Color grading: rich gold in highlights (hue ~42, sat 35), warm amber in midtones (hue ~30, sat 15). In color mixer: boost orange saturation +20, boost yellow saturation +15, reduce blue saturation -10. Set vibrance +15, contrast +8. Reduce clarity -5 for soft golden glow. The feel should be 30 minutes before sunset — warm, flattering, everything bathed in golden light.',
     thumbnail: 'https://images.unsplash.com/photo-1623237353316-417116e040a5?w=400&h=300&fit=crop',
   },
   {
@@ -48,7 +50,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     label: 'Moody Desaturated',
     description: 'Muted tones with lifted shadows for a moody feel',
     category: 'street',
-    prompt: 'Create moody desaturated look — reduce saturation -30, lift shadows, slight fade to blacks, cool tones in shadows, muted midtones, subtle green tint',
+    prompt: 'Create moody desaturated look. Analyze first. Then: reduce saturation -25, vibrance -10 for muted tones. Lift shadows +20, lift blacks via tone curve (black point to ~12) for faded look. Set temperature -5 for cool mood. Color grading: muted teal-green in shadows (hue ~160, sat 12), neutral grey in highlights (sat 5). Reduce contrast -8. In color mixer: reduce all saturation by -10 to -15, shift greens toward teal. Set clarity +5 for subtle texture. The mood is melancholic, editorial — like a rainy day through a window.',
     thumbnail: 'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?w=400&h=300&fit=crop',
   },
   {
@@ -56,7 +58,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     label: 'Vibrant Pop',
     description: 'Boosted saturation and vivid colors for impact',
     category: 'landscape',
-    prompt: 'Make colors pop — boost vibrance +40, saturation +15, increase clarity +25, moderate contrast boost, make blues deeper and greens richer',
+    prompt: 'Make colors vibrant and punchy. Analyze histogram first for headroom. Then: set vibrance +35, saturation +12. Boost contrast +15, clarity +20 for crisp detail. In color mixer: boost blue saturation +20, reduce blue luminance -10 for deep sky. Boost green saturation +15 for rich foliage. Boost orange and red saturation +10 for warm tones. Set dehaze +8 for clear atmosphere. Slight vignette amount -5. The goal is vivid, punchy colors — like a high-end travel magazine cover.',
     thumbnail: 'https://images.unsplash.com/photo-1465146344425-f00d5f5c8f07?w=400&h=300&fit=crop',
   },
   // Row 2
@@ -65,7 +67,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     label: 'Faded Vintage',
     description: 'Soft faded tones reminiscent of old film photos',
     category: 'film',
-    prompt: 'Apply vintage fade — lift blacks with tone curve, reduce contrast, warm color cast, slight yellow in highlights, desaturate -20, add subtle grain',
+    prompt: 'Apply vintage fade look. Analyze first. Then: lift blacks via tone curve (raise black point to ~18). Reduce contrast -12. Set temperature +8 for warm cast. Color grading: soft yellow in highlights (hue ~50, sat 20), muted brown in shadows (hue ~25, sat 12). Desaturate -18 overall. In color mixer: reduce blue saturation -20, shift green hue toward yellow +15. Add grain amount 12, size 30, roughness 50. Reduce clarity -5 for soft vintage feel. The look is faded 70s film — warm, soft, nostalgic with lifted blacks and gentle grain.',
     thumbnail: 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?w=400&h=300&fit=crop',
   },
   {
@@ -73,7 +75,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     label: 'Clean Portrait',
     description: 'Natural skin tones with soft light for portraits',
     category: 'portrait',
-    prompt: 'Optimize for portrait — warm skin tones slightly, reduce orange saturation, soft contrast, slight exposure lift, gentle clarity, smooth highlight rolloff',
+    prompt: 'Optimize for clean portrait. Analyze skin tones and histogram first. Then: set temperature +5 for subtle warmth. Exposure +0.15 for bright clean look. Reduce contrast -5 for soft light. In color mixer: reduce orange saturation -8 to calm skin tones, increase orange luminance +5 for bright skin. Reduce red saturation -5. Keep eye colors vivid. Set clarity -5 for smooth skin, texture +8 for detail preservation. Reduce highlights -10 for smooth highlight rolloff. Color grading: soft warm in highlights (hue ~35, sat 8). The goal is natural, flattering portrait light — clean skin, bright eyes, professional headshot quality.',
     thumbnail: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&h=300&fit=crop',
   },
   {
@@ -81,7 +83,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     label: 'Night City Neon',
     description: 'Vibrant neon glow for urban night photography',
     category: 'street',
-    prompt: 'Apply neon night look — boost blues and purples in HSL, increase vibrance, cool shadows, magenta tint in highlights, strong contrast, slight dehaze',
+    prompt: 'Apply neon night city look. Analyze the image first. Then: boost contrast +22. Set temperature -8 for cool night feel. In color mixer: boost blue saturation +25, boost purple saturation +30, boost magenta saturation +20 for neon glow. Reduce green luminance -10. Boost aqua saturation +15. Color grading: magenta/pink in highlights (hue ~310, sat 25), deep blue in shadows (hue ~240, sat 20, lum -10). Set vibrance +20, clarity +15, dehaze +10. Reduce exposure -0.2 for nighttime. The look is urban neon nightlife — vivid blues, pinks, and purples glowing against dark city streets.',
     thumbnail: 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=400&h=300&fit=crop',
   },
   {
@@ -89,7 +91,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     label: 'Earthy Tones',
     description: 'Warm earthy palette with natural brown tones',
     category: 'landscape',
-    prompt: 'Create earthy tones — warm temperature, shift greens towards yellow in HSL, orange warmth, reduce blue saturation, gentle contrast, natural warm palette',
+    prompt: 'Create earthy natural tones. Analyze first. Then: set temperature +12 for warm earth. In color mixer: shift green hue toward yellow +35, reduce green saturation -10 for olive tones. Boost orange saturation +15, reduce blue saturation -20 for muted sky. Shift aqua hue toward green +10. Color grading: warm amber in highlights (hue ~38, sat 18), brown-olive in shadows (hue ~45, sat 12). Set contrast +8, clarity +5. Vibrance -5, saturation +5 for controlled warmth. The palette should feel natural and organic — like a nature documentary in golden grasslands.',
     thumbnail: 'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=400&h=300&fit=crop',
   },
   {
@@ -97,7 +99,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     label: 'High Contrast Drama',
     description: 'Bold contrast with dramatic light and shadow',
     category: 'street',
-    prompt: 'Apply dramatic high contrast — boost contrast +40, clarity +30, deep blacks, bright whites, strong tonal separation, slight vignette, dehaze +15',
+    prompt: 'Apply dramatic high contrast look. Analyze histogram to check clipping headroom. Then: boost contrast +35, clarity +25 for aggressive tonal separation. Crush blacks via tone curve (pull shadow point down). Boost whites +15, reduce highlights -10 to avoid clipping. Set dehaze +12 for clarity and punch. Add vignette amount -10, midpoint 40. In color mixer: boost saturation selectively on dominant colors +10. Set texture +15 for micro-contrast detail. The look is bold and dramatic — strong light/shadow separation, editorial power.',
     thumbnail: 'https://images.unsplash.com/photo-1518837695005-2083093ee35b?w=400&h=300&fit=crop',
   },
   // Row 3
@@ -172,7 +174,7 @@ export const STYLE_PRESETS: StylePreset[] = [
     description: 'Rich amber and orange tones evoking fall foliage',
     category: 'landscape',
     prompt: 'Create autumn warmth — warm temperature +15, boost orange and red saturation, shift greens toward yellow, amber highlights, rich warm tones, gentle contrast',
-    thumbnail: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&h=300&fit=crop',
+    thumbnail: 'https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=400&h=300&fit=crop',
   },
   {
     id: 'tropical-vibrant',
@@ -222,5 +224,184 @@ export const STYLE_PRESETS: StylePreset[] = [
     category: 'film',
     prompt: 'Create Polaroid look — warm color cast, fade blacks with curve, reduce contrast, yellow tint in highlights, slight vignette, add grain amount 10, retro warm feel',
     thumbnail: 'https://images.unsplash.com/photo-1526045612212-70caf35c14df?w=400&h=300&fit=crop',
+  },
+  // ── Seasonal: Autumn ──────────────────────────────────────────────────────
+  {
+    id: 'autumn-golden-canopy',
+    label: 'Golden Canopy',
+    description: 'Deep golden foliage, warm amber light filtering through trees',
+    category: 'seasonal',
+    prompt: 'Create a rich autumn golden canopy look. First analyze the histogram and white balance. Then: set temperature +18 to +22 for deep warmth. In color mixer: shift green hue toward yellow +40, boost orange saturation +25, boost yellow saturation +20, reduce blue saturation -15, increase orange luminance +10. Color grading: warm amber in highlights (hue ~40, sat 30), earthy brown in shadows (hue ~30, sat 20). Set contrast +15, clarity +10 for leaf texture. Lift shadows +10 to reveal detail in dark bark. Add subtle vignette amount -10 to draw focus inward. The goal is golden autumn light filtering through a forest canopy — warm, rich, nostalgic.',
+    thumbnail: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'autumn-misty-morning',
+    label: 'Misty Autumn Morning',
+    description: 'Soft foggy autumn with muted warm tones and gentle fade',
+    category: 'seasonal',
+    prompt: 'Create a misty autumn morning atmosphere. Analyze the image first. Then: reduce contrast -15 for soft foggy feel. Lift shadows +25 and lift blacks via tone curve (raise black point to ~15). Reduce clarity -10 for soft atmospheric haze. Set temperature +10 for gentle warmth. Desaturate -12 overall for muted tones. In color mixer: shift greens toward yellow +30, reduce green saturation -20, mute blue saturation -25. Color grading: soft peach in highlights (hue ~25, sat 15), cool blue-grey in shadows (hue ~210, sat 10, lum -5). Add grain amount 8, size 25 for film texture. The mood is contemplative — early morning fog through autumn trees, soft and quiet.',
+    thumbnail: 'https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'autumn-rustic',
+    label: 'Rustic Harvest',
+    description: 'Deep burnt orange and burgundy, rich harvest season palette',
+    category: 'seasonal',
+    prompt: 'Create a rustic harvest look with deep autumn colors. Analyze histogram first. Then: set temperature +12, tint +3 for warmth. Boost contrast +20 for depth. In color mixer: boost red saturation +20, shift red hue toward orange +10, boost orange saturation +30, reduce green saturation -30, shift green hue toward yellow +50, reduce aqua and blue saturation -25. Increase red and orange luminance -10 for richer tones. Color grading: burnt sienna in midtones (hue ~20, sat 25), deep burgundy in shadows (hue ~350, sat 15). Set vibrance +10, clarity +15 for texture. Add vignette amount -12, midpoint 40. The feel is a countryside harvest — earthy, rustic, deeply warm.',
+    thumbnail: 'https://images.unsplash.com/photo-1508193638397-1c4234db14d8?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'autumn-japanese-maple',
+    label: 'Japanese Maple',
+    description: 'Vivid red maple leaves, clean contrast, Japanese garden aesthetic',
+    category: 'seasonal',
+    prompt: 'Create a Japanese maple autumn style — vivid reds against clean backgrounds. Analyze the image first. Then: set temperature +5 (slight warmth, not too heavy). Boost contrast +18 for crisp leaf edges. In color mixer: boost red saturation +35, shift red hue slightly toward orange +5 for vivid crimson. Reduce green saturation -15, shift green hue toward yellow +20. Boost orange saturation +15. Keep blue and aqua clean — reduce saturation -10. Increase clarity +20 for sharp leaf detail. Color grading: subtle warm red in highlights (hue ~5, sat 12), cool blue-black in shadows (hue ~220, sat 8). Vibrance +15. The aesthetic is clean, precise — Japanese garden with brilliant red maples against muted backgrounds.',
+    thumbnail: 'https://images.unsplash.com/photo-1606958955675-1a42178361a0?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'autumn-cozy-evening',
+    label: 'Cozy Autumn Evening',
+    description: 'Warm indoor candlelight feel, soft amber glow, intimate mood',
+    category: 'seasonal',
+    prompt: 'Create a cozy autumn evening atmosphere — like warm candlelight indoors. Analyze the image. Then: set temperature +25 for strong warmth. Reduce exposure -0.3 for low-light evening feel. Lift shadows +20 to keep detail in dark areas. Reduce highlights -15. In color mixer: boost orange saturation +20, reduce blue saturation -30, reduce aqua saturation -25. Color grading: rich amber in highlights (hue ~35, sat 40), deep brown-red in shadows (hue ~15, sat 20, lum -10). Reduce contrast -5 for soft light. Reduce clarity -8 for gentle glow. Add vignette amount -18, feather 60 for intimate framing. Add grain amount 10 for texture. The mood is cozy, intimate — autumn evening by a fire.',
+    thumbnail: 'https://images.unsplash.com/photo-1604871000636-074fa5117945?w=400&h=300&fit=crop',
+  },
+  // ── Ocean & Beach ───────────────────────────────────────────────────────
+  {
+    id: 'ocean-turquoise',
+    label: 'Turquoise Waters',
+    description: 'Crystal clear turquoise ocean, vivid aqua blues, tropical paradise',
+    category: 'ocean',
+    prompt: 'Create vivid turquoise tropical water look. Analyze the histogram and colors first. Then: set temperature -5 for slightly cool clarity. Boost contrast +12. In color mixer: boost aqua saturation +35, shift aqua hue toward blue -10 for deeper turquoise, boost aqua luminance +15 for glowing water. Boost blue saturation +20, reduce blue luminance -10 for deep ocean. Boost green saturation +10. Reduce orange and yellow saturation -10 to let water dominate. Set vibrance +20, clarity +15, dehaze +10 for crystal clear water. Color grading: light cyan in highlights (hue ~180, sat 15), deep teal in shadows (hue ~195, sat 12). The goal is crystal clear tropical water — Maldives/Bali paradise look.',
+    thumbnail: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'ocean-sunset-glow',
+    label: 'Ocean Sunset Glow',
+    description: 'Warm golden sunset reflecting on waves, orange and purple sky',
+    category: 'ocean',
+    prompt: 'Create a dramatic ocean sunset with warm reflections. Analyze the image first. Then: set temperature +20 for golden warmth. Boost contrast +15. In color mixer: boost orange saturation +30, boost red saturation +15, boost yellow saturation +20 for golden light. Shift purple hue toward magenta +10, boost purple saturation +15 for sky drama. Reduce green saturation -15. Color grading: intense warm gold in highlights (hue ~40, sat 45), deep purple in shadows (hue ~280, sat 20, lum -8). Set vibrance +25 for vivid sunset colors. Add slight vignette amount -8. Lift shadows +10 to keep wave detail. The mood is that magical 10 minutes before sun dips below the horizon — sky on fire, warm light painting the ocean.',
+    thumbnail: 'https://images.unsplash.com/photo-1414609245224-afa02bfb3fda?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'ocean-moody-storm',
+    label: 'Stormy Seas',
+    description: 'Dark dramatic ocean, steel grey skies, powerful and moody',
+    category: 'ocean',
+    prompt: 'Create a dramatic stormy ocean look — dark, powerful, moody. Analyze first. Then: reduce exposure -0.4 for dark atmosphere. Boost contrast +25 for dramatic waves. Set temperature -10 for cold steel tones. In color mixer: desaturate all warm colors (red -20, orange -25, yellow -20). Boost blue saturation +10, shift blue hue toward cyan +5. Reduce aqua saturation -10 for grey-steel water. Set clarity +25, dehaze +15 for sharp wave crests and storm texture. Color grading: cold grey-blue in highlights (hue ~210, sat 8), deep navy in shadows (hue ~230, sat 15, lum -15). Add vignette amount -15 for intensity. Crush blacks slightly via tone curve. The feeling is raw oceanic power — steel grey, foaming white, dark depths.',
+    thumbnail: 'https://images.unsplash.com/photo-1505142468610-359e7d316be0?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'ocean-soft-pastel',
+    label: 'Pastel Shore',
+    description: 'Soft pastel beach tones, gentle pink and blue, calm morning shore',
+    category: 'ocean',
+    prompt: 'Create a soft pastel beach look — calm, gentle, dreamy. Analyze image first. Then: lift shadows +30 for airy feel. Reduce contrast -15 for soft tones. Set temperature -3 for gentle cool. Desaturate -10 overall. In color mixer: reduce blue saturation -15, increase blue luminance +15 for pale sky. Reduce aqua saturation -10, increase aqua luminance +10. Reduce orange saturation -10 for soft sand. Color grading: soft pink in highlights (hue ~340, sat 18), pale lavender in shadows (hue ~260, sat 12, lum +5). Reduce clarity -10 for dreamy softness. Lift blacks via tone curve (black point to ~12). Add grain amount 5 for subtle texture. The mood is a calm morning shore — pastel sunrise, gentle waves, peaceful.',
+    thumbnail: 'https://images.unsplash.com/photo-1520942702018-0862200e6873?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'ocean-deep-blue',
+    label: 'Deep Blue Abyss',
+    description: 'Rich deep navy blues, high contrast underwater feel, mysterious',
+    category: 'ocean',
+    prompt: 'Create a deep blue ocean look — rich, mysterious, immersive. Analyze first. Then: set temperature -12 for deep cool tones. Boost contrast +20. In color mixer: boost blue saturation +30, reduce blue luminance -20 for deep rich navy. Boost aqua saturation +15, reduce aqua luminance -10. Desaturate warm colors heavily (red -30, orange -30, yellow -25). Color grading: steel blue in highlights (hue ~210, sat 20), deep navy-black in shadows (hue ~235, sat 25, lum -15). Set clarity +12, dehaze +10. Vibrance +15 to keep blues vivid. Add vignette amount -12 for depth. Reduce highlights -20 for moody sky. The aesthetic is deep open ocean — powerful, mysterious, infinite blue.',
+    thumbnail: 'https://images.unsplash.com/photo-1468581264429-2548ef9eb732?w=400&h=300&fit=crop',
+  },
+  // ── More seasonal ───────────────────────────────────────────────────────
+  {
+    id: 'winter-frost',
+    label: 'Winter Frost',
+    description: 'Cool blue-white tones, crisp frozen landscape, icy clarity',
+    category: 'seasonal',
+    prompt: 'Create a crisp winter frost look. Analyze the image first. Then: set temperature -15 for icy cool tones. Tint -3 toward green for cold feel. Boost contrast +18 for crisp edges. In color mixer: reduce all warm color saturation (red -20, orange -25, yellow -15). Boost blue saturation +10, boost aqua saturation +8. Increase blue luminance +15 for bright ice. Color grading: pale ice blue in highlights (hue ~200, sat 15, lum +5), deep cold blue in shadows (hue ~225, sat 18, lum -10). Set clarity +20 for sharp frost texture. Dehaze +8 for clear air. Lift shadows +5 to keep snow detail. Reduce vibrance -5 for muted winter palette. The mood is a frozen landscape — crystalline, quiet, pristine cold.',
+    thumbnail: 'https://images.unsplash.com/photo-1457269449834-928af64c684d?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'spring-blossom',
+    label: 'Spring Blossom',
+    description: 'Soft pink cherry blossoms, fresh greens, gentle spring light',
+    category: 'seasonal',
+    prompt: 'Create a fresh spring blossom look. Analyze the image first. Then: set temperature +5 for gentle warmth. Lift shadows +15 for airy brightness. Reduce contrast -8 for soft spring light. In color mixer: boost magenta and purple saturation +20 for blossoms. Shift green hue toward yellow +10 for fresh spring green, boost green saturation +15. Reduce orange saturation -10. Increase magenta luminance +10 for glowing petals. Color grading: soft pink in highlights (hue ~330, sat 20), fresh green in shadows (hue ~130, sat 10, lum +5). Set vibrance +12 for lively colors. Reduce clarity -5 for soft petal texture. The mood is fresh spring — cherry blossoms, new growth, gentle warm light, renewal.',
+    thumbnail: 'https://images.unsplash.com/photo-1489537235181-fc05daed5805?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'sakura-bloom',
+    label: 'Sakura Bloom',
+    description: 'Soft pink cherry blossom, dreamy pastel, Japanese spring aesthetic',
+    category: 'seasonal',
+    prompt: 'Create a Japanese sakura cherry blossom look — soft, pink, dreamy. Analyze the image first. Then: set temperature +3 for very slight warmth (sakura is cool-toned, not warm). Tint +5 toward magenta for pink cast. Lift shadows +20 for airy brightness. Reduce contrast -12 for soft pastel feel. In color mixer: boost magenta saturation +30, boost magenta luminance +15 for glowing pink petals. Boost purple saturation +10. Reduce green saturation -10, shift green hue toward yellow +15 for fresh spring foliage. Reduce orange saturation -8 for clean skin if people present. Color grading: soft cherry pink in highlights (hue ~335, sat 22, lum +3), pale lavender in shadows (hue ~280, sat 10, lum +8). Reduce clarity -8 for soft petal bokeh. Vibrance +8 to keep pinks alive without oversaturating. Lift blacks via tone curve (black point to ~8) for pastel base. Add grain amount 3 for subtle film texture. The aesthetic is pure Japanese spring — delicate pink petals falling, soft overcast light, dreamy and serene. Think hanami picnic under sakura trees.',
+    thumbnail: 'https://images.unsplash.com/photo-1522383225653-ed111181a951?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'sakura-night',
+    label: 'Yozakura',
+    description: 'Night cherry blossom, warm lantern light on pink petals, moody spring night',
+    category: 'seasonal',
+    prompt: 'Create a yozakura (night sakura) look — cherry blossoms illuminated at night. Analyze the image first. Then: reduce exposure -0.3 for nighttime feel. Set temperature +15 for warm lantern/spotlight light on petals. In color mixer: boost magenta saturation +25, boost magenta luminance +8 for glowing pink petals against dark sky. Boost purple saturation +15. Reduce blue luminance -15 for deep night sky. Reduce green saturation -20 for dark foliage. Color grading: warm pink-gold in highlights (hue ~350, sat 28) to simulate warm artificial light on petals, deep indigo in shadows (hue ~250, sat 18, lum -12). Boost contrast +15 for petal-vs-darkness separation. Set clarity +10. Add vignette amount -10 for intimate night framing. The mood is magical nighttime — pink blossoms glowing against deep blue-black sky, warm spotlights, romantic and mysterious.',
+    thumbnail: 'https://images.unsplash.com/photo-1490806843957-31f4c9a91c65?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'autumn-ginkgo-avenue',
+    label: 'Ginkgo Avenue',
+    description: 'Brilliant yellow ginkgo trees lining European streets, warm and vivid',
+    category: 'seasonal',
+    prompt: 'Create a vivid ginkgo avenue autumn look — rows of brilliant yellow trees in an urban setting. Analyze the image first. Then: set temperature +14 for warm but not orange-heavy tone. In color mixer: boost yellow saturation +35, boost yellow luminance +10 for glowing ginkgo leaves. Boost orange saturation +15. Shift green hue toward yellow +45 so any remaining green leaves turn golden. Reduce blue saturation -10 for clean sky, increase blue luminance +5. Reduce aqua saturation -8. Color grading: bright gold in highlights (hue ~48, sat 25), warm brown in shadows (hue ~32, sat 15). Set contrast +12, clarity +15 for crisp leaf and architecture detail. Vibrance +10 to make yellows sing. Lift shadows +8 to keep street detail. The aesthetic is a European autumn boulevard — brilliant yellow canopy overhead, warm urban atmosphere, vivid but natural.',
+    thumbnail: 'https://images.unsplash.com/photo-1702224602449-65fdeb64f5f4?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'autumn-rainy-street',
+    label: 'Rainy Autumn Street',
+    description: 'Wet reflections, moody rain, warm fallen leaves on glistening pavement',
+    category: 'seasonal',
+    prompt: 'Create a rainy autumn street look — wet pavements reflecting golden leaves. Analyze first. Then: reduce exposure -0.2 for overcast rain light. Set temperature +8 for subtle warmth from fallen leaves. Boost contrast +18 for reflections on wet surfaces. In color mixer: boost orange saturation +20, boost yellow saturation +15 for leaves. Reduce green saturation -15. Reduce blue saturation -8, shift blue luminance -5 for dark moody sky. Color grading: muted amber in highlights (hue ~38, sat 18), cool slate in shadows (hue ~215, sat 12, lum -8). Set clarity +20 for wet surface texture and rain detail. Dehaze +5 for slight clarity through rain. Add vignette amount -10. Desaturate -5 for muted rainy atmosphere. The mood is cinematic autumn rain — warm leaves scattered on glistening dark streets, melancholic beauty.',
+    thumbnail: 'https://images.unsplash.com/photo-1501436513145-30f24e19fcc8?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'autumn-warm-cafe',
+    label: 'Autumn Café Window',
+    description: 'View through a warm café window, golden leaves outside, cozy indoor warmth',
+    category: 'seasonal',
+    prompt: 'Create a cozy autumn café window look — warm inside looking out at golden trees. Analyze the image. Then: set temperature +20 for strong indoor warmth. Tint +3 for slight magenta. Reduce highlights -20 for soft window light. Lift shadows +25 for gentle indoor fill. In color mixer: boost orange saturation +25, boost yellow saturation +20 for leaves visible through window. Reduce blue saturation -20, reduce aqua saturation -15. Color grading: warm amber-orange in highlights (hue ~35, sat 35) for indoor warm lighting, chocolate brown in shadows (hue ~20, sat 18, lum -5). Reduce contrast -8 for soft café ambiance. Reduce clarity -10 for dreamy window glass effect. Add vignette amount -15, feather 65 for cozy intimate frame. Add grain amount 8, size 25. The feeling is hygge — looking through a steamed café window at autumn colors, holding a warm drink.',
+    thumbnail: 'https://images.unsplash.com/photo-1445116572660-236099ec97a0?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'sakura-river',
+    label: 'Sakura River',
+    description: 'Cherry blossoms along a river, petals floating on water, peaceful spring',
+    category: 'seasonal',
+    prompt: 'Create a sakura river scene look — cherry blossom trees lining a canal with petals on water. Analyze first. Then: set temperature +2 for neutral-cool spring light. Tint +4 toward magenta. Lift shadows +18 for bright airy feel. Reduce contrast -10 for soft spring atmosphere. In color mixer: boost magenta saturation +28, boost magenta luminance +12 for vibrant pink blossoms. Boost purple saturation +10. Shift green hue toward yellow +10 for fresh willows. Reduce orange saturation -5. Boost aqua luminance +8 for bright reflective water. Color grading: delicate pink in highlights (hue ~338, sat 20), soft teal in shadows (hue ~185, sat 10, lum +3) for water reflections. Vibrance +10. Reduce clarity -6 for soft petal texture. The mood is peaceful hanami along a river — floating petals, gentle spring breeze, soft pink everywhere.',
+    thumbnail: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'ocean-tropical-flat-lay',
+    label: 'Tropical Overhead',
+    description: 'Overhead drone view of turquoise shallows, white sand, coral patterns',
+    category: 'ocean',
+    prompt: 'Create a tropical overhead/drone ocean look — crystal water from above. Analyze first. Then: set temperature -3 for clean cool water clarity. Boost contrast +10. In color mixer: boost aqua saturation +40, boost aqua luminance +12 for glowing shallow water. Boost green saturation +15 for reef/seagrass. Reduce blue luminance -8 for deep water contrast. Reduce orange saturation -5, boost orange luminance +10 for bright sand. Color grading: bright cyan in highlights (hue ~175, sat 18), deep ocean blue in shadows (hue ~210, sat 15). Set vibrance +25, clarity +12, dehaze +15 for maximum water clarity. Slight exposure +0.15 for bright tropical sun. The look is Maldives drone shot — gradient from white sand through turquoise shallows to deep blue, crystal clear.',
+    thumbnail: 'https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'ocean-golden-coast',
+    label: 'Golden Coast',
+    description: 'Warm coastal golden hour, sun-kissed waves, amber sand and warm sea',
+    category: 'ocean',
+    prompt: 'Create a golden coast sunset look — warm sun-kissed beach. Analyze first. Then: set temperature +18 for golden coastal light. Boost contrast +10. In color mixer: boost orange saturation +25, boost yellow saturation +20 for golden sand and sun reflections. Reduce blue saturation -5, shift blue hue toward purple +5 for warm evening sky. Boost red saturation +8 for warm skin tones. Color grading: rich gold in highlights (hue ~42, sat 35), warm copper in shadows (hue ~25, sat 18). Set vibrance +12. Lift shadows +12 for warm fill light. Reduce highlights -8. Add vignette amount -8. Clarity +5 for wave texture. The mood is California/Australia golden coast — warm, relaxed, sun-drenched, last light of a perfect beach day.',
+    thumbnail: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'winter-snow-portrait',
+    label: 'Snow Portrait',
+    description: 'Soft falling snow, warm skin against cold blue, cozy winter portrait',
+    category: 'seasonal',
+    prompt: 'Create a winter snow portrait look — warm subject against cold snowy backdrop. Analyze the image first. Then: set temperature -5 for overall cool winter feel. In color mixer: reduce blue saturation -8, increase blue luminance +20 for bright clean snow. Reduce aqua saturation -10. Keep orange and red saturation neutral for warm natural skin. Boost red luminance +5 for rosy cheeks. Color grading: very subtle warm in highlights (hue ~35, sat 8) for skin warmth, cold blue in shadows (hue ~215, sat 15, lum -5) for snowy atmosphere. Reduce contrast -5 for soft overcast snow light. Lift shadows +15 for bright snow detail. Reduce clarity -5 for soft snow texture. Set texture +8 for clothing detail. Exposure +0.1 for bright snow. The look is cozy winter portrait — cold blue world but warm human subject, soft falling snow.',
+    thumbnail: 'https://images.unsplash.com/photo-1517299321609-52687d1bc55a?w=400&h=300&fit=crop',
+  },
+  {
+    id: 'summer-haze',
+    label: 'Summer Haze',
+    description: 'Hot summer afternoon, golden haze, warm and slightly washed out',
+    category: 'seasonal',
+    prompt: 'Create a hot summer haze look — lazy afternoon, golden light. Analyze first. Then: set temperature +15 for warm summer sun. Boost exposure +0.2 for bright daylight. Reduce contrast -10 for hazy feel. Lift shadows +20 and lift blacks via tone curve (black point to ~10) for washed-out summer haze. In color mixer: boost yellow saturation +15, boost orange saturation +10, reduce blue saturation -15 for faded sky. Color grading: warm golden in highlights (hue ~45, sat 25), subtle warm in shadows (hue ~35, sat 8). Reduce clarity -12 for heat shimmer. Desaturate -8 for sun-bleached look. Vibrance +5 to keep some life. Add grain amount 8. The feeling is peak summer — hot, hazy, golden, nostalgic lazy afternoon.',
+    thumbnail: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop',
   },
 ];
