@@ -16,8 +16,11 @@ function getMcpServerCommand(): { command: string; args: string[] } {
     };
   }
 
-  const appPath = app.getAppPath();
-  const serverPath = path.join(appPath, '..', 'dist-electron', 'mcp', 'zenliro-mcp-server.js');
+  // In production, MCP server is bundled (all deps inlined) and unpacked from asar.
+  // Bundle created by: esbuild → zenliro-mcp-server.bundle.mjs
+  const appPath = app.getAppPath(); // e.g. .../Resources/app.asar
+  const unpackedPath = appPath.replace('app.asar', 'app.asar.unpacked');
+  const serverPath = path.join(unpackedPath, 'dist-electron', 'mcp', 'zenliro-mcp-server.bundle.mjs');
 
   return {
     command: 'node',
