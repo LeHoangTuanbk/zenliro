@@ -52,6 +52,9 @@ function parseCodexLine(line: string): ParsedStreamEvent | null {
     // Item completed
     if (event.type === 'item.completed' && event.item) {
       const item = event.item;
+      if (item.type === 'error' && item.message) {
+        return { type: 'error', error: item.message };
+      }
       if (item.type === 'agent_message' && item.text) {
         return { type: 'text', text: item.text };
       }
@@ -107,8 +110,7 @@ export class CodexManager {
     const args = [
       'exec',
       '--json',
-      '-s', 'read-only',
-      '-c', `instructions="${SYSTEM_PROMPT.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`,
+      '-s', 'danger-full-access',
     ];
 
     if (options?.model && options.model !== 'codex-default') {
@@ -116,10 +118,13 @@ export class CodexManager {
     }
 
     if (this.sessionId) {
-      args.push('resume', '--last');
+      // Resume previous session — context (including system prompt) is preserved
+      args.push('resume', '--last', text);
+    } else {
+      // First message — prepend system prompt to the prompt argument
+      // Codex CLI ignores -c instructions=..., so we embed it in the prompt
+      args.push(`${SYSTEM_PROMPT}\n\n---\nUser request: ${text}`);
     }
-
-    args.push(text);
 
     this.process = spawn('codex', args, {
       stdio: ['pipe', 'pipe', 'pipe'],
