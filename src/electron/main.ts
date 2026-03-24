@@ -9,7 +9,11 @@ import { registerMcpGlobally } from './mcp/register-global.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { readExifOrientation, readJpegRawDimensions, getOrientedDimensions } from './exif-orientation.js';
+import {
+  readExifOrientation,
+  readJpegRawDimensions,
+  getOrientedDimensions,
+} from './exif-orientation.js';
 
 app.on('ready', () => {
   const mainWindow = new BrowserWindow({
@@ -27,6 +31,17 @@ app.on('ready', () => {
     mainWindow.loadURL('http://localhost:5173');
   } else {
     mainWindow.loadFile(getUIPath());
+    mainWindow.webContents.on('before-input-event', (_e, input) => {
+      const isDevToolsShortcut =
+        (input.key === 'I' && input.control && input.shift) ||
+        (input.key === 'I' && input.meta && input.alt) ||
+        input.key === 'F12';
+      if (isDevToolsShortcut) _e.preventDefault();
+    });
+
+    mainWindow.webContents.on('devtools-opened', () => {
+      mainWindow.webContents.closeDevTools();
+    });
   }
 
   registerCatalogHandlers();
@@ -35,11 +50,13 @@ app.on('ready', () => {
   setupTray(mainWindow);
 
   // Start local HTTP bridge for MCP server and register globally in Claude Code
-  startLocalServer().then(() => {
-    registerMcpGlobally();
-  }).catch((err) => {
-    console.error('[Zenliro] Failed to start local MCP bridge:', err);
-  });
+  startLocalServer()
+    .then(() => {
+      registerMcpGlobally();
+    })
+    .catch((err) => {
+      console.error('[Zenliro] Failed to start local MCP bridge:', err);
+    });
 
   // ── Import ────────────────────────────────────────────────────────────────
   ipcMainHandle('importPhotos', async () => {
@@ -50,9 +67,31 @@ app.on('ready', () => {
         {
           name: 'Images',
           extensions: [
-            'jpg', 'jpeg', 'png', 'webp', 'tiff', 'tif', 'bmp', 'gif',
-            'cr2', 'cr3', 'nef', 'arw', 'dng', 'raf', 'orf', 'rw2', 'pef',
-            'srw', 'x3f', '3fr', 'rwl', 'mrw', 'kdc', 'dcr', 'raw',
+            'jpg',
+            'jpeg',
+            'png',
+            'webp',
+            'tiff',
+            'tif',
+            'bmp',
+            'gif',
+            'cr2',
+            'cr3',
+            'nef',
+            'arw',
+            'dng',
+            'raf',
+            'orf',
+            'rw2',
+            'pef',
+            'srw',
+            'x3f',
+            '3fr',
+            'rwl',
+            'mrw',
+            'kdc',
+            'dcr',
+            'raw',
           ],
         },
       ],
@@ -80,11 +119,26 @@ app.on('ready', () => {
           gif: 'image/gif',
         };
         const RAW_EXTENSIONS = new Set([
-          'cr2', 'cr3', 'nef', 'arw', 'dng', 'raf', 'orf', 'rw2', 'pef',
-          'srw', 'x3f', '3fr', 'rwl', 'mrw', 'kdc', 'dcr', 'raw',
+          'cr2',
+          'cr3',
+          'nef',
+          'arw',
+          'dng',
+          'raf',
+          'orf',
+          'rw2',
+          'pef',
+          'srw',
+          'x3f',
+          '3fr',
+          'rwl',
+          'mrw',
+          'kdc',
+          'dcr',
+          'raw',
         ]);
         const isRaw = RAW_EXTENSIONS.has(ext);
-        const mimeType = isRaw ? 'image/x-raw' : (mimeMap[ext] || 'image/jpeg');
+        const mimeType = isRaw ? 'image/x-raw' : mimeMap[ext] || 'image/jpeg';
         const rawBuf = fs.readFileSync(filePath);
         const photoId = `${filePath}-${stats.mtimeMs}`;
 
