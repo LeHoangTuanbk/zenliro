@@ -31,17 +31,18 @@ app.on('ready', () => {
     mainWindow.loadURL('http://localhost:5173');
   } else {
     mainWindow.loadFile(getUIPath());
-    mainWindow.webContents.on('before-input-event', (_e, input) => {
-      const isDevToolsShortcut =
-        (input.key === 'I' && input.control && input.shift) ||
-        (input.key === 'I' && input.meta && input.alt) ||
-        input.key === 'F12';
-      if (isDevToolsShortcut) _e.preventDefault();
-    });
+    // TODO: Will disable devtools in production later
+    // mainWindow.webContents.on('before-input-event', (_e, input) => {
+    //   const isDevToolsShortcut =
+    //     (input.key === 'I' && input.control && input.shift) ||
+    //     (input.key === 'I' && input.meta && input.alt) ||
+    //     input.key === 'F12';
+    //   if (isDevToolsShortcut) _e.preventDefault();
+    // });
 
-    mainWindow.webContents.on('devtools-opened', () => {
-      mainWindow.webContents.closeDevTools();
-    });
+    // mainWindow.webContents.on('devtools-opened', () => {
+    //   mainWindow.webContents.closeDevTools();
+    // });
   }
 
   registerCatalogHandlers();
