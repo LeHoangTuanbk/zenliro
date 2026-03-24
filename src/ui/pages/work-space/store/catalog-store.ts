@@ -33,7 +33,6 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
       set({ isLoaded: true });
       return;
     }
-    // Migrate old catalog photos that lack new fields
     const photos = (catalog.photos ?? []).map((p: CatalogPhoto) => ({
       ...p,
       thumbnailPath: p.thumbnailPath ?? '',
@@ -123,5 +122,4 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
       photos: s.photos.map((p) => (p.id === id ? { ...p, tags } : p)),
     }));
   },
-
 }));
