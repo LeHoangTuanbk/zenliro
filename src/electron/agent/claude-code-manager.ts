@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from 'child_process';
 import { CLAUDE_CLI } from './const.js';
 import { SYSTEM_PROMPT } from './system-prompt.js';
 import { StreamLineBuffer, parseStreamLine, type ParsedStreamEvent } from './stream-parser.js';
+import { getShellEnv } from './shell-env.js';
 
 export type StreamCallback = (event: ParsedStreamEvent) => void;
 
@@ -48,7 +49,7 @@ export class ClaudeCodeManager {
 
     this.process = spawn(CLAUDE_CLI, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env },
+      env: getShellEnv(),
     });
 
     this.process.stdout?.on('data', (data: Buffer) => {

@@ -2,6 +2,7 @@
   "appId": "com.tuan-lehoang.zenliro",
   "productName": "Zenliro",
   "files": ["dist-electron", "dist-react"],
+  "asarUnpack": ["dist-electron/mcp/**"],
   "extraResources": ["dist-electron/preload.cjs", "src/assets/**"],
   "icon": "./desktop-icon.png",
   "mac": {
