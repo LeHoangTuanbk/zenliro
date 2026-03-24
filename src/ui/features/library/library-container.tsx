@@ -75,15 +75,15 @@ export function LibraryContainer({
 
   const handleConfirmDelete = useCallback(() => {
     if (deleteTargetId) {
-      onDelete(deleteTargetId);
       closeDeleteDialog();
+      onDelete(deleteTargetId);
     }
   }, [deleteTargetId, onDelete, closeDeleteDialog]);
 
   const handleConfirmBulkDelete = useCallback(async () => {
+    closeBulkDelete();
     await onBulkDelete(selectedIds);
     clearSelection();
-    closeBulkDelete();
   }, [selectedIds, onBulkDelete, clearSelection, closeBulkDelete]);
 
   const onPhotoClick = useCallback((id: string, e: React.MouseEvent) => {

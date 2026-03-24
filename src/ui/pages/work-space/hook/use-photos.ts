@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ActiveView } from '../const';
 import { useCatalogStore } from '../store/catalog-store';
-import { generateThumbnailDataUrlFromArrayBuffer } from '@/widgets/image-canvas/lib/image-utils';
+import { generateThumbnailDataUrlFromArrayBuffer } from '@widgets/image-canvas';
 import { isRawMimeType, extractRawThumbnail } from '@shared/lib/raw';
 import { photoResourceQueryOptions } from './use-photo-resource';
 import { useHistoryStore } from '@/features/develop/history';
@@ -10,7 +10,6 @@ import { useMaskStore } from '@/features/develop/mask';
 import { useCropStore } from '@/features/develop/crop';
 import { useHealStore } from '@/features/develop/heal';
 
-/** Remove all edit data for a photo from every zustand store */
 function cleanupPhotoEdits(photoId: string) {
   useHistoryStore.getState().clearPhoto(photoId);
   useMaskStore.getState().removePhoto(photoId);
@@ -180,9 +179,10 @@ export function usePhotos() {
         if (!resource) continue;
         const bytes = resource.bytes;
         const buf = bytes.buffer;
-        const buffer = buf instanceof ArrayBuffer
-          ? buf.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
-          : new Uint8Array(bytes).buffer.slice(0, bytes.byteLength);
+        const buffer =
+          buf instanceof ArrayBuffer
+            ? buf.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+            : new Uint8Array(bytes).buffer.slice(0, bytes.byteLength);
         const thumbnailDataUrl = await buildThumbnail(buffer, resource.mimeType, photo.orientation);
         if (!thumbnailDataUrl) continue;
         thumbnails.set(photo.id, thumbnailDataUrl);
@@ -246,6 +246,10 @@ export function usePhotos() {
 
   const handleBulkDelete = useCallback(
     async (ids: Set<string>) => {
+      const total = ids.size;
+      if (total > 1) setImportProgress({ current: 0, total });
+
+      let i = 0;
       for (const id of ids) {
         const catalogPhoto = catalogPhotos.find((p) => p.id === id);
         const thumbPath = catalogPhoto?.thumbnailPath ?? '';
@@ -253,7 +257,11 @@ export function usePhotos() {
         queryClient.removeQueries({ queryKey: ['photo-resource', id] });
         cleanupPhotoEdits(id);
         catalogDeletePhoto(id);
+        i++;
+        if (total > 1) setImportProgress({ current: i, total });
       }
+
+      if (total > 1) setImportProgress(null);
       setPhotos((prev) => prev.filter((p) => !ids.has(p.id)));
       if (selectedId && ids.has(selectedId)) {
         setSelectedId(null);
