@@ -1,19 +1,8 @@
 import { spawn, type ChildProcess } from 'child_process';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
 import { SYSTEM_PROMPT } from './system-prompt.js';
 import { StreamLineBuffer } from './stream-parser.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
 import { getShellEnv } from './shell-env.js';
-
-const LOG_FILE = path.join(os.homedir(), '.zenliro', 'codex-debug.log');
-
-function debugLog(...args: unknown[]) {
-  const line = `[${new Date().toISOString()}] ${args.map(a => typeof a === 'string' ? a : JSON.stringify(a)).join(' ')}\n`;
-  try { fs.appendFileSync(LOG_FILE, line); } catch { /* ignore */ }
-  console.log(...args);
-}
 
 export type StreamCallback = (event: ParsedStreamEvent) => void;
 
@@ -122,6 +111,7 @@ export class CodexManager {
       'exec',
       '--json',
       '-s', 'danger-full-access',
+      '--skip-git-repo-check',
     ];
 
     if (options?.model && options.model !== 'codex-default') {
@@ -137,24 +127,15 @@ export class CodexManager {
       args.push(`${SYSTEM_PROMPT}\n\n---\nUser request: ${text}`);
     }
 
-    const env = getShellEnv();
-    debugLog('[Codex] spawning: codex', args.slice(0, 4).join(' '), '...');
-    debugLog('[Codex] sessionId:', this.sessionId);
-    debugLog('[Codex] prompt length:', args[args.length - 1].length);
-    debugLog('[Codex] PATH:', env.PATH?.slice(0, 200));
-
     this.process = spawn('codex', args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env,
+      env: getShellEnv(),
     });
 
     this.process.stdout?.on('data', (data: Buffer) => {
-      const raw = data.toString();
-      debugLog('[Codex stdout]', raw.slice(0, 500));
-      const lines = this.lineBuffer.feed(raw);
+      const lines = this.lineBuffer.feed(data.toString());
       for (const line of lines) {
         const parsed = parseCodexLine(line);
-        debugLog('[Codex parsed]', parsed?.type, parsed?.type === 'text' ? parsed.text.slice(0, 100) : '');
         if (parsed) {
           if (parsed.type === 'session_id') this.sessionId = parsed.sessionId;
           this.onEvent?.(parsed);
@@ -164,11 +145,11 @@ export class CodexManager {
 
     this.process.stderr?.on('data', (data: Buffer) => {
       const txt = data.toString().trim();
-      if (txt) debugLog('[Codex stderr]', txt);
+      if (txt) console.error('[Codex stderr]', txt);
     });
 
     this.process.on('exit', (code) => {
-      debugLog('[Codex] exited with code', code);
+      console.log('[Codex] exited with code', code);
       const remaining = this.lineBuffer.flush();
       for (const line of remaining) {
         const parsed = parseCodexLine(line);
@@ -179,7 +160,7 @@ export class CodexManager {
     });
 
     this.process.on('error', (err) => {
-      debugLog('[Codex] spawn error:', err.message);
+      console.log('[Codex] spawn error:', err.message);
       this.onEvent?.({ type: 'error', error: err.message });
       this.process = null;
     });
