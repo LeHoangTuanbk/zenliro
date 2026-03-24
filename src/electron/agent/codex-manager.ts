@@ -2,6 +2,7 @@ import { spawn, type ChildProcess } from 'child_process';
 import { SYSTEM_PROMPT } from './system-prompt.js';
 import { StreamLineBuffer } from './stream-parser.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
+import { getShellEnv } from './shell-env.js';
 
 export type StreamCallback = (event: ParsedStreamEvent) => void;
 
@@ -122,7 +123,7 @@ export class CodexManager {
 
     this.process = spawn('codex', args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: { ...process.env },
+      env: getShellEnv(),
     });
 
     this.process.stdout?.on('data', (data: Buffer) => {
