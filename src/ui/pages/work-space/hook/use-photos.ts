@@ -54,11 +54,8 @@ export function usePhotos() {
     [],
   );
 
-  // Listen for import progress from main process
-  useEffect(() => {
-    const unsub = window.electron.onImportProgress(setImportProgress);
-    return unsub;
-  }, []);
+  // Main process import progress is fast (file reads only), skip it.
+  // Renderer handles the full progress overlay (file read + thumbnail generation).
 
   // On catalog initial load: show photos immediately, stream thumbnails in
   useEffect(() => {
@@ -162,60 +159,59 @@ export function usePhotos() {
   const handleImport = useCallback(async () => {
     const imported = await window.electron.importPhotos();
     if (imported.length === 0) return;
-    const importedWithThumbnails = await Promise.all(
-      imported.map(async (photo) => {
+
+    // Generate all thumbnails with progress overlay before showing photos
+    const total = imported.length;
+    setImportProgress({ current: 0, total });
+
+    const catalogEntries: CatalogPhoto[] = imported.map((photo) => ({
+      ...photo,
+      thumbnailPath: '',
+      rating: 0,
+      tags: [],
+    }));
+
+    const thumbnails = new Map<string, string>();
+    for (let i = 0; i < imported.length; i++) {
+      const photo = imported[i];
+      setImportProgress({ current: i + 1, total });
+      try {
         const resource = await window.electron.photo.loadFromPath(photo.filePath);
-        const thumbnailDataUrl = resource
-          ? await buildThumbnail(
-              (() => {
-                const bytes = resource.bytes;
-                const buf = bytes.buffer;
-                return buf instanceof ArrayBuffer
-                  ? buf.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
-                  : new Uint8Array(bytes).buffer.slice(0, bytes.byteLength);
-              })(),
-              resource.mimeType,
-              photo.orientation,
-            )
-          : '';
-        return {
-          ...photo,
-          thumbnailDataUrl,
-        };
-      }),
-    );
-    const importedForList = importedWithThumbnails.map(({ dataUrl: _dataUrl, ...photo }) => ({
+        if (!resource) continue;
+        const bytes = resource.bytes;
+        const buf = bytes.buffer;
+        const buffer = buf instanceof ArrayBuffer
+          ? buf.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+          : new Uint8Array(bytes).buffer.slice(0, bytes.byteLength);
+        const thumbnailDataUrl = await buildThumbnail(buffer, resource.mimeType, photo.orientation);
+        if (!thumbnailDataUrl) continue;
+        thumbnails.set(photo.id, thumbnailDataUrl);
+        const thumb = await window.electron.photo.saveThumbnail(photo.id, thumbnailDataUrl);
+        if (thumb) catalogEntries[i].thumbnailPath = thumb.thumbnailPath;
+      } catch (err) {
+        console.error('Failed to generate thumbnail:', photo.filePath, err);
+      }
+    }
+
+    setImportProgress(null);
+
+    // Show all photos at once with thumbnails ready
+    const importedForList = imported.map((photo) => ({
       ...photo,
       dataUrl: '',
+      thumbnailDataUrl: thumbnails.get(photo.id) ?? '',
     }));
     setPhotos((prev) => {
       const ids = new Set(prev.map((p) => p.id));
       return [...prev, ...importedForList.filter((p) => !ids.has(p.id))];
     });
-    // Save to catalog (without dataUrl, but with thumbnail info)
-    const catalogEntries: CatalogPhoto[] = importedWithThumbnails.map(
-      ({ dataUrl: _d, thumbnailDataUrl: _t, ...rest }) => ({
-        ...rest,
-        thumbnailPath: '',
-        rating: 0,
-        tags: [],
-      }),
-    );
-    // Generate thumbnails and update paths
-    for (let i = 0; i < catalogEntries.length; i++) {
-      const entry = catalogEntries[i];
-      const thumbnailDataUrl = importedWithThumbnails[i]?.thumbnailDataUrl;
-      if (!thumbnailDataUrl) continue;
-      const thumb = await window.electron.photo.saveThumbnail(entry.id, thumbnailDataUrl);
-      if (thumb) entry.thumbnailPath = thumb.thumbnailPath;
-    }
     addPhotos(catalogEntries);
-    setSelectedId(importedWithThumbnails[0].id);
-    catalogSetId(importedWithThumbnails[0].id);
+    setSelectedId(imported[0].id);
+    catalogSetId(imported[0].id);
     void queryClient.prefetchQuery(
       photoResourceQueryOptions({
-        id: importedWithThumbnails[0].id,
-        filePath: importedWithThumbnails[0].filePath,
+        id: imported[0].id,
+        filePath: imported[0].filePath,
       }),
     );
     saveToDisk();
