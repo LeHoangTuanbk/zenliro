@@ -86,6 +86,15 @@ To use the AI photo editing feature, you need to download and install Claude Cod
 - [ ] Support multi-resolution pipeline
 - [x] Support RAW photo format
 
+--
+
+## How to contribute
+
+1. Open an issue to discuss what you'd like to do.
+2. Once aligned on the approach and implementation strategy, fork the repo.
+3. Submit a PR with your changes.
+4. Update docs and add test cases if needed.
+
 ---
 
 ## Inspired By
