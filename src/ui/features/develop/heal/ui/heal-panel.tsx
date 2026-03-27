@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useHealStore } from '../store/heal-store';
+import { useShortcut } from '@shared/lib/shortcuts';
 
 interface HealPanelProps {
   photoId: string | null;
@@ -97,15 +98,12 @@ export function HealPanel({ photoId }: HealPanelProps) {
   const spots = photoId ? getSpots(photoId) : [];
   const hasPhoto = !!photoId;
 
-  // \ key toggles before/after preview (Lightroom shortcut)
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT') return;
-      if (e.key === '\\') setPreviewOriginal(!previewOriginal);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [previewOriginal, setPreviewOriginal]);
+  const handleTogglePreview = useCallback(
+    () => setPreviewOriginal(!previewOriginal),
+    [previewOriginal, setPreviewOriginal],
+  );
+
+  useShortcut([{ id: 'heal.toggle-preview', handler: handleTogglePreview }]);
 
   return (
     <div className="flex flex-col">

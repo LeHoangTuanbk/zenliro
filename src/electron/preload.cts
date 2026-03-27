@@ -24,6 +24,22 @@ electron.contextBridge.exposeInMainWorld('electron', {
   onRequestSave: (cb: () => void) => electron.ipcRenderer.on('app:request-save', cb),
   sendSaveDone: () => electron.ipcRenderer.send('app:save-done'),
 
+  onMenuImport: (cb: () => void) => {
+    const handler = () => cb();
+    electron.ipcRenderer.on('menu:import', handler);
+    return () => electron.ipcRenderer.removeListener('menu:import', handler);
+  },
+  onMenuExport: (cb: () => void) => {
+    const handler = () => cb();
+    electron.ipcRenderer.on('menu:export', handler);
+    return () => electron.ipcRenderer.removeListener('menu:export', handler);
+  },
+  onMenuAction: (cb: (action: string) => void) => {
+    const handler = (_event: unknown, action: string) => cb(action);
+    electron.ipcRenderer.on('menu:action', handler);
+    return () => electron.ipcRenderer.removeListener('menu:action', handler);
+  },
+
   agent: {
     startSession: () => electron.ipcRenderer.invoke('agent:start-session'),
     sendMessage: (text: string, options?: { model?: string; provider?: string }) => electron.ipcRenderer.invoke('agent:send-message', text, options),

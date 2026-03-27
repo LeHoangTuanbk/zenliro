@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useShortcut } from '@shared/lib/shortcuts';
 import type { HealMode, HealSpot } from '../store/types';
 
 interface DragState {
@@ -252,20 +253,11 @@ export function HealOverlay({
     onBrushSizeChange(Math.max(5, Math.min(200, brushSizePx + delta)));
   };
 
-  // Delete key
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedSpotId) {
-        onDeleteSpot(selectedSpotId);
-      }
-    },
-    [selectedSpotId, onDeleteSpot],
-  );
+  const handleDeleteSpot = useCallback(() => {
+    if (selectedSpotId) onDeleteSpot(selectedSpotId);
+  }, [selectedSpotId, onDeleteSpot]);
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+  useShortcut([{ id: 'heal.delete-spot', handler: handleDeleteSpot }]);
 
   if (canvasWidth === 0 || canvasHeight === 0) return null;
 

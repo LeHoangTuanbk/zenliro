@@ -6,6 +6,7 @@ import { registerAgentIpc } from './agent/agent-ipc.js';
 import { setMainWindow } from './mcp/ipc-bridge.js';
 import { startLocalServer, stopLocalServer } from './mcp/local-server.js';
 import { registerMcpGlobally } from './mcp/register-global.js';
+import { createMenu } from './create-menu.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -45,6 +46,7 @@ app.on('ready', () => {
     // });
   }
 
+  createMenu(mainWindow);
   registerCatalogHandlers();
   registerAgentIpc(mainWindow);
   setMainWindow(mainWindow);

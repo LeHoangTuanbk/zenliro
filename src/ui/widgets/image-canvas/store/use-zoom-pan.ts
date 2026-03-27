@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useCanvasZoomStore } from './canvas-zoom-store';
+import { useShortcut } from '@shared/lib/shortcuts';
 
 const MIN_ZOOM = 0.1;
 const MAX_ZOOM = 16;
@@ -76,7 +77,7 @@ export function useZoomPan(
     return () => container.removeEventListener('wheel', onWheel);
   }, [containerRef, external]);
 
-  // Space key + Cmd+0 reset
+  // Space key for pan mode (hold-type, stays local)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).tagName === 'INPUT') return;
@@ -84,10 +85,6 @@ export function useZoomPan(
         e.preventDefault();
         isSpaceDownRef.current = true;
         setIsSpaceDown(true);
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === '0') {
-        e.preventDefault();
-        reset();
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -104,8 +101,7 @@ export function useZoomPan(
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [external]);
+  }, []);
 
   // Window-level mouse move/up for panning
   useEffect(() => {
@@ -150,6 +146,26 @@ export function useZoomPan(
     useCanvasZoomStore.getState().setResetZoom(reset);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [external]);
+
+  const handleZoomIn = useCallback(() => {
+    const newZoom = Math.min(MAX_ZOOM, zoomRef.current * 1.25);
+    if (external) external.onChange(newZoom, panRef.current);
+    else { setLocalZoom(newZoom); }
+  }, [external]);
+
+  const handleZoomOut = useCallback(() => {
+    const newZoom = Math.max(MIN_ZOOM, zoomRef.current / 1.25);
+    if (external) external.onChange(newZoom, panRef.current);
+    else { setLocalZoom(newZoom); }
+  }, [external]);
+
+  const handleResetZoom = useCallback(() => reset(), [external]);
+
+  useShortcut([
+    { id: 'global.reset-zoom', handler: handleResetZoom },
+    { id: 'global.zoom-in', handler: handleZoomIn },
+    { id: 'global.zoom-out', handler: handleZoomOut },
+  ]);
 
   return { zoom, pan, isSpaceDown, isPanning, zoomRef, reset, handleMouseDown };
 }

@@ -46,6 +46,9 @@ export function LibraryContainer({
   onRatingChange,
 }: LibraryContainerProps) {
   const [filter, setFilter] = useState<LibraryFilter>(DEFAULT_FILTER);
+  const filteredPhotos = useLibraryFilter(photos, catalogPhotos, filter);
+  const photoIds = useMemo(() => filteredPhotos.map((p) => p.id), [filteredPhotos]);
+
   const {
     deleteTargetId,
     selectedIds,
@@ -57,9 +60,8 @@ export function LibraryContainer({
     openBulkDelete,
     closeBulkDelete,
     isMetaHeld,
-  } = useLibrary();
+  } = useLibrary({ photoIds });
 
-  const filteredPhotos = useLibraryFilter(photos, catalogPhotos, filter);
   const { visibleCount, setSentinel } = useInfiniteScroll(filteredPhotos.length);
   const { activePhoto, handleDragStart, handleDragEnd, handleDragCancel } =
     useDragReorder(filteredPhotos, onReorder);
@@ -71,7 +73,6 @@ export function LibraryContainer({
   }, [catalogPhotos]);
 
   const deleteTarget = photos.find((p) => p.id === deleteTargetId);
-  const photoIds = useMemo(() => filteredPhotos.map((p) => p.id), [filteredPhotos]);
 
   const handleConfirmDelete = useCallback(() => {
     if (deleteTargetId) {

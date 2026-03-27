@@ -115,6 +115,10 @@ interface Window {
     onRequestSave: (cb: () => void) => void;
     sendSaveDone: () => void;
 
+    onMenuImport: (cb: () => void) => () => void;
+    onMenuExport: (cb: () => void) => () => void;
+    onMenuAction: (cb: (action: string) => void) => () => void;
+
     agent: {
       startSession: () => Promise<void>;
       sendMessage: (text: string, options?: { model?: string; provider?: string }) => Promise<void>;

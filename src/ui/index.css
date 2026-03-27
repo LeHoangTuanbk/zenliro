@@ -221,6 +221,8 @@ code {
   --color-br-hover:          #333333;
   --color-br-border-hover:   #444444;
   --color-br-mark:           #555555;
+  --color-br-surface:        #1e1e1e;
+  --color-br-hint:           #777777;
 
   --color-br-text:           #f2f2f2;
   --color-br-text-hover:     #d0d0d0;

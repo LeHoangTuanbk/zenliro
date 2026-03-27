@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useShortcut } from '@shared/lib/shortcuts';
 
-export function useLibrary() {
+type UseLibraryParams = {
+  photoIds: string[];
+};
+
+export function useLibrary({ photoIds }: UseLibraryParams) {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
@@ -9,35 +14,22 @@ export function useLibrary() {
   // Track whether user actually clicked during meta hold
   const didClickDuringMetaRef = useRef(false);
 
-  // Listen for Cmd/Ctrl key hold
+  // Meta key hold (modifier tracking, stays local)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Meta' || e.key === 'Control') {
         setIsMetaHeld(true);
         didClickDuringMetaRef.current = false;
       }
-      if (e.key === 'Escape') {
-        setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
-      }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        setSelectedIds((prev) => {
-          if (prev.size > 0) {
-            setShowBulkDelete(true);
-          }
-          return prev;
-        });
-      }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === 'Meta' || e.key === 'Control') {
         setIsMetaHeld(false);
-        // If user didn't click anything while holding, clear selection
         if (!didClickDuringMetaRef.current) {
           setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
         }
       }
     };
-    // Also handle blur — if user switches window while holding key
     const handleBlur = () => setIsMetaHeld(false);
 
     window.addEventListener('keydown', handleKeyDown);
@@ -49,6 +41,29 @@ export function useLibrary() {
       window.removeEventListener('blur', handleBlur);
     };
   }, []);
+
+  const handleDeselect = useCallback(() => {
+    setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
+  }, []);
+
+  const handleDeleteShortcut = useCallback(() => {
+    setSelectedIds((prev) => {
+      if (prev.size > 0) setShowBulkDelete(true);
+      return prev;
+    });
+  }, []);
+
+  const handleSelectAll = useCallback(() => {
+    if (photoIds.length === 0) return;
+    didClickDuringMetaRef.current = true;
+    setSelectedIds(new Set(photoIds));
+  }, [photoIds]);
+
+  useShortcut([
+    { id: 'library.deselect', handler: handleDeselect },
+    { id: 'library.delete', handler: handleDeleteShortcut },
+    { id: 'library.select-all', handler: handleSelectAll },
+  ]);
 
   const openDeleteDialog = useCallback((id: string) => {
     setDeleteTargetId(id);
