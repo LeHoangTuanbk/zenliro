@@ -98,6 +98,7 @@ export function WorkSpaceContainer() {
     setShowExport,
     handleImport,
     handleRatingChange,
+    handleOpenDevelop: openDevelop,
   });
 
   const showExportFromMenu = useCallback(() => setShowExport(true), []);

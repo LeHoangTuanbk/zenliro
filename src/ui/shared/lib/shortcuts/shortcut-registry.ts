@@ -25,6 +25,11 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   { id: 'library.rate-4', key: Key.Four, modifiers: {}, scope: ShortcutScope.Library, label: 'Set 4 Stars', category: 'Rating' },
   { id: 'library.rate-5', key: Key.Five, modifiers: {}, scope: ShortcutScope.Library, label: 'Set 5 Stars', category: 'Rating' },
   { id: 'library.rate-0', key: Key.Zero, modifiers: {}, scope: ShortcutScope.Library, label: 'Clear Rating', category: 'Rating' },
+  { id: 'library.nav-left', key: Key.ArrowLeft, modifiers: {}, scope: ShortcutScope.Library, label: 'Previous Photo', category: 'Navigation' },
+  { id: 'library.nav-right', key: Key.ArrowRight, modifiers: {}, scope: ShortcutScope.Library, label: 'Next Photo', category: 'Navigation' },
+  { id: 'library.nav-up', key: Key.ArrowUp, modifiers: {}, scope: ShortcutScope.Library, label: 'Row Up', category: 'Navigation' },
+  { id: 'library.nav-down', key: Key.ArrowDown, modifiers: {}, scope: ShortcutScope.Library, label: 'Row Down', category: 'Navigation' },
+  { id: 'library.open-develop', key: Key.Enter, modifiers: {}, scope: ShortcutScope.Library, label: 'Open in Develop', category: 'Navigation' },
 
   // ── Develop ──
   { id: 'develop.go-library', key: Key.G, modifiers: {}, scope: ShortcutScope.Develop, label: 'Switch to Library', category: 'Navigation' },
