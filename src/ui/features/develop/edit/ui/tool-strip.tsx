@@ -1,4 +1,5 @@
 import { ActiveTool } from '@features/develop/const';
+import { ShortcutHint } from '@shared/ui/shortcut-hint';
 
 // Lightroom-style SVG icons
 const icons: Record<ActiveTool, React.ReactNode> = {
@@ -65,6 +66,13 @@ const labels: Record<ActiveTool, string> = {
   mask: 'Masking',
 };
 
+const TOOL_SHORTCUT_IDS: Record<ActiveTool, string> = {
+  edit: 'develop.tool-edit',
+  heal: 'develop.tool-heal',
+  crop: 'develop.tool-crop',
+  mask: 'develop.tool-mask',
+};
+
 type ToolStripProps = {
   activeTool: ActiveTool;
   onSelect: (tool: ActiveTool) => void;
@@ -90,8 +98,9 @@ export function ToolStrip({ activeTool, onSelect }: ToolStripProps) {
           </button>
 
           {/* Tooltip */}
-          <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-0.5 bg-[#111] border border-[#333] text-br-text text-[10px] tracking-wide rounded-[3px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-300 z-50">
+          <div className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-1.5 px-2 py-0.5 bg-[#111] border border-[#333] text-br-text text-[10px] tracking-wide rounded-[3px] whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity delay-300 z-50 flex items-center">
             {labels[tool]}
+            <ShortcutHint shortcutId={TOOL_SHORTCUT_IDS[tool]} className="text-[#666]" />
           </div>
         </div>
       ))}

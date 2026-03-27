@@ -22,6 +22,7 @@ import type { ExternalZoomPan, MaskInteractionProps } from '@widgets/image-canva
 import { MaskPanel } from '@/features/develop/mask/ui/mask-panel';
 import type { Mask } from '@/features/develop/mask';
 import { ModuleTab } from '@/shared/ui/base';
+import { ShortcutHint } from '@shared/ui/shortcut-hint';
 import { CanvasToolbar } from './canvas-toolbar';
 import { FilmstripPanel } from './filmstrip-panel';
 import { AgentPanelContainer } from '@/features/agent/agent-panel-container';
@@ -136,6 +137,7 @@ export function WorkSpaceView({
             onClick={() => onActiveViewChange('library')}
           >
             Library
+            <ShortcutHint shortcutId="develop.go-library" className="text-[#666]" />
           </ModuleTab>
           <span className="text-br-hover select-none">|</span>
           <ModuleTab
@@ -143,6 +145,7 @@ export function WorkSpaceView({
             onClick={() => onActiveViewChange('develop')}
           >
             Develop
+            <ShortcutHint shortcutId="library.go-develop" className="text-[#666]" />
           </ModuleTab>
         </div>
 
@@ -157,6 +160,7 @@ export function WorkSpaceView({
               onClick={() => onShowExportChange(true)}
             >
               Export
+              <ShortcutHint shortcutId="develop.export" className="text-white/40" />
             </button>
           )}
         </div>

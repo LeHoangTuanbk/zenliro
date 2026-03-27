@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useShortcut } from '@shared/lib/shortcuts';
 import type { CropRect, CropState } from '../store/types';
 
 type DragHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'move' | null;
@@ -275,15 +276,12 @@ export function CropOverlay({
     setCursor(handle ? HANDLE_CURSORS[handle] : 'crosshair');
   };
 
-  // ── Keyboard ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT') return;
-      if (e.key === 'Escape') onChange({ rect: { x: 0, y: 0, w: 1, h: 1 } });
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onChange]);
+  const handleCropReset = useCallback(
+    () => onChange({ rect: { x: 0, y: 0, w: 1, h: 1 } }),
+    [onChange],
+  );
+
+  useShortcut([{ id: 'crop.reset', handler: handleCropReset }]);
 
   if (canvasWidth === 0 || canvasHeight === 0) return null;
 

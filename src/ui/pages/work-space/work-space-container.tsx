@@ -16,6 +16,9 @@ import { useCatalogStore } from './store/catalog-store';
 import { useMaskStore } from '@/features/develop/mask';
 import type { Mask } from '@/features/develop/mask';
 import { useAgentIpc } from '@/features/agent/hook/use-agent-ipc';
+import { useScopeSync } from '@shared/lib/shortcuts';
+import { useWorkspaceShortcuts } from './hook/use-workspace-shortcuts';
+import { useMenuIpc } from './hook/use-menu-ipc';
 
 const EMPTY_MASKS: Mask[] = [];
 
@@ -77,11 +80,29 @@ export function WorkSpaceContainer() {
   usePhotoEdits(selectedId);
   useHistoryTracking(selectedId);
   useAgentIpc(canvasRef, selectedId, selected, exifData, selectedResource.imageUrl);
+  useScopeSync(activeView, activeTool);
 
   const handleRatingChange = useCallback((id: string, rating: number) => {
     setPhotoRating(id, rating);
     saveToDisk();
   }, [setPhotoRating, saveToDisk]);
+
+  useWorkspaceShortcuts({
+    activeView,
+    activeTool,
+    photos,
+    selectedId,
+    setActiveView,
+    setActiveTool,
+    setSelectedId,
+    setShowExport,
+    handleImport,
+    handleRatingChange,
+    handleOpenDevelop: openDevelop,
+  });
+
+  const showExportFromMenu = useCallback(() => setShowExport(true), []);
+  useMenuIpc({ onImport: handleImport, onShowExport: showExportFromMenu });
 
   if (!isLoaded) return <SplashScreen />;
 

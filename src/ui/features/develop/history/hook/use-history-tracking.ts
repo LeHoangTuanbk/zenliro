@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useAdjustmentsStore } from '@features/develop/edit/store/adjustments-store';
 import { useToneCurveStore } from '@features/develop/edit/tone-curve/store/tone-curve-store';
 import { useColorMixerStore } from '@features/develop/edit/color-mixer/store/color-mixer-store';
@@ -10,6 +10,7 @@ import { useMaskStore } from '@/features/develop/mask';
 import { useHistoryStore } from '../store/history-store';
 import { captureSnapshot, applySnapshot } from '../lib/snapshot';
 import { generateLabel } from '../lib/diff-label';
+import { useShortcut } from '@shared/lib/shortcuts';
 import type { EditSnapshot } from '../store/types';
 
 const DEBOUNCE_MS = 400;
@@ -81,28 +82,26 @@ export function useHistoryTracking(photoId: string | null) {
     };
   }, [photoId]);
 
-  // Keyboard shortcuts: Cmd+Z / Cmd+Shift+Z
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).tagName === 'INPUT') return;
+  const applyHistory = useCallback(
+    (direction: 'undo' | 'redo') => {
       const id = photoIdRef.current;
       if (!id) return;
-      const isMod = e.metaKey || e.ctrlKey;
-      if (!isMod || e.key !== 'z') return;
-
-      e.preventDefault();
       const store = useHistoryStore.getState();
-      const snapshot = e.shiftKey ? store.redo(id) : store.undo(id);
+      const snapshot = direction === 'redo' ? store.redo(id) : store.undo(id);
       if (!snapshot) return;
-
       store.setIsApplying(true);
       applySnapshot(id, snapshot);
       lastSnapshotRef.current = structuredClone(snapshot);
-      // Defer clearing flag so store subscriptions fire first
       requestAnimationFrame(() => store.setIsApplying(false));
-    };
+    },
+    [],
+  );
 
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  const handleUndo = useCallback(() => applyHistory('undo'), [applyHistory]);
+  const handleRedo = useCallback(() => applyHistory('redo'), [applyHistory]);
+
+  useShortcut([
+    { id: 'global.undo', handler: handleUndo },
+    { id: 'global.redo', handler: handleRedo },
+  ]);
 }

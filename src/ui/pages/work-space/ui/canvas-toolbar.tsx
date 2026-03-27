@@ -76,7 +76,7 @@ export function CanvasToolbar({ activeMode, onModeChange }: Props) {
 
       <ToolbarBtn
         active={activeMode === CanvasMode.Compare}
-        title="Compare View"
+        title="Compare View (C)"
         onClick={() =>
           onModeChange(
             activeMode === CanvasMode.Compare ? CanvasMode.Loupe : CanvasMode.Compare,

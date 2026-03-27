@@ -1,6 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { Search, X, Trash2 } from 'lucide-react';
 import { BrButton } from '@/shared/ui/base';
+import { useShortcut } from '@shared/lib/shortcuts';
+import { ShortcutHint } from '@shared/ui/shortcut-hint';
 import { StarRating } from './star-rating';
 import type { LibraryFilter } from '../const/filter';
 
@@ -28,26 +30,20 @@ export function LibraryToolbar({
   onClearSelection,
 }: LibraryToolbarProps) {
   const hasActiveFilter = filter.search || filter.minRating > 0 || filter.tags.length > 0;
-  const isMac = navigator.platform.startsWith('Mac');
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const mod = isMac ? e.metaKey : e.ctrlKey;
-      if (mod && e.key === 's') {
-        e.preventDefault();
-        searchRef.current?.focus();
-        searchRef.current?.select();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isMac]);
+  const handleFocusSearch = useCallback(() => {
+    searchRef.current?.focus();
+    searchRef.current?.select();
+  }, []);
+
+  useShortcut([{ id: 'library.search', handler: handleFocusSearch }]);
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 bg-br-bg border-b border-black shrink-0">
       <BrButton variant="primary" size="md" onClick={onImport}>
         + Import
+        <ShortcutHint shortcutId="library.import" className="text-white/40" />
       </BrButton>
 
       {/* Selection actions */}
@@ -62,12 +58,14 @@ export function LibraryToolbar({
           >
             <Trash2 className="w-3 h-3" />
             Delete
+            <ShortcutHint shortcutId="library.delete" className="text-red-400/50" />
           </button>
           <button
             onClick={onClearSelection}
             className="text-[9px] text-[#5b9bd5] hover:text-[#7bb8ef] cursor-pointer"
           >
             Deselect
+            <ShortcutHint shortcutId="library.deselect" className="text-[#5b9bd5]/50" />
           </button>
           <div className="h-4 w-px bg-[#444]" />
         </>
@@ -79,7 +77,7 @@ export function LibraryToolbar({
         <input
           ref={searchRef}
           type="text"
-          placeholder={`Search... (${isMac ? '⌘' : 'Ctrl'}+S)`}
+          placeholder="Search... (⌘S)"
           value={filter.search}
           onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
           onKeyDown={(e) => {
@@ -151,7 +149,7 @@ export function LibraryToolbar({
       <span className="ml-auto text-[10px] text-br-dim">
         {selectedCount === 0 && photoCount > 1 && (
           <span className="mr-2 text-[9px] text-[#555]">
-            Hold {isMac ? '⌘' : 'Ctrl'} to multi-select
+            Hold ⌘ to multi-select
           </span>
         )}
         {hasActiveFilter ? `${filteredCount} / ` : ''}

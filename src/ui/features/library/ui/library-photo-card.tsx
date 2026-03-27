@@ -48,6 +48,7 @@ function LibraryPhotoCardInner({
       }}
       {...listeners}
       {...attributes}
+      data-photo-id={photo.id}
       onClick={onClick}
       onDoubleClick={onOpenDevelop}
       className={`group relative bg-br-bg-deep rounded-[2px] overflow-hidden cursor-pointer border-2 transition-colors text-left ${

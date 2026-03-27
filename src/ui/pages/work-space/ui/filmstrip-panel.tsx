@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { HistoryPanel } from '@features/develop/history';
+import { useShortcut } from '@shared/lib/shortcuts';
+import { ShortcutHint } from '@shared/ui/shortcut-hint';
 
 type FilmstripPanelProps = {
   photos: ImportedPhoto[];
@@ -14,6 +16,8 @@ export function FilmstripPanel({ photos, selectedId, isVisible, onSelect, onImpo
   const filmstripRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef(new Map<string, HTMLButtonElement>());
   const [isOpen, setIsOpen] = useState(true);
+  const togglePanel = useCallback(() => setIsOpen((v) => !v), []);
+  useShortcut([{ id: 'develop.toggle-filmstrip', handler: togglePanel }]);
 
   useEffect(() => {
     if (!selectedId || !isVisible || !isOpen) return;
@@ -61,13 +65,16 @@ export function FilmstripPanel({ photos, selectedId, isVisible, onSelect, onImpo
       </aside>
 
       {/* Small toggle icon — top-left, just outside sidebar */}
-      <button
-        onClick={() => setIsOpen((v) => !v)}
-        className="absolute top-1.5 -right-7 z-20 w-6 h-6 flex items-center justify-center rounded-[3px] text-[#555] hover:text-[#ccc] hover:bg-white/5 transition-colors cursor-pointer"
-        title={isOpen ? 'Hide panel (Tab)' : 'Show panel (Tab)'}
-      >
-        {isOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
-      </button>
+      <div className="absolute top-1.5 -right-7 z-20 flex flex-col items-center gap-0.5 group">
+        <button
+          onClick={() => setIsOpen((v) => !v)}
+          className="w-6 h-6 flex items-center justify-center rounded-[3px] text-[#555] hover:text-[#ccc] hover:bg-white/5 transition-colors cursor-pointer"
+          title={isOpen ? 'Hide panel' : 'Show panel'}
+        >
+          {isOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
+        </button>
+        <ShortcutHint shortcutId="develop.toggle-filmstrip" className="text-br-dim opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
     </div>
   );
 }
