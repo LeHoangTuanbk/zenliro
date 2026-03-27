@@ -45,6 +45,8 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
   { id: 'develop.copy-settings', key: Key.C, modifiers: { meta: true, shift: true }, scope: ShortcutScope.Develop, label: 'Copy Settings', category: 'Edit', skipInputGuard: true },
   { id: 'develop.paste-settings', key: Key.V, modifiers: { meta: true, shift: true }, scope: ShortcutScope.Develop, label: 'Paste Settings', category: 'Edit', skipInputGuard: true },
   { id: 'develop.reset-all', key: Key.R, modifiers: { meta: true, shift: true }, scope: ShortcutScope.Develop, label: 'Reset All Settings', category: 'Edit', skipInputGuard: true },
+  { id: 'develop.toggle-filmstrip', key: Key.Tab, modifiers: {}, scope: ShortcutScope.Develop, label: 'Toggle Filmstrip', category: 'View' },
+  { id: 'develop.toggle-agent', key: Key.J, modifiers: { meta: true }, scope: ShortcutScope.Develop, label: 'Toggle AI Agent', category: 'Tools', skipInputGuard: true },
 
   // ── Tool: Heal ──
   { id: 'heal.delete-spot', key: Key.Backspace, modifiers: {}, scope: ShortcutScope.ToolHeal, label: 'Delete Spot', category: 'Heal' },

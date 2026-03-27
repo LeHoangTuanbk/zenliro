@@ -3,6 +3,7 @@ import { ActiveTool } from '@features/develop/const';
 import { ActiveView } from '../const/active-view';
 import { useShortcut, useShortcutStore } from '@shared/lib/shortcuts';
 import { useCompareStore } from '@features/develop/compare/compare-store';
+import { useAgentStore } from '@/features/agent/store/agent-store';
 import type { ShortcutAction } from '@shared/lib/shortcuts';
 
 const LIBRARY_GRID_SELECTOR = '[data-library-grid]';
@@ -48,6 +49,7 @@ export function useWorkspaceShortcuts({
   handleOpenDevelop,
 }: UseWorkspaceShortcutsParams) {
   const toggleCompare = useCompareStore((s) => s.toggle);
+  const toggleAgent = useAgentStore((s) => s.toggle);
 
   // ── Navigation ──
   const goLibrary = useCallback(() => setActiveView(ActiveView.Library), [setActiveView]);
@@ -150,6 +152,7 @@ export function useWorkspaceShortcuts({
         { id: 'develop.next-photo', handler: nextPhoto },
         { id: 'develop.prev-photo', handler: prevPhoto },
         { id: 'develop.export', handler: showExport },
+        { id: 'develop.toggle-agent', handler: toggleAgent },
       );
     }
 
@@ -174,6 +177,7 @@ export function useWorkspaceShortcuts({
     nextPhoto,
     prevPhoto,
     showExport,
+    toggleAgent,
   ]);
 
   useShortcut(actions);

@@ -1,6 +1,7 @@
 import { cn } from '@/shared/lib/utils';
 import { RectangleVertical, Columns2, X } from 'lucide-react';
 import { useCanvasZoomStore } from '@widgets/image-canvas/store/canvas-zoom-store';
+import { ShortcutHint } from '@shared/ui/shortcut-hint';
 import { CanvasMode } from '../const';
 
 type Props = {
@@ -76,7 +77,7 @@ export function CanvasToolbar({ activeMode, onModeChange }: Props) {
 
       <ToolbarBtn
         active={activeMode === CanvasMode.Compare}
-        title="Compare View"
+        title="Compare View (C)"
         onClick={() =>
           onModeChange(
             activeMode === CanvasMode.Compare ? CanvasMode.Loupe : CanvasMode.Compare,

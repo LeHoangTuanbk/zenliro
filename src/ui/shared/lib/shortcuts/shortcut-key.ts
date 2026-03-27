@@ -19,6 +19,7 @@ export const Key = {
   E: 'e',
   G: 'g',
   I: 'i',
+  J: 'j',
   M: 'm',
   O: 'o',
   Q: 'q',
