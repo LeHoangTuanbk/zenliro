@@ -1,7 +1,6 @@
 import { cn } from '@/shared/lib/utils';
 import { RectangleVertical, Columns2, X } from 'lucide-react';
 import { useCanvasZoomStore } from '@widgets/image-canvas/store/canvas-zoom-store';
-import { ShortcutHint } from '@shared/ui/shortcut-hint';
 import { CanvasMode } from '../const';
 
 type Props = {

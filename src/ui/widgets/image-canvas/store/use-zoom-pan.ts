@@ -150,16 +150,20 @@ export function useZoomPan(
   const handleZoomIn = useCallback(() => {
     const newZoom = Math.min(MAX_ZOOM, zoomRef.current * 1.25);
     if (external) external.onChange(newZoom, panRef.current);
-    else { setLocalZoom(newZoom); }
+    else {
+      setLocalZoom(newZoom);
+    }
   }, [external]);
 
   const handleZoomOut = useCallback(() => {
     const newZoom = Math.max(MIN_ZOOM, zoomRef.current / 1.25);
     if (external) external.onChange(newZoom, panRef.current);
-    else { setLocalZoom(newZoom); }
+    else {
+      setLocalZoom(newZoom);
+    }
   }, [external]);
 
-  const handleResetZoom = useCallback(() => reset(), [external]);
+  const handleResetZoom = useCallback(() => reset(), [reset]);
 
   useShortcut([
     { id: 'global.reset-zoom', handler: handleResetZoom },

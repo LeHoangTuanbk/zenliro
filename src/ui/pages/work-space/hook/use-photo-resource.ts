@@ -106,7 +106,7 @@ export function usePhotoResource(photo: PhotoQueryInput | null) {
       cancelled = true;
       revoke?.();
     };
-  }, [query.data]);
+  }, [query.data, photo?.id]);
 
   return {
     ...query,
