@@ -14,7 +14,7 @@ import {
   readExifOrientation,
   readJpegRawDimensions,
   getOrientedDimensions,
-} from './exif-orientation.js';
+} from './libs/exif-orientation.js';
 import { isHeic, convertHeicToJpeg } from './libs/heic-converter.js';
 
 app.on('ready', () => {
