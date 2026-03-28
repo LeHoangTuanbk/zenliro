@@ -31705,15 +31705,15 @@
                     },
                     "colors": [
                       {
-                        "color": "#C4976E",
+                        "color": "#D4820A",
                         "position": 0
                       },
                       {
-                        "color": "#DEBB98",
+                        "color": "#F5A623",
                         "position": 0.5
                       },
                       {
-                        "color": "#C4976E",
+                        "color": "#D4820A",
                         "position": 1
                       }
                     ]
@@ -31738,19 +31738,19 @@
                     },
                     "colors": [
                       {
-                        "color": "#DEBB98",
+                        "color": "#F5A623",
                         "position": 0
                       },
                       {
-                        "color": "#B8845C",
+                        "color": "#C0650A",
                         "position": 0.3
                       },
                       {
-                        "color": "#DEBB98",
+                        "color": "#F5A623",
                         "position": 0.6
                       },
                       {
-                        "color": "#C4976E",
+                        "color": "#D4820A",
                         "position": 1
                       }
                     ]
@@ -31775,15 +31775,15 @@
                     },
                     "colors": [
                       {
-                        "color": "#C4976E",
+                        "color": "#D4820A",
                         "position": 0
                       },
                       {
-                        "color": "#DEBB98",
+                        "color": "#F5A623",
                         "position": 0.5
                       },
                       {
-                        "color": "#C4976E",
+                        "color": "#D4820A",
                         "position": 1
                       }
                     ]
@@ -34494,16 +34494,8 @@
                 },
                 "colors": [
                   {
-                    "color": "#B0B4BA",
+                    "color": "#ffffff",
                     "position": 0
-                  },
-                  {
-                    "color": "#9A9EA4",
-                    "position": 0.5
-                  },
-                  {
-                    "color": "#888C92",
-                    "position": 1
                   }
                 ]
               },

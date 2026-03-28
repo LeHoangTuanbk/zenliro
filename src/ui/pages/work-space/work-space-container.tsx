@@ -19,6 +19,7 @@ import { useAgentIpc } from '@/features/agent/hook/use-agent-ipc';
 import { useScopeSync } from '@shared/lib/shortcuts';
 import { useWorkspaceShortcuts } from './hook/use-workspace-shortcuts';
 import { useMenuIpc } from './hook/use-menu-ipc';
+import { useFileDrop } from './hook/use-file-drop';
 
 const EMPTY_MASKS: Mask[] = [];
 
@@ -33,7 +34,9 @@ export function WorkSpaceContainer() {
   const setPhotoRating = useCatalogStore((s) => s.setPhotoRating);
   const saveToDisk = useCatalogStore((s) => s.saveToDisk);
 
-  useEffect(() => { initFromDisk(); }, [initFromDisk]);
+  useEffect(() => {
+    initFromDisk();
+  }, [initFromDisk]);
 
   const {
     photos,
@@ -45,6 +48,7 @@ export function WorkSpaceContainer() {
     setSelectedId,
     setActiveView,
     handleImport,
+    handleImportFromPaths,
     handleImageLoaded,
     handleDelete,
     handleBulkDelete,
@@ -74,7 +78,9 @@ export function WorkSpaceContainer() {
     imageAspect,
   );
   const maskInteractionProps = useMaskInteraction(selectedId, activeTool);
-  const masks = useMaskStore((s) => (selectedId ? (s.masksByPhoto[selectedId] ?? EMPTY_MASKS) : EMPTY_MASKS));
+  const masks = useMaskStore((s) =>
+    selectedId ? (s.masksByPhoto[selectedId] ?? EMPTY_MASKS) : EMPTY_MASKS,
+  );
 
   const handleExport = useExport(selected, selectedId, canvasRef);
   usePhotoEdits(selectedId);
@@ -82,10 +88,13 @@ export function WorkSpaceContainer() {
   useAgentIpc(canvasRef, selectedId, selected, exifData, selectedResource.imageUrl);
   useScopeSync(activeView, activeTool);
 
-  const handleRatingChange = useCallback((id: string, rating: number) => {
-    setPhotoRating(id, rating);
-    saveToDisk();
-  }, [setPhotoRating, saveToDisk]);
+  const handleRatingChange = useCallback(
+    (id: string, rating: number) => {
+      setPhotoRating(id, rating);
+      saveToDisk();
+    },
+    [setPhotoRating, saveToDisk],
+  );
 
   useWorkspaceShortcuts({
     activeView,
@@ -100,6 +109,8 @@ export function WorkSpaceContainer() {
     handleRatingChange,
     handleOpenDevelop: openDevelop,
   });
+
+  const { isDragging, dropHandlers } = useFileDrop(handleImportFromPaths);
 
   const showExportFromMenu = useCallback(() => setShowExport(true), []);
   useMenuIpc({ onImport: handleImport, onShowExport: showExportFromMenu });
@@ -130,6 +141,8 @@ export function WorkSpaceContainer() {
       maskInteractionProps={maskInteractionProps}
       cropInteractionProps={cropInteractionProps}
       importProgress={importProgress}
+      isDragging={isDragging}
+      dropHandlers={dropHandlers}
       onImport={handleImport}
       onExport={handleExport}
       onImageLoaded={handleImageLoaded}

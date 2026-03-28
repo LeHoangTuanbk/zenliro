@@ -46,6 +46,12 @@ app.on('ready', () => {
     },
   });
 
+  // Prevent Electron from navigating when files are dropped onto the window
+  mainWindow.webContents.on('will-navigate', (e, url) => {
+    // Allow dev server navigation, block file:// drops
+    if (url.startsWith('file://')) e.preventDefault();
+  });
+
   if (isDev()) {
     mainWindow.loadURL('http://localhost:5173');
   } else {
@@ -72,15 +78,18 @@ app.on('ready', () => {
   installRendererCrashHandler(mainWindow);
 
   // ── Logger IPC ──────────────────────────────────────────────────────────────
-  ipcMain.handle(IPC_RENDERER_LOG, (event, level: LogLevel, scope: string, message: string, meta?: unknown) => {
-    validateEventFrame(event.senderFrame!);
-    const scopedLog = createLogger(`renderer/${scope}`);
-    if (meta !== undefined) {
-      scopedLog[level](message, meta);
-    } else {
-      scopedLog[level](message);
-    }
-  });
+  ipcMain.handle(
+    IPC_RENDERER_LOG,
+    (event, level: LogLevel, scope: string, message: string, meta?: unknown) => {
+      validateEventFrame(event.senderFrame!);
+      const scopedLog = createLogger(`renderer/${scope}`);
+      if (meta !== undefined) {
+        scopedLog[level](message, meta);
+      } else {
+        scopedLog[level](message);
+      }
+    },
+  );
 
   ipcMain.handle(IPC_EXPORT_LOGS, (event) => {
     validateEventFrame(event.senderFrame!);
@@ -97,105 +106,94 @@ app.on('ready', () => {
     });
 
   // ── Import ────────────────────────────────────────────────────────────────
-  ipcMainHandle('importPhotos', async () => {
-    const result = await dialog.showOpenDialog(mainWindow, {
-      title: 'Import Photos',
-      properties: ['openFile', 'multiSelections'],
-      filters: [
-        {
-          name: 'Images',
-          extensions: [
-            'jpg',
-            'jpeg',
-            'png',
-            'webp',
-            'tiff',
-            'tif',
-            'bmp',
-            'gif',
-            'heic',
-            'heif',
-            'avif',
-            'cr2',
-            'cr3',
-            'nef',
-            'arw',
-            'dng',
-            'raf',
-            'orf',
-            'rw2',
-            'pef',
-            'srw',
-            'x3f',
-            '3fr',
-            'rwl',
-            'mrw',
-            'kdc',
-            'dcr',
-            'raw',
-          ],
-        },
-      ],
-    });
+  const SUPPORTED_EXTENSIONS = [
+    'jpg',
+    'jpeg',
+    'png',
+    'webp',
+    'tiff',
+    'tif',
+    'bmp',
+    'gif',
+    'heic',
+    'heif',
+    'avif',
+    'cr2',
+    'cr3',
+    'nef',
+    'arw',
+    'dng',
+    'raf',
+    'orf',
+    'rw2',
+    'pef',
+    'srw',
+    'x3f',
+    '3fr',
+    'rwl',
+    'mrw',
+    'kdc',
+    'dcr',
+    'raw',
+  ];
+  const RAW_EXTENSIONS = new Set([
+    'cr2',
+    'cr3',
+    'nef',
+    'arw',
+    'dng',
+    'raf',
+    'orf',
+    'rw2',
+    'pef',
+    'srw',
+    'x3f',
+    '3fr',
+    'rwl',
+    'mrw',
+    'kdc',
+    'dcr',
+    'raw',
+  ]);
+  const MIME_MAP: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    tiff: 'image/tiff',
+    tif: 'image/tiff',
+    bmp: 'image/bmp',
+    gif: 'image/gif',
+    heic: 'image/heic',
+    heif: 'image/heif',
+    avif: 'image/avif',
+  };
+  const SUPPORTED_SET = new Set(SUPPORTED_EXTENSIONS);
 
-    if (result.canceled || result.filePaths.length === 0) return [];
-
-    const total = result.filePaths.length;
-    logMain.info(`Import started: ${total} file(s) selected`);
+  async function importFromPaths(filePaths: string[]): Promise<ImportedPhoto[]> {
+    const total = filePaths.length;
+    logMain.info(`Import started: ${total} file(s)`);
     mainWindow.webContents.send('import:progress', { current: 0, total });
 
     const photos: ImportedPhoto[] = [];
-    for (let fi = 0; fi < result.filePaths.length; fi++) {
-      const filePath = result.filePaths[fi];
+    for (let fi = 0; fi < filePaths.length; fi++) {
+      const filePath = filePaths[fi];
       try {
-        const stats = fs.statSync(filePath);
         const ext = path.extname(filePath).toLowerCase().replace('.', '');
-        const mimeMap: Record<string, string> = {
-          jpg: 'image/jpeg',
-          jpeg: 'image/jpeg',
-          png: 'image/png',
-          webp: 'image/webp',
-          tiff: 'image/tiff',
-          tif: 'image/tiff',
-          bmp: 'image/bmp',
-          gif: 'image/gif',
-          heic: 'image/heic',
-          heif: 'image/heif',
-          avif: 'image/avif',
-        };
-        const RAW_EXTENSIONS = new Set([
-          'cr2',
-          'cr3',
-          'nef',
-          'arw',
-          'dng',
-          'raf',
-          'orf',
-          'rw2',
-          'pef',
-          'srw',
-          'x3f',
-          '3fr',
-          'rwl',
-          'mrw',
-          'kdc',
-          'dcr',
-          'raw',
-        ]);
+        if (!SUPPORTED_SET.has(ext)) {
+          mainWindow.webContents.send('import:progress', { current: fi + 1, total });
+          continue;
+        }
+        const stats = fs.statSync(filePath);
         const isRaw = RAW_EXTENSIONS.has(ext);
         const isHeicFile = isHeic(ext);
-        const mimeType = isRaw ? 'image/x-raw' : mimeMap[ext] || 'image/jpeg';
+        const mimeType = isRaw ? 'image/x-raw' : MIME_MAP[ext] || 'image/jpeg';
         const rawBuf = fs.readFileSync(filePath);
         const photoId = `${filePath}-${stats.mtimeMs}`;
 
-        const thumbnailDataUrl = '';
         let photoWidth = 0;
         let photoHeight = 0;
-
-        // HEIC: convert to JPEG for dimension detection
         const decodeBuf = isHeicFile ? await convertHeicToJpeg(rawBuf) : rawBuf;
-
-        // RAW files: skip dimension detection here, renderer will update via onImageLoaded
         const orientation = isRaw ? 1 : await readExifOrientation(decodeBuf);
         if (!isRaw) {
           const rawDims = readJpegRawDimensions(decodeBuf);
@@ -224,7 +222,7 @@ app.on('ready', () => {
           width: photoWidth,
           height: photoHeight,
           dataUrl: '',
-          thumbnailDataUrl,
+          thumbnailDataUrl: '',
           orientation,
           importedAt: Date.now(),
         });
@@ -237,6 +235,22 @@ app.on('ready', () => {
     mainWindow.webContents.send('import:progress', null);
     logMain.info(`Import complete: ${photos.length}/${total} photo(s) imported`);
     return photos;
+  }
+
+  ipcMainHandle('importPhotos', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: 'Import Photos',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Images', extensions: SUPPORTED_EXTENSIONS }],
+    });
+    if (result.canceled || result.filePaths.length === 0) return [];
+    return importFromPaths(result.filePaths);
+  });
+
+  ipcMain.handle('importPhotosFromPaths', async (event, filePaths: string[]) => {
+    validateEventFrame(event.senderFrame!);
+    if (!filePaths || filePaths.length === 0) return [];
+    return importFromPaths(filePaths);
   });
 
   // ── Select Folder ─────────────────────────────────────────────────────────
