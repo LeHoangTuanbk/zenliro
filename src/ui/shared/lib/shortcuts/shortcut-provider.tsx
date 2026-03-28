@@ -22,7 +22,7 @@ export function ShortcutProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const { activeScopes, actions } = useShortcutStore.getState();
-      const inputFocused = isInputFocused();
+      const inputFocused = isInputFocused(e);
 
       const sortedScopes = [...activeScopes].sort(
         (a, b) => SCOPE_PRIORITY.indexOf(b) - SCOPE_PRIORITY.indexOf(a),
@@ -48,8 +48,8 @@ export function ShortcutProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, []);
 
   return <>{children}</>;

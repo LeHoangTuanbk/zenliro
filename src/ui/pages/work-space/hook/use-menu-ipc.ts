@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useShortcutStore } from '@shared/lib/shortcuts';
+import { isInputFocused } from '@shared/lib/shortcuts/input-guard';
 
 const MENU_ACTION_TO_SHORTCUT: Record<string, string> = {
   undo: 'global.undo',
@@ -11,6 +12,15 @@ const MENU_ACTION_TO_SHORTCUT: Record<string, string> = {
   'zoom-out': 'global.zoom-out',
   'shortcut-menu': 'global.shortcut-menu',
 };
+
+const SKIP_INPUT_GUARD = new Set([
+  'global.undo',
+  'global.redo',
+  'global.reset-zoom',
+  'global.zoom-in',
+  'global.zoom-out',
+  'global.shortcut-menu',
+]);
 
 type UseMenuIpcParams = {
   onImport: () => void;
@@ -28,6 +38,7 @@ export function useMenuIpc({ onImport, onShowExport }: UseMenuIpcParams) {
       api.onMenuAction((action) => {
         const shortcutId = MENU_ACTION_TO_SHORTCUT[action];
         if (!shortcutId) return;
+        if (isInputFocused() && !SKIP_INPUT_GUARD.has(shortcutId)) return;
         const handler = useShortcutStore.getState().actions.get(shortcutId);
         handler?.();
       }),

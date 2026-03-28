@@ -1,5 +1,10 @@
 import { useState, useMemo } from 'react';
-import { STYLE_PRESETS, PRESET_CATEGORIES, type StylePreset, type PresetCategory } from '../const/presets';
+import {
+  STYLE_PRESETS,
+  PRESET_CATEGORIES,
+  type StylePreset,
+  type PresetCategory,
+} from '../const/presets';
 
 type PresetBrowserProps = {
   onApply: (prompt: string) => void;
@@ -30,9 +35,10 @@ export function PresetBrowser({ onApply, onClose }: PresetBrowserProps) {
 
   const handleApply = () => {
     if (!selected) return;
-    const strengthNote = strength < 100
-      ? ` Apply at ${strength}% strength — keep changes subtle and proportional.`
-      : '';
+    const strengthNote =
+      strength < 100
+        ? ` Apply at ${strength}% strength — keep changes subtle and proportional.`
+        : '';
     onApply(selected.prompt + strengthNote);
     onClose();
   };
@@ -41,7 +47,10 @@ export function PresetBrowser({ onApply, onClose }: PresetBrowserProps) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
       onClick={onClose}
-      onKeyDown={(e) => { e.stopPropagation(); if (e.key === 'Escape') onClose(); }}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === 'Escape') onClose();
+      }}
     >
       <div
         className="flex flex-col bg-[#1a1a1a] rounded-[8px] border border-[#333] shadow-2xl overflow-hidden"
@@ -62,6 +71,7 @@ export function PresetBrowser({ onApply, onClose }: PresetBrowserProps) {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => e.nativeEvent.stopImmediatePropagation()}
               placeholder="Search presets..."
               className="bg-transparent text-[12px] text-[#ccc] w-full focus:outline-none placeholder:text-[#555]"
             />
@@ -92,7 +102,12 @@ export function PresetBrowser({ onApply, onClose }: PresetBrowserProps) {
             className="text-[#666] hover:text-[#999] transition-colors ml-2"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              <path
+                d="M4 4l8 8M12 4l-8 8"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
             </svg>
           </button>
         </div>
@@ -106,7 +121,10 @@ export function PresetBrowser({ onApply, onClose }: PresetBrowserProps) {
                 preset={preset}
                 isSelected={selectedId === preset.id}
                 onSelect={() => setSelectedId(preset.id === selectedId ? null : preset.id)}
-                onDoubleClick={() => { onApply(preset.prompt); onClose(); }}
+                onDoubleClick={() => {
+                  onApply(preset.prompt);
+                  onClose();
+                }}
               />
             ))}
           </div>
