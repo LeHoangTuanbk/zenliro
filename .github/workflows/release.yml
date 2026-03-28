@@ -33,9 +33,7 @@ jobs:
           echo "Version set to $VERSION"
 
       - name: Build & Package
-        run: pnpm dist:mac
-        env:
-          GH_TOKEN: ""
+        run: pnpm dist:mac -- --publish never
 
       - name: List build output
         run: ls -la dist/
