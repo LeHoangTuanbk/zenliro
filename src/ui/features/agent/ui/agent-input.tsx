@@ -53,12 +53,14 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
     if (modelsLoaded) return;
     window.electron?.agent?.loadModels().then((loaded) => {
       if (loaded && loaded.length > 0) {
-        loadModelsAction(loaded.map((m) => ({
-          id: m.id,
-          label: m.label,
-          description: m.description,
-          provider: m.provider as 'claude' | 'codex',
-        })));
+        loadModelsAction(
+          loaded.map((m) => ({
+            id: m.id,
+            label: m.label,
+            description: m.description,
+            provider: m.provider as 'claude' | 'codex',
+          })),
+        );
       }
     });
   }, [modelsLoaded, loadModelsAction]);
@@ -73,6 +75,7 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
 
   const handleKeyDown = (e: KeyboardEvent) => {
     e.stopPropagation();
+    e.nativeEvent.stopImmediatePropagation();
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -135,9 +138,18 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
       {/* Reference preview */}
       {referenceBase64 && (
         <div className="flex items-center gap-2 mb-1.5 px-1">
-          <img src={referenceBase64} alt="Ref" className="w-8 h-8 rounded-[4px] object-cover border border-[#444]" />
+          <img
+            src={referenceBase64}
+            alt="Ref"
+            className="w-8 h-8 rounded-[4px] object-cover border border-[#444]"
+          />
           <span className="text-[10px] text-[#888]">Reference attached</span>
-          <button onClick={clearReference} className="text-[10px] text-[#666] hover:text-red-400 ml-auto">✕</button>
+          <button
+            onClick={clearReference}
+            className="text-[10px] text-[#666] hover:text-red-400 ml-auto"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -161,29 +173,44 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
             {/* Model selector */}
             <div className="relative">
               <button
-                onClick={() => { setShowModelMenu(!showModelMenu); setShowPresets(false); }}
+                onClick={() => {
+                  setShowModelMenu(!showModelMenu);
+                  setShowPresets(false);
+                }}
                 className="flex items-center gap-1 text-[10px] text-[#999] hover:text-[#ccc] transition-colors px-1 py-0.5"
               >
                 <span>{currentModel?.label ?? modelId}</span>
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
-                  <path d="M2 3l2 2 2-2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                  <path
+                    d="M2 3l2 2 2-2"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </button>
 
               {showModelMenu && (
                 <div className="absolute bottom-full left-0 mb-1 w-[160px] bg-[#2a2a2a] border border-[#444] rounded-[6px] shadow-xl overflow-hidden z-50 max-h-[300px] overflow-y-auto">
-                  <div className="px-2.5 py-1 text-[9px] text-[#555] uppercase tracking-wider border-b border-[#333]">Claude</div>
+                  <div className="px-2.5 py-1 text-[9px] text-[#555] uppercase tracking-wider border-b border-[#333]">
+                    Claude
+                  </div>
                   {claudeModels.map((m) => {
                     const disabled = hasMessages && provider !== 'claude';
                     return (
                       <button
                         key={m.id}
                         disabled={disabled}
-                        onClick={() => { setModelId(m.id, 'claude'); setShowModelMenu(false); }}
+                        onClick={() => {
+                          setModelId(m.id, 'claude');
+                          setShowModelMenu(false);
+                        }}
                         className={`w-full text-left px-2.5 py-1 text-[11px] ${
-                          disabled ? 'text-[#444] cursor-not-allowed'
-                            : m.id === modelId ? 'text-white bg-[#333]'
-                            : 'text-[#aaa] hover:bg-[#333]'
+                          disabled
+                            ? 'text-[#444] cursor-not-allowed'
+                            : m.id === modelId
+                              ? 'text-white bg-[#333]'
+                              : 'text-[#aaa] hover:bg-[#333]'
                         }`}
                       >
                         {m.label}
@@ -192,18 +219,25 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
                   })}
                   {codexModels.length > 0 && (
                     <>
-                      <div className="px-2.5 py-1 text-[9px] text-[#555] uppercase tracking-wider border-b border-[#333] border-t">Codex</div>
+                      <div className="px-2.5 py-1 text-[9px] text-[#555] uppercase tracking-wider border-b border-[#333] border-t">
+                        Codex
+                      </div>
                       {codexModels.map((m) => {
                         const disabled = hasMessages && provider !== 'codex';
                         return (
                           <button
                             key={m.id}
                             disabled={disabled}
-                            onClick={() => { setModelId(m.id, 'codex'); setShowModelMenu(false); }}
+                            onClick={() => {
+                              setModelId(m.id, 'codex');
+                              setShowModelMenu(false);
+                            }}
                             className={`w-full text-left px-2.5 py-1 text-[11px] ${
-                              disabled ? 'text-[#444] cursor-not-allowed'
-                                : m.id === modelId ? 'text-white bg-[#333]'
-                                : 'text-[#aaa] hover:bg-[#333]'
+                              disabled
+                                ? 'text-[#444] cursor-not-allowed'
+                                : m.id === modelId
+                                  ? 'text-white bg-[#333]'
+                                  : 'text-[#aaa] hover:bg-[#333]'
                             }`}
                           >
                             {m.label}
@@ -219,7 +253,11 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
             {/* Parallel agents selector */}
             <div className="relative">
               <button
-                onClick={() => { setShowAgentCount(!showAgentCount); setShowModelMenu(false); setShowPresets(false); }}
+                onClick={() => {
+                  setShowAgentCount(!showAgentCount);
+                  setShowModelMenu(false);
+                  setShowPresets(false);
+                }}
                 className="flex items-center gap-0.5 px-1 py-0.5 rounded text-[10px] font-medium text-[#f5c542] hover:text-[#ffd966] transition-colors"
                 title="Parallel agents"
               >
@@ -237,7 +275,12 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
                   {[1, 2, 3, 4, 5, 6].map((n) => (
                     <button
                       key={n}
-                      onClick={() => { if (n === 1) { setAgentCount(n); setShowAgentCount(false); } }}
+                      onClick={() => {
+                        if (n === 1) {
+                          setAgentCount(n);
+                          setShowAgentCount(false);
+                        }
+                      }}
                       disabled={n > 1}
                       title={n > 1 ? 'Coming soon' : undefined}
                       className={`w-full text-left px-3 py-1 text-[11px] transition-colors ${
@@ -264,13 +307,21 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
               title="Attach reference image"
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M7.5 3.5v6a2 2 0 01-4 0V4a1.25 1.25 0 012.5 0v5a.5.5 0 01-1 0V4.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                <path
+                  d="M7.5 3.5v6a2 2 0 01-4 0V4a1.25 1.25 0 012.5 0v5a.5.5 0 01-1 0V4.5"
+                  stroke="currentColor"
+                  strokeWidth="1.2"
+                  strokeLinecap="round"
+                />
               </svg>
             </button>
 
             {/* Style presets browser */}
             <button
-              onClick={() => { setShowPresets(true); setShowModelMenu(false); }}
+              onClick={() => {
+                setShowPresets(true);
+                setShowModelMenu(false);
+              }}
               className="w-6 h-6 flex items-center justify-center text-[#666] hover:text-[#999] transition-colors"
               title="Style presets"
             >
@@ -284,7 +335,10 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
 
             {showPresets && (
               <PresetBrowser
-                onApply={(prompt) => { setShowPresets(false); onSend(prompt); }}
+                onApply={(prompt) => {
+                  setShowPresets(false);
+                  onSend(prompt);
+                }}
                 onClose={() => setShowPresets(false)}
               />
             )}
@@ -308,7 +362,13 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
                 title="Send"
               >
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                  <path d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5" stroke={text.trim() ? '#1a1a1a' : '#666'} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M6 10V2M6 2L2.5 5.5M6 2l3.5 3.5"
+                    stroke={text.trim() ? '#1a1a1a' : '#666'}
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </button>
             )}
