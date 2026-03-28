@@ -33,7 +33,7 @@ jobs:
           echo "Version set to $VERSION"
 
       - name: Build & Package
-        run: pnpm transpile:electron && pnpm bundle:mcp && pnpm build && electron-builder --mac --arm64 --publish never
+        run: pnpm transpile:electron && pnpm bundle:mcp && pnpm build && pnpx electron-builder --mac --arm64 --publish never
 
       - name: List build output
         run: ls -la dist/
