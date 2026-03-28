@@ -3,6 +3,9 @@ import path from 'path';
 import os from 'os';
 import { app } from 'electron';
 import { isDev } from '../utils.js';
+import { createLogger } from '../logger/index.js';
+
+const log = createLogger('main/mcp-register');
 
 const CLAUDE_CONFIG_PATH = path.join(os.homedir(), '.claude.json');
 const CODEX_CONFIG_PATH = path.join(os.homedir(), '.codex', 'config.toml');
@@ -42,9 +45,9 @@ function registerInClaude(command: string, args: string[]): void {
     config.mcpServers = mcpServers;
 
     fs.writeFileSync(CLAUDE_CONFIG_PATH, JSON.stringify(config, null, 2), 'utf-8');
-    console.log(`[Zenliro] Registered MCP in Claude: ${CLAUDE_CONFIG_PATH}`);
+    log.info(`Registered MCP in Claude: ${CLAUDE_CONFIG_PATH}`);
   } catch (err) {
-    console.error('[Zenliro] Failed to register MCP in Claude:', err);
+    log.error('Failed to register MCP in Claude:', err);
   }
 }
 
@@ -68,9 +71,9 @@ function registerInCodex(command: string, args: string[]): void {
     }
 
     fs.writeFileSync(CODEX_CONFIG_PATH, toml, 'utf-8');
-    console.log(`[Zenliro] Registered MCP in Codex: ${CODEX_CONFIG_PATH}`);
+    log.info(`Registered MCP in Codex: ${CODEX_CONFIG_PATH}`);
   } catch (err) {
-    console.error('[Zenliro] Failed to register MCP in Codex:', err);
+    log.error('Failed to register MCP in Codex:', err);
   }
 }
 

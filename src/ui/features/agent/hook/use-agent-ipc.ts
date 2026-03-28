@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { RefObject } from 'react';
 import type { ImageCanvasHandle } from '@widgets/image-canvas/ui/image-canvas';
+import { createRendererLogger } from '@shared/lib/logger';
 import { useAdjustmentsStore } from '@features/develop/edit/store/adjustments-store';
 import { useToneCurveStore } from '@features/develop/edit/tone-curve/store/tone-curve-store';
 import { useColorMixerStore } from '@features/develop/edit/color-mixer/store/color-mixer-store';
@@ -574,7 +575,7 @@ export function useAgentIpc(
           );
           respond(req.requestId, result);
         } catch (err) {
-          console.error('[DetectBlemishes] error:', err);
+          createRendererLogger('agent/blemish').error('Detection failed', err);
           respond(req.requestId, { count: 0, spots: [], note: 'Detection failed' });
         }
       },

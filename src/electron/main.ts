@@ -7,6 +7,16 @@ import { setMainWindow } from './mcp/ipc-bridge.js';
 import { startLocalServer, stopLocalServer } from './mcp/local-server.js';
 import { registerMcpGlobally } from './mcp/register-global.js';
 import { createMenu } from './create-menu.js';
+import {
+  initializeLogger,
+  installMainCrashHandler,
+  installRendererCrashHandler,
+  createLogger,
+  exportLogsToFile,
+  IPC_RENDERER_LOG,
+  IPC_EXPORT_LOGS,
+} from './logger/index.js';
+import type { LogLevel } from './logger/index.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -17,7 +27,14 @@ import {
 } from './libs/exif-orientation.js';
 import { isHeic, convertHeicToJpeg } from './libs/heic-converter.js';
 
+initializeLogger();
+installMainCrashHandler();
+
+const logMain = createLogger('main');
+
 app.on('ready', () => {
+  logMain.info('App ready, initializing...');
+
   const mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -52,6 +69,23 @@ app.on('ready', () => {
   registerAgentIpc(mainWindow);
   setMainWindow(mainWindow);
   setupTray(mainWindow);
+  installRendererCrashHandler(mainWindow);
+
+  // ── Logger IPC ──────────────────────────────────────────────────────────────
+  ipcMain.handle(IPC_RENDERER_LOG, (event, level: LogLevel, scope: string, message: string, meta?: unknown) => {
+    validateEventFrame(event.senderFrame!);
+    const scopedLog = createLogger(`renderer/${scope}`);
+    if (meta !== undefined) {
+      scopedLog[level](message, meta);
+    } else {
+      scopedLog[level](message);
+    }
+  });
+
+  ipcMain.handle(IPC_EXPORT_LOGS, (event) => {
+    validateEventFrame(event.senderFrame!);
+    return exportLogsToFile(mainWindow);
+  });
 
   // Start local HTTP bridge for MCP server and register globally in Claude Code
   startLocalServer()
@@ -59,7 +93,7 @@ app.on('ready', () => {
       registerMcpGlobally();
     })
     .catch((err) => {
-      console.error('[Zenliro] Failed to start local MCP bridge:', err);
+      logMain.error('Failed to start local MCP bridge:', err);
     });
 
   // ── Import ────────────────────────────────────────────────────────────────
@@ -107,6 +141,7 @@ app.on('ready', () => {
     if (result.canceled || result.filePaths.length === 0) return [];
 
     const total = result.filePaths.length;
+    logMain.info(`Import started: ${total} file(s) selected`);
     mainWindow.webContents.send('import:progress', { current: 0, total });
 
     const photos: ImportedPhoto[] = [];
@@ -195,11 +230,12 @@ app.on('ready', () => {
         });
         mainWindow.webContents.send('import:progress', { current: fi + 1, total });
       } catch (err) {
-        console.error('Failed to import photo:', filePath, err);
+        logMain.error('Failed to import photo:', filePath, err);
         mainWindow.webContents.send('import:progress', { current: fi + 1, total });
       }
     }
     mainWindow.webContents.send('import:progress', null);
+    logMain.info(`Import complete: ${photos.length}/${total} photo(s) imported`);
     return photos;
   });
 
@@ -245,11 +281,14 @@ app.on('ready', () => {
     const buffer = Buffer.from(req.base64, 'base64');
 
     // If destFolder is provided, save directly without showing a dialog
+    logMain.info(`Export started: ${fileName} (${req.mimeType})`);
+
     if (req.destFolder) {
       const expanded = req.destFolder.replace(/^~/, os.homedir());
       fs.mkdirSync(expanded, { recursive: true });
       const outPath = path.join(expanded, fileName);
       fs.writeFileSync(outPath, buffer);
+      logMain.info(`Export complete: ${outPath}`);
       return { saved: true, filePath: outPath };
     }
 
@@ -268,6 +307,7 @@ app.on('ready', () => {
     if (result.canceled || !result.filePath) return { saved: false };
 
     fs.writeFileSync(result.filePath, buffer);
+    logMain.info(`Export complete: ${result.filePath}`);
     return { saved: true, filePath: result.filePath };
   });
 
@@ -317,6 +357,7 @@ function handleCloseEvents(mainWindow: BrowserWindow) {
     if (quitting) return;
     e.preventDefault();
     quitting = true;
+    logMain.info('App quitting, saving state...');
 
     stopLocalServer();
 

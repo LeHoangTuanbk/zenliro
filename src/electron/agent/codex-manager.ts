@@ -3,6 +3,9 @@ import { SYSTEM_PROMPT } from './system-prompt.js';
 import { StreamLineBuffer } from './stream-parser.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
 import { getShellEnv } from './shell-env.js';
+import { createLogger } from '../logger/index.js';
+
+const log = createLogger('main/codex');
 
 export type StreamCallback = (event: ParsedStreamEvent) => void;
 
@@ -145,11 +148,11 @@ export class CodexManager {
 
     this.process.stderr?.on('data', (data: Buffer) => {
       const txt = data.toString().trim();
-      if (txt) console.error('[Codex stderr]', txt);
+      if (txt) log.warn('stderr:', txt);
     });
 
     this.process.on('exit', (code) => {
-      console.log('[Codex] exited with code', code);
+      log.info('Exited with code', code);
       const remaining = this.lineBuffer.flush();
       for (const line of remaining) {
         const parsed = parseCodexLine(line);
@@ -160,7 +163,7 @@ export class CodexManager {
     });
 
     this.process.on('error', (err) => {
-      console.log('[Codex] spawn error:', err.message);
+      log.error('Spawn error:', err.message);
       this.onEvent?.({ type: 'error', error: err.message });
       this.process = null;
     });

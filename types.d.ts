@@ -119,6 +119,14 @@ interface Window {
     onMenuExport: (cb: () => void) => () => void;
     onMenuAction: (cb: (action: string) => void) => () => void;
 
+    logger: {
+      error: (scope: string, message: string, meta?: unknown) => Promise<void>;
+      warn: (scope: string, message: string, meta?: unknown) => Promise<void>;
+      info: (scope: string, message: string, meta?: unknown) => Promise<void>;
+      debug: (scope: string, message: string, meta?: unknown) => Promise<void>;
+    };
+    exportLogs: () => Promise<{ saved: boolean; filePath?: string }>;
+
     agent: {
       startSession: () => Promise<void>;
       sendMessage: (text: string, options?: { model?: string; provider?: string }) => Promise<void>;

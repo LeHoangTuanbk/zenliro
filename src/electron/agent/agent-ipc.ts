@@ -5,6 +5,9 @@ import { ClaudeCodeManager } from './claude-code-manager.js';
 import { CodexManager } from './codex-manager.js';
 import { loadAllModels } from './load-models.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
+import { createLogger } from '../logger/index.js';
+
+const log = createLogger('main/agent');
 
 type AgentProvider = 'claude' | 'codex';
 
@@ -60,6 +63,7 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
     if (!manager) {
       currentProvider = 'claude';
       manager = createManager('claude');
+      log.info('Agent session started (provider: claude)');
     }
   });
 
@@ -73,6 +77,7 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
       manager?.stop();
       manager = createManager(provider);
       currentProvider = provider;
+      log.info(`Agent provider switched to: ${provider}`);
     }
 
     if (!manager) {
@@ -80,6 +85,7 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
       currentProvider = provider;
     }
 
+    log.info(`Agent message sent (provider: ${provider}, model: ${options?.model ?? 'default'}, length: ${text.length})`);
     manager.sendMessage(text, handleStreamEvent, options);
   });
 
@@ -87,6 +93,7 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
     manager?.stop();
     manager = null;
     currentProvider = null;
+    log.info('Agent session stopped');
   });
 
   ipcMain.handle('agent:get-status', async () => {
@@ -112,7 +119,7 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
       fs.writeFileSync(filePath, buffer);
       return filePath;
     } catch (err) {
-      console.error('[Agent] Failed to save reference image:', err);
+      log.error('Failed to save reference image:', err);
       return null;
     }
   });

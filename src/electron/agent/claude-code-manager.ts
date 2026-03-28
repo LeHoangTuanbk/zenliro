@@ -3,6 +3,9 @@ import { CLAUDE_CLI } from './const.js';
 import { SYSTEM_PROMPT } from './system-prompt.js';
 import { StreamLineBuffer, parseStreamLine, type ParsedStreamEvent } from './stream-parser.js';
 import { getShellEnv } from './shell-env.js';
+import { createLogger } from '../logger/index.js';
+
+const log = createLogger('main/claude-code');
 
 export type StreamCallback = (event: ParsedStreamEvent) => void;
 
@@ -65,12 +68,12 @@ export class ClaudeCodeManager {
     this.process.stderr?.on('data', (data: Buffer) => {
       const text = data.toString();
       if (text.trim()) {
-        console.error('[ClaudeCode stderr]', text);
+        log.warn('stderr:', text);
       }
     });
 
     this.process.on('exit', (code) => {
-      console.log('[ClaudeCode] exited with code', code);
+      log.info('Exited with code', code);
       const remaining = this.lineBuffer.flush();
       for (const line of remaining) {
         const parsed = parseStreamLine(line);
@@ -81,7 +84,7 @@ export class ClaudeCodeManager {
     });
 
     this.process.on('error', (err) => {
-      console.error('[ClaudeCode] spawn error:', err.message);
+      log.error('Spawn error:', err.message);
       this.onEvent?.({ type: 'error', error: err.message });
       this.process = null;
     });

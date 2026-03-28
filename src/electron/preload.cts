@@ -1,5 +1,23 @@
 const electron = require('electron');
 
+// ── Global error catchers for renderer crash reporting ────────────────────────
+window.addEventListener('error', (event) => {
+  electron.ipcRenderer.invoke('logger:renderer-crash', {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    stack: event.error?.stack,
+  });
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  electron.ipcRenderer.invoke('logger:renderer-crash', {
+    message: String(event.reason),
+    stack: event.reason?.stack,
+  });
+});
+
 electron.contextBridge.exposeInMainWorld('electron', {
   importPhotos:  () => electron.ipcRenderer.invoke('importPhotos'),
   exportPhoto:   (req: unknown) => electron.ipcRenderer.invoke('exportPhoto', req),
@@ -39,6 +57,18 @@ electron.contextBridge.exposeInMainWorld('electron', {
     electron.ipcRenderer.on('menu:action', handler);
     return () => electron.ipcRenderer.removeListener('menu:action', handler);
   },
+
+  logger: {
+    error: (scope: string, message: string, meta?: unknown) =>
+      electron.ipcRenderer.invoke('logger:renderer-log', 'error', scope, message, meta),
+    warn: (scope: string, message: string, meta?: unknown) =>
+      electron.ipcRenderer.invoke('logger:renderer-log', 'warn', scope, message, meta),
+    info: (scope: string, message: string, meta?: unknown) =>
+      electron.ipcRenderer.invoke('logger:renderer-log', 'info', scope, message, meta),
+    debug: (scope: string, message: string, meta?: unknown) =>
+      electron.ipcRenderer.invoke('logger:renderer-log', 'debug', scope, message, meta),
+  },
+  exportLogs: () => electron.ipcRenderer.invoke('logger:export-logs'),
 
   agent: {
     startSession: () => electron.ipcRenderer.invoke('agent:start-session'),

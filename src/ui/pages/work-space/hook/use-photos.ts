@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { createRendererLogger } from '@shared/lib/logger';
 import { ActiveView } from '../const';
+
+const log = createRendererLogger('photos');
 import { useCatalogStore } from '../store/catalog-store';
 import { generateThumbnailDataUrlFromArrayBuffer } from '@widgets/image-canvas';
 import { isRawMimeType, extractRawThumbnail } from '@shared/lib/raw';
@@ -46,7 +49,7 @@ export function usePhotos() {
         }
         return await generateThumbnailDataUrlFromArrayBuffer(buffer, mimeType, orientation);
       } catch (err) {
-        console.error('Failed to build thumbnail:', err);
+        log.error('Failed to build thumbnail', err);
         return '';
       }
     },
@@ -189,7 +192,7 @@ export function usePhotos() {
         const thumb = await window.electron.photo.saveThumbnail(photo.id, thumbnailDataUrl);
         if (thumb) catalogEntries[i].thumbnailPath = thumb.thumbnailPath;
       } catch (err) {
-        console.error('Failed to generate thumbnail:', photo.filePath, err);
+        log.error('Failed to generate thumbnail', { filePath: photo.filePath, err });
       }
     }
 
