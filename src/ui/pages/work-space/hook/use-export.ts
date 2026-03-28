@@ -2,6 +2,9 @@ import { useCallback, type RefObject } from 'react';
 import { useCropStore } from '@/features/develop/crop/store/crop-store';
 import type { ExportSettings } from '@/features/export/export-dialog-container';
 import type { ImageCanvasHandle } from '@widgets/image-canvas/ui/image-canvas';
+import { createRendererLogger } from '@shared/lib/logger';
+
+const log = createRendererLogger('export');
 
 export function useExport(
   selected: ImportedPhoto | null,
@@ -11,7 +14,7 @@ export function useExport(
   return useCallback(
     async (settings: ExportSettings) => {
       if (!canvasRef.current || !selected) {
-        console.error('[Export] No canvas or photo selected');
+        log.error('No canvas or photo selected');
         return;
       }
       try {
@@ -45,9 +48,10 @@ export function useExport(
           crop,
         );
         if (!dataUrl) {
-          console.error('[Export] Failed to generate data URL');
+          log.error('Failed to generate data URL');
           return;
         }
+        log.info(`Exporting: ${selected.fileName} (${settings.format})`);
         await window.electron.exportPhoto({
           base64: dataUrl.split(',')[1],
           mimeType: settings.format as ExportPhotoRequest['mimeType'],
@@ -57,8 +61,9 @@ export function useExport(
           startNumber: settings.startNumber,
           destFolder: settings.exportFolder || undefined,
         });
+        log.info('Export complete');
       } catch (err) {
-        console.error('[Export] Error:', err);
+        log.error('Export failed', err);
         throw err;
       }
     },

@@ -1,17 +1,20 @@
 import * as faceapi from '@vladmandic/face-api';
+import { createRendererLogger } from '@shared/lib/logger';
+
+const log = createRendererLogger('agent/face-api');
 
 let modelsLoaded = false;
 
 async function ensureModels() {
   if (modelsLoaded) return;
   try {
-    console.log('[FaceAPI] Loading models...');
+    log.info('Loading models...');
     await faceapi.nets.ssdMobilenetv1.loadFromUri('/models');
     await faceapi.nets.faceLandmark68Net.loadFromUri('/models');
     modelsLoaded = true;
-    console.log('[FaceAPI] Models loaded successfully');
+    log.info('Models loaded successfully');
   } catch (err) {
-    console.error('[FaceAPI] Failed to load models:', err);
+    log.error('Failed to load models', err);
     throw err;
   }
 }
@@ -76,20 +79,20 @@ export async function detectBlemishesWithFace(
 
   // Use the JPEG image for face detection (more reliable than raw pixels)
   const img = await loadImage(dataUrl);
-  console.log(`[FaceAPI] Detecting face in ${img.naturalWidth}x${img.naturalHeight} image...`);
+  log.info(`Detecting face in ${img.naturalWidth}x${img.naturalHeight} image...`);
 
   const detection = await faceapi
     .detectSingleFace(img, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.2 }))
     .withFaceLandmarks();
 
   if (!detection) {
-    console.warn('[FaceAPI] No face detected');
+    log.warn('No face detected');
     return { count: 0, spots: [], note: 'No face detected in photo' };
   }
 
   const { box } = detection.detection;
   const landmarks = detection.landmarks;
-  console.log('[FaceAPI] Face detected:', Math.round(box.x), Math.round(box.y), Math.round(box.width), Math.round(box.height));
+  log.info(`Face detected: ${Math.round(box.x)} ${Math.round(box.y)} ${Math.round(box.width)} ${Math.round(box.height)}`);
 
   // Scale face coords from detection image to pixel data dimensions
   const scaleX = w / img.naturalWidth;

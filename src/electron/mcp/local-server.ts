@@ -3,6 +3,9 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { requestFromRenderer } from './ipc-bridge.js';
+import { createLogger } from '../logger/index.js';
+
+const log = createLogger('main/mcp-bridge');
 
 const PORT_FILE_DIR = path.join(os.homedir(), '.zenliro');
 const PORT_FILE = path.join(PORT_FILE_DIR, 'mcp-port');
@@ -48,7 +51,7 @@ export function startLocalServer(): Promise<number> {
       fs.mkdirSync(PORT_FILE_DIR, { recursive: true });
       fs.writeFileSync(PORT_FILE, String(port), 'utf-8');
 
-      console.log(`[Zenliro] Local MCP bridge running on 127.0.0.1:${port}`);
+      log.info(`Local MCP bridge running on 127.0.0.1:${port}`);
       resolve(port);
     });
 
@@ -59,6 +62,7 @@ export function startLocalServer(): Promise<number> {
 export function stopLocalServer() {
   server?.close();
   server = null;
+  log.info('Local MCP bridge stopped');
   try {
     fs.unlinkSync(PORT_FILE);
   } catch {

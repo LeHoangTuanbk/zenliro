@@ -1,4 +1,5 @@
 import { Menu, app, type BrowserWindow } from 'electron';
+import { exportLogsToFile } from './logger/index.js';
 
 export function createMenu(mainWindow: BrowserWindow) {
   const isMac = process.platform === 'darwin';
@@ -121,6 +122,11 @@ export function createMenu(mainWindow: BrowserWindow) {
           label: 'Keyboard Shortcuts',
           accelerator: 'CmdOrCtrl+/',
           click: () => mainWindow.webContents.send('menu:action', 'shortcut-menu'),
+        },
+        { type: 'separator' },
+        {
+          label: 'Export Logs...',
+          click: () => exportLogsToFile(mainWindow),
         },
       ],
     },

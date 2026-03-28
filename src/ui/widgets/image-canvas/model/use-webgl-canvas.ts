@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import type { ForwardedRef, RefObject } from 'react';
 import { type SpotGPUData, type MaskGPUData, WebGLRenderer } from '@shared/lib/webgl';
+import { createRendererLogger } from '@shared/lib/logger';
+
+const log = createRendererLogger('canvas/webgl');
 import { useAdjustmentsStore } from '@/features/develop/edit';
 import { type Mask } from '@/features/develop/mask';
 import { type HealSpot, HealEngine } from '@/features/develop/heal';
@@ -115,7 +118,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     try {
       renderer.render(canvas, useAdjustmentsStore.getState().adjustments);
     } catch (err) {
-      console.error('[ImageCanvas] render error:', err);
+      log.error('Render error', err);
     }
   }, []);
 
@@ -167,6 +170,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     if (!canvas || !container || !renderer) return;
 
     onImageLoaded?.(imgW, imgH);
+    log.info(`Image loaded: ${imgW}x${imgH}`);
 
     // Prepare refs before touching the canvas (no visual change yet)
     imageDataRef.current = imageData;
@@ -204,8 +208,9 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     try {
       renderer.init(canvas, { preserveDrawingBuffer: true });
       rendererRef.current = renderer;
+      log.info('WebGL renderer initialized');
     } catch (err) {
-      console.error('[WebGL] init failed:', err);
+      log.error('Init failed', err);
     }
     return () => {
       renderer.dispose();
@@ -271,7 +276,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
         }
         if (!cancelled) setIsLoading(false);
       } catch (err) {
-        console.error('[ImageCanvas] load error:', err);
+        log.error('Load error', err);
         if (!cancelled) setIsLoading(false);
       }
     })();

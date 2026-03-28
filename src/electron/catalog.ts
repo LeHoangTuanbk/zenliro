@@ -4,6 +4,9 @@ import path from 'path';
 import crypto from 'crypto';
 import { validateEventFrame } from './utils.js';
 import { isHeic, convertHeicToJpeg } from './libs/heic-converter.js';
+import { createLogger } from './logger/index.js';
+
+const log = createLogger('main/catalog');
 
 const RAW_EXTENSIONS = new Set([
   'cr2',
@@ -65,8 +68,11 @@ export function registerCatalogHandlers() {
     validateEventFrame(event.senderFrame!);
     try {
       if (!fs.existsSync(catalogPath)) return null;
-      return JSON.parse(fs.readFileSync(catalogPath, 'utf-8'));
-    } catch {
+      const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf-8'));
+      log.info(`Catalog loaded: ${catalog?.photos?.length ?? 0} photo(s)`);
+      return catalog;
+    } catch (err) {
+      log.error('Failed to load catalog', err);
       return null;
     }
   });
@@ -75,8 +81,10 @@ export function registerCatalogHandlers() {
     validateEventFrame(event.senderFrame!);
     try {
       fs.writeFileSync(catalogPath, JSON.stringify(data, null, 2), 'utf-8');
+      log.info('Catalog saved');
       return true;
-    } catch {
+    } catch (err) {
+      log.error('Failed to save catalog', err);
       return false;
     }
   });
@@ -143,8 +151,10 @@ export function registerCatalogHandlers() {
     validateEventFrame(event.senderFrame!);
     try {
       if (thumbnailPath && fs.existsSync(thumbnailPath)) fs.unlinkSync(thumbnailPath);
+      log.info(`Photo deleted: ${photoId}`);
       return true;
-    } catch {
+    } catch (err) {
+      log.error('Failed to delete photo', err);
       return false;
     }
   });
