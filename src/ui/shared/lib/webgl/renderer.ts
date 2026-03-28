@@ -1,5 +1,6 @@
 import type { Adjustments } from '@/features/develop/edit/store/adjustments-store';
 import type { CropState } from '@/features/develop/crop/store/types';
+import type { Mask } from '@/features/develop/mask/store/types';
 import type { SpotGPUData, MaskGPUData } from './types';
 import { linkProgram, createTexture, createFBO } from './gl-utils';
 import {
@@ -599,10 +600,7 @@ export class WebGLRenderer {
     );
     gl.uniform2f(u('u_cropSize'), crop ? crop.rect.w : 1, crop ? crop.rect.h : 1);
     // Fine rotation (straighten) only — 90° steps handled separately
-    gl.uniform1f(
-      u('u_rotation'),
-      crop ? (-crop.rotation * Math.PI) / 180 : 0,
-    );
+    gl.uniform1f(u('u_rotation'), crop ? (-crop.rotation * Math.PI) / 180 : 0);
     // 90° rotation steps as UV swaps (normalized to 0-3)
     const rotSteps = crop ? ((crop.rotationSteps % 4) + 4) % 4 : 0;
     gl.uniform1i(u('u_rotSteps'), rotSteps);
@@ -649,11 +647,35 @@ export class WebGLRenderer {
     adjustments: Adjustments,
     mimeType: string,
     quality: number,
-    targetW?: number,
-    targetH?: number,
-    spots?: SpotGPUData[],
-    crop?: CropState | null,
+    opts: {
+      targetW?: number;
+      targetH?: number;
+      spots?: SpotGPUData[];
+      crop?: CropState | null;
+      toneCurve?: { r: Uint8Array; g: Uint8Array; b: Uint8Array };
+      colorMixer?: { hue: number[]; sat: number[]; lum: number[] };
+      colorGrading?: {
+        shadows: [number, number, number];
+        midtones: [number, number, number];
+        highlights: [number, number, number];
+        blending: number;
+        balance: number;
+      };
+      effects?: {
+        vigAmount: number;
+        vigMidpoint: number;
+        vigRoundness: number;
+        vigFeather: number;
+        vigHighlights: number;
+        grainAmount: number;
+        grainSize: number;
+        grainRoughness: number;
+      };
+      masks?: Mask[];
+    } = {},
   ): string {
+    const { targetW, targetH, spots, crop, toneCurve, colorMixer, colorGrading, effects, masks } =
+      opts;
     const srcW = image instanceof HTMLImageElement ? image.naturalWidth : image.width;
     const srcH = image instanceof HTMLImageElement ? image.naturalHeight : image.height;
     const cropW = crop ? Math.round(srcW * crop.rect.w) : srcW;
@@ -668,9 +690,76 @@ export class WebGLRenderer {
     const renderer = new WebGLRenderer();
     renderer.init(canvas, { preserveDrawingBuffer: true });
     renderer.loadImage(image);
-    renderer.setMasks([]); // Initialize mask uniforms (empty masks for export)
+
+    // Masks
+    const activeMasks = (masks ?? []).filter((m) => m.enabled).slice(0, 4);
+    const gpuMasks: MaskGPUData[] = activeMasks.map((m): MaskGPUData => {
+      const adj = m.adjustments;
+      const base = {
+        adj: {
+          exposure: adj.exposure,
+          contrast: adj.contrast,
+          highlights: adj.highlights,
+          shadows: adj.shadows,
+          whites: adj.whites,
+          blacks: adj.blacks,
+          temp: adj.temp,
+          tint: adj.tint,
+          texture: adj.texture,
+          clarity: adj.clarity,
+          dehaze: adj.dehaze,
+          vibrance: adj.vibrance,
+          saturation: adj.saturation,
+        },
+      };
+      if (m.mask.type === 'brush') return { type: 1, ...base };
+      if (m.mask.type === 'linear') {
+        const d = m.mask.data;
+        return { type: 2, linear: [d.x1, d.y1, d.x2, d.y2, d.feather], ...base };
+      }
+      const d = m.mask.data;
+      return {
+        type: 3,
+        radial: [d.cx, d.cy, d.rx, d.ry, d.angle, d.feather, d.invert ? 1 : 0],
+        ...base,
+      };
+    });
+    renderer.setMasks(gpuMasks);
+
+    // Brush mask strokes
+    activeMasks.forEach((m, slot) => {
+      if (m.mask.type !== 'brush') return;
+      const paintStrokes = m.mask.strokes.filter((s) => !s.erase);
+      const eraseStrokes = m.mask.strokes.filter((s) => s.erase);
+      if (paintStrokes.length > 0) renderer.addBrushStrokes(slot, paintStrokes, false);
+      if (eraseStrokes.length > 0) renderer.addBrushStrokes(slot, eraseStrokes, true);
+    });
+
     if (spots?.length) renderer.setHealSpots(spots);
     if (crop) renderer.setCropState(crop);
+    if (toneCurve) renderer.setToneCurveLUT(toneCurve.r, toneCurve.g, toneCurve.b);
+    if (colorMixer) renderer.setColorMixer(colorMixer.hue, colorMixer.sat, colorMixer.lum);
+    if (colorGrading) {
+      renderer.setColorGrading(
+        colorGrading.shadows,
+        colorGrading.midtones,
+        colorGrading.highlights,
+        colorGrading.blending,
+        colorGrading.balance,
+      );
+    }
+    if (effects) {
+      renderer.setEffects(
+        effects.vigAmount,
+        effects.vigMidpoint,
+        effects.vigRoundness,
+        effects.vigFeather,
+        effects.vigHighlights,
+        effects.grainAmount,
+        effects.grainSize,
+        effects.grainRoughness,
+      );
+    }
     renderer.render(canvas, adjustments);
     const dataUrl = canvas.toDataURL(mimeType, quality);
     renderer.dispose();
