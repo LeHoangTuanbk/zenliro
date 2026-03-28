@@ -159,69 +159,86 @@ export function usePhotos() {
     [catalogSetId, saveToDisk],
   );
 
+  const processImported = useCallback(
+    async (imported: ImportedPhoto[]) => {
+      if (imported.length === 0) return;
+      log.info(`Importing ${imported.length} photo(s)...`);
+
+      const total = imported.length;
+      setImportProgress({ current: 0, total });
+
+      const catalogEntries: CatalogPhoto[] = imported.map((photo) => ({
+        ...photo,
+        thumbnailPath: '',
+        rating: 0,
+        tags: [],
+      }));
+
+      const thumbnails = new Map<string, string>();
+      for (let i = 0; i < imported.length; i++) {
+        const photo = imported[i];
+        setImportProgress({ current: i + 1, total });
+        try {
+          const resource = await window.electron.photo.loadFromPath(photo.filePath);
+          if (!resource) continue;
+          const bytes = resource.bytes;
+          const buf = bytes.buffer;
+          const buffer =
+            buf instanceof ArrayBuffer
+              ? buf.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+              : new Uint8Array(bytes).buffer.slice(0, bytes.byteLength);
+          const thumbnailDataUrl = await buildThumbnail(
+            buffer,
+            resource.mimeType,
+            photo.orientation,
+          );
+          if (!thumbnailDataUrl) continue;
+          thumbnails.set(photo.id, thumbnailDataUrl);
+          const thumb = await window.electron.photo.saveThumbnail(photo.id, thumbnailDataUrl);
+          if (thumb) catalogEntries[i].thumbnailPath = thumb.thumbnailPath;
+        } catch (err) {
+          log.error('Failed to generate thumbnail', { filePath: photo.filePath, err });
+        }
+      }
+
+      setImportProgress(null);
+
+      const importedForList = imported.map((photo) => ({
+        ...photo,
+        dataUrl: '',
+        thumbnailDataUrl: thumbnails.get(photo.id) ?? '',
+      }));
+      setPhotos((prev) => {
+        const ids = new Set(prev.map((p) => p.id));
+        return [...prev, ...importedForList.filter((p) => !ids.has(p.id))];
+      });
+      addPhotos(catalogEntries);
+      setSelectedId(imported[0].id);
+      catalogSetId(imported[0].id);
+      log.info(`Import complete: ${imported.length} photo(s) added`);
+      void queryClient.prefetchQuery(
+        photoResourceQueryOptions({
+          id: imported[0].id,
+          filePath: imported[0].filePath,
+        }),
+      );
+      saveToDisk();
+    },
+    [addPhotos, buildThumbnail, catalogSetId, queryClient, saveToDisk],
+  );
+
   const handleImport = useCallback(async () => {
     const imported = await window.electron.importPhotos();
-    if (imported.length === 0) return;
-    log.info(`Importing ${imported.length} photo(s)...`);
+    await processImported(imported);
+  }, [processImported]);
 
-    // Generate all thumbnails with progress overlay before showing photos
-    const total = imported.length;
-    setImportProgress({ current: 0, total });
-
-    const catalogEntries: CatalogPhoto[] = imported.map((photo) => ({
-      ...photo,
-      thumbnailPath: '',
-      rating: 0,
-      tags: [],
-    }));
-
-    const thumbnails = new Map<string, string>();
-    for (let i = 0; i < imported.length; i++) {
-      const photo = imported[i];
-      setImportProgress({ current: i + 1, total });
-      try {
-        const resource = await window.electron.photo.loadFromPath(photo.filePath);
-        if (!resource) continue;
-        const bytes = resource.bytes;
-        const buf = bytes.buffer;
-        const buffer =
-          buf instanceof ArrayBuffer
-            ? buf.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
-            : new Uint8Array(bytes).buffer.slice(0, bytes.byteLength);
-        const thumbnailDataUrl = await buildThumbnail(buffer, resource.mimeType, photo.orientation);
-        if (!thumbnailDataUrl) continue;
-        thumbnails.set(photo.id, thumbnailDataUrl);
-        const thumb = await window.electron.photo.saveThumbnail(photo.id, thumbnailDataUrl);
-        if (thumb) catalogEntries[i].thumbnailPath = thumb.thumbnailPath;
-      } catch (err) {
-        log.error('Failed to generate thumbnail', { filePath: photo.filePath, err });
-      }
-    }
-
-    setImportProgress(null);
-
-    // Show all photos at once with thumbnails ready
-    const importedForList = imported.map((photo) => ({
-      ...photo,
-      dataUrl: '',
-      thumbnailDataUrl: thumbnails.get(photo.id) ?? '',
-    }));
-    setPhotos((prev) => {
-      const ids = new Set(prev.map((p) => p.id));
-      return [...prev, ...importedForList.filter((p) => !ids.has(p.id))];
-    });
-    addPhotos(catalogEntries);
-    setSelectedId(imported[0].id);
-    catalogSetId(imported[0].id);
-    log.info(`Import complete: ${imported.length} photo(s) added`);
-    void queryClient.prefetchQuery(
-      photoResourceQueryOptions({
-        id: imported[0].id,
-        filePath: imported[0].filePath,
-      }),
-    );
-    saveToDisk();
-  }, [addPhotos, buildThumbnail, catalogSetId, queryClient, saveToDisk]);
+  const handleImportFromPaths = useCallback(
+    async (paths: string[]) => {
+      const imported = await window.electron.importPhotosFromPaths(paths);
+      await processImported(imported);
+    },
+    [processImported],
+  );
 
   const handleImageLoaded = useCallback(
     (w: number, h: number) => {
@@ -314,6 +331,7 @@ export function usePhotos() {
     setSelectedId: handleSetSelectedId,
     setActiveView,
     handleImport,
+    handleImportFromPaths,
     handleImageLoaded,
     handleDelete,
     handleBulkDelete,

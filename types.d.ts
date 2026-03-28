@@ -74,8 +74,13 @@ type PhotoEdits = {
     parametric: Record<string, number>;
   };
   crop?: {
-    x: number; y: number; w: number; h: number;
-    angle: number; aspectPreset: string; lockAspect: boolean;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    angle: number;
+    aspectPreset: string;
+    lockAspect: boolean;
   };
   masks?: Array<{
     id: string;
@@ -96,7 +101,9 @@ type Catalog = {
 
 interface Window {
   electron: {
+    getPathForFile: (file: File) => string;
     importPhotos: () => Promise<ImportedPhoto[]>;
+    importPhotosFromPaths: (paths: string[]) => Promise<ImportedPhoto[]>;
     exportPhoto: (req: ExportPhotoRequest) => Promise<ExportPhotoResult>;
     selectFolder: () => Promise<string | null>;
     catalog: {
@@ -105,13 +112,21 @@ interface Window {
     };
     photo: {
       loadFromPath: (filePath: string) => Promise<LoadedPhotoBinary | null>;
-      saveThumbnail: (photoId: string, thumbnailDataUrl: string) => Promise<{ thumbnailPath: string; thumbnailDataUrl: string } | null>;
-      generateThumbnail: (photoId: string, thumbnailDataUrl: string) => Promise<{ thumbnailPath: string; thumbnailDataUrl: string } | null>;
+      saveThumbnail: (
+        photoId: string,
+        thumbnailDataUrl: string,
+      ) => Promise<{ thumbnailPath: string; thumbnailDataUrl: string } | null>;
+      generateThumbnail: (
+        photoId: string,
+        thumbnailDataUrl: string,
+      ) => Promise<{ thumbnailPath: string; thumbnailDataUrl: string } | null>;
       loadThumbnail: (thumbnailPath: string) => Promise<{ thumbnailDataUrl: string } | null>;
       deleteThumbnail: (thumbnailPath: string) => Promise<boolean>;
       deletePhoto: (photoId: string, thumbnailPath: string) => Promise<boolean>;
     };
-    onImportProgress: (cb: (progress: { current: number; total: number } | null) => void) => () => void;
+    onImportProgress: (
+      cb: (progress: { current: number; total: number } | null) => void,
+    ) => () => void;
     onRequestSave: (cb: () => void) => void;
     sendSaveDone: () => void;
 
@@ -133,7 +148,9 @@ interface Window {
       stopSession: () => Promise<void>;
       getStatus: () => Promise<{ running: boolean }>;
       saveReferenceImage: (dataUrl: string) => Promise<string | null>;
-      loadModels: () => Promise<Array<{ id: string; label: string; description: string; provider: string }>>;
+      loadModels: () => Promise<
+        Array<{ id: string; label: string; description: string; provider: string }>
+      >;
 
       onToolRequest: (
         channel: string,
@@ -142,7 +159,9 @@ interface Window {
       sendToolResult: (channel: string, data: unknown) => void;
 
       onStreamText: (cb: (chunk: string) => void) => () => void;
-      onStreamToolUse: (cb: (data: { id: string; name: string; params: unknown }) => void) => () => void;
+      onStreamToolUse: (
+        cb: (data: { id: string; name: string; params: unknown }) => void,
+      ) => () => void;
       onStreamThinking: (cb: (text: string) => void) => () => void;
       onStreamDone: (cb: () => void) => () => void;
       onStreamError: (cb: (error: string) => void) => () => void;

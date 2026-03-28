@@ -30,11 +30,21 @@ import { AgentToggleButton } from '@/features/agent/ui/agent-toggle-button';
 import { ScanOverlay } from '@/features/agent/ui/scan-overlay';
 import { AgentActionToast } from '@/features/agent/ui/agent-action-toast';
 import type { ImportProgress } from '../hook/use-photos';
+import type { DragEvent } from 'react';
+
+type DropHandlers = {
+  onDragEnter: (e: DragEvent) => void;
+  onDragLeave: (e: DragEvent) => void;
+  onDragOver: (e: DragEvent) => void;
+  onDrop: (e: DragEvent) => void;
+};
 
 export type WorkSpaceViewProps = {
   photos: ImportedPhoto[];
   catalogPhotos: CatalogPhoto[];
   importProgress: ImportProgress;
+  isDragging: boolean;
+  dropHandlers: DropHandlers;
   selectedId: string | null;
   selected: ImportedPhoto | null;
   selectedImageUrl: string | null;
@@ -72,6 +82,8 @@ export function WorkSpaceView({
   photos,
   catalogPhotos,
   importProgress,
+  isDragging,
+  dropHandlers,
   selectedId,
   selected,
   selectedImageUrl,
@@ -117,7 +129,29 @@ export function WorkSpaceView({
   };
 
   return (
-    <div className="flex flex-col w-full h-screen bg-[#1a1a1a] text-[#929292] font-sans text-[11px]">
+    <div
+      className="flex flex-col w-full h-screen bg-[#1a1a1a] text-[#929292] font-sans text-[11px] relative"
+      {...dropHandlers}
+    >
+      {/* Drop overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 pointer-events-none">
+          <div className="flex flex-col items-center gap-3 p-8 rounded-[12px] border-2 border-dashed border-[#555]">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+              <path
+                d="M24 8v24M14 22l10 10 10-10"
+                stroke="#a6a6a6"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path d="M8 36h32" stroke="#a6a6a6" strokeWidth="2.5" strokeLinecap="round" />
+            </svg>
+            <span className="text-[14px] text-[#e4e4e4] font-medium">Drop photos to import</span>
+            <span className="text-[11px] text-[#e4e4e4]">JPG, PNG, RAW, HEIC and more</span>
+          </div>
+        </div>
+      )}
       {/* ── Title bar ────────────────────────────────────────────────────────── */}
       <header
         className="flex items-center h-9 bg-[#111] border-b border-black shrink-0 relative py-4"
