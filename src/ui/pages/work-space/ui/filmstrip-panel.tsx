@@ -9,10 +9,9 @@ type FilmstripPanelProps = {
   selectedId: string | null;
   isVisible: boolean;
   onSelect: (id: string) => void;
-  onImport: () => void;
 };
 
-export function FilmstripPanel({ photos, selectedId, isVisible, onSelect, onImport }: FilmstripPanelProps) {
+export function FilmstripPanel({ photos, selectedId, isVisible, onSelect }: FilmstripPanelProps) {
   const filmstripRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef(new Map<string, HTMLButtonElement>());
   const [isOpen, setIsOpen] = useState(true);
@@ -30,12 +29,6 @@ export function FilmstripPanel({ photos, selectedId, isVisible, onSelect, onImpo
         className="bg-br-bg border-r border-black flex flex-col shrink-0 transition-[width] duration-200 overflow-hidden"
         style={{ width: isOpen ? 180 : 0 }}
       >
-        <button
-          onClick={onImport}
-          className="mx-2 my-2 py-1 text-[10px] text-br-muted bg-br-input border border-br-elevated rounded-[2px] cursor-pointer hover:text-br-text transition-colors"
-        >
-          + Add
-        </button>
         <div ref={filmstripRef} className="flex-1 overflow-y-auto flex flex-col gap-1 px-1.5 pb-2">
           {photos.map((p) => (
             <button
@@ -73,7 +66,10 @@ export function FilmstripPanel({ photos, selectedId, isVisible, onSelect, onImpo
         >
           {isOpen ? <PanelLeftClose size={14} /> : <PanelLeftOpen size={14} />}
         </button>
-        <ShortcutHint shortcutId="develop.toggle-filmstrip" className="text-br-dim opacity-0 group-hover:opacity-100 transition-opacity" />
+        <ShortcutHint
+          shortcutId="develop.toggle-filmstrip"
+          className="text-br-dim opacity-0 group-hover:opacity-100 transition-opacity"
+        />
       </div>
     </div>
   );

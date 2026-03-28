@@ -1,6 +1,5 @@
 import { useCallback, useRef } from 'react';
 import { Search, X, Trash2 } from 'lucide-react';
-import { BrButton } from '@/shared/ui/base';
 import { useShortcut } from '@shared/lib/shortcuts';
 import { ShortcutHint } from '@shared/ui/shortcut-hint';
 import { StarRating } from './star-rating';
@@ -13,7 +12,6 @@ type LibraryToolbarProps = {
   selectedCount: number;
   allTags: string[];
   onFilterChange: (filter: LibraryFilter) => void;
-  onImport: () => void;
   onBulkDelete: () => void;
   onClearSelection: () => void;
 };
@@ -25,7 +23,6 @@ export function LibraryToolbar({
   selectedCount,
   allTags,
   onFilterChange,
-  onImport,
   onBulkDelete,
   onClearSelection,
 }: LibraryToolbarProps) {
@@ -41,11 +38,6 @@ export function LibraryToolbar({
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 bg-br-bg border-b border-black shrink-0">
-      <BrButton variant="primary" size="md" onClick={onImport}>
-        + Import
-        <ShortcutHint shortcutId="library.import" className="text-white/40" />
-      </BrButton>
-
       {/* Selection actions */}
       {selectedCount > 0 && (
         <>
@@ -148,9 +140,7 @@ export function LibraryToolbar({
 
       <span className="ml-auto text-[10px] text-br-dim">
         {selectedCount === 0 && photoCount > 1 && (
-          <span className="mr-2 text-[9px] text-[#555]">
-            Hold ⌘ to multi-select
-          </span>
+          <span className="mr-2 text-[9px] text-[#555]">Hold ⌘ to multi-select</span>
         )}
         {hasActiveFilter ? `${filteredCount} / ` : ''}
         {photoCount} {photoCount === 1 ? 'photo' : 'photos'}
