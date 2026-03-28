@@ -97,15 +97,73 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     getExportDataUrl: (mimeType, quality, targetW, targetH, crop) => {
       const img = originalImgRef.current;
       if (!img) return null;
+
+      // Tone curve LUT
+      const { points } = useToneCurveStore.getState();
+      const rgbLut = generateLUT(points.rgb);
+      const rLut = combineLUTs(rgbLut, generateLUT(points.r));
+      const gLut = combineLUTs(rgbLut, generateLUT(points.g));
+      const bLut = combineLUTs(rgbLut, generateLUT(points.b));
+
+      // Color mixer
+      const cmState = useColorMixerStore.getState();
+      const channels: HslChannel[] = [
+        'red',
+        'orange',
+        'yellow',
+        'green',
+        'aqua',
+        'blue',
+        'purple',
+        'magenta',
+      ];
+
+      // Color grading
+      const cg = useColorGradingStore.getState();
+      const toVec = (w: typeof cg.shadows): [number, number, number] => [
+        w.hue / 360,
+        w.sat,
+        w.lum / 100,
+      ];
+
+      // Effects
+      const fx = useEffectsStore.getState();
+
       return WebGLRenderer.exportDataUrl(
         img,
         useAdjustmentsStore.getState().adjustments,
         mimeType,
         quality,
-        targetW,
-        targetH,
-        gpuSpotsRef.current,
-        crop,
+        {
+          targetW,
+          targetH,
+          spots: gpuSpotsRef.current,
+          crop,
+          toneCurve: { r: rLut, g: gLut, b: bLut },
+          colorMixer: {
+            hue: channels.map((c) => cmState.hue[c]),
+            sat: channels.map((c) => cmState.saturation[c]),
+            lum: channels.map((c) => cmState.luminance[c]),
+          },
+          colorGrading: {
+            shadows: toVec(cg.shadows),
+            midtones: toVec(cg.midtones),
+            highlights: toVec(cg.highlights),
+            blending: cg.blending / 100,
+            balance: cg.balance / 100,
+          },
+          effects: {
+            vigAmount: fx.vigAmount / 100,
+            vigMidpoint: fx.vigMidpoint / 100,
+            vigRoundness: fx.vigRoundness / 100,
+            vigFeather: fx.vigFeather / 100,
+            vigHighlights: fx.vigHighlights / 100,
+            grainAmount: fx.grainAmount / 100,
+            grainSize: fx.grainSize / 100,
+            grainRoughness: fx.grainRoughness / 100,
+          },
+          masks,
+        },
       );
     },
     getRenderedPixels: () => rendererRef.current?.readCurrentPixels() ?? null,
@@ -243,7 +301,13 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
           const result = await decodeRawToCanvas(sourceBuffer);
           if (cancelled) return;
           if (!canvasRef.current || !containerRef.current || !rendererRef.current) return;
-          rememberDecodedImage(cacheKey, result.canvas, result.imageData, result.width, result.height);
+          rememberDecodedImage(
+            cacheKey,
+            result.canvas,
+            result.imageData,
+            result.width,
+            result.height,
+          );
           applyLoadedImage(result.canvas, result.imageData, result.width, result.height);
         } else {
           // Standard image: decode with createImageBitmap
