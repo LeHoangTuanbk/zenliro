@@ -2,5 +2,6 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
-  "framework": null
+  "framework": null,
+  "ignoreCommand": "git diff HEAD^ HEAD --quiet -- ../landing-page"
 }
