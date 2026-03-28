@@ -35,7 +35,7 @@ jobs:
       - name: Build & Package
         run: pnpm dist:mac
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ""
 
       - name: List build output
         run: ls -la dist/
@@ -49,3 +49,4 @@ jobs:
             dist/*.dmg
             dist/*.zip
             dist/*.blockmap
+            dist/*.yml
