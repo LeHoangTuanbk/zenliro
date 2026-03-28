@@ -3,16 +3,40 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { validateEventFrame } from './utils.js';
+import { isHeic, convertHeicToJpeg } from './libs/heic-converter.js';
 
 const RAW_EXTENSIONS = new Set([
-  'cr2', 'cr3', 'nef', 'arw', 'dng', 'raf', 'orf', 'rw2', 'pef',
-  'srw', 'x3f', '3fr', 'rwl', 'mrw', 'kdc', 'dcr', 'raw',
+  'cr2',
+  'cr3',
+  'nef',
+  'arw',
+  'dng',
+  'raf',
+  'orf',
+  'rw2',
+  'pef',
+  'srw',
+  'x3f',
+  '3fr',
+  'rwl',
+  'mrw',
+  'kdc',
+  'dcr',
+  'raw',
 ]);
 
 const MIME_MAP: Record<string, string> = {
-  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-  webp: 'image/webp', tiff: 'image/tiff', tif: 'image/tiff',
-  bmp: 'image/bmp', gif: 'image/gif',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  tiff: 'image/tiff',
+  tif: 'image/tiff',
+  bmp: 'image/bmp',
+  gif: 'image/gif',
+  heic: 'image/heic',
+  heif: 'image/heif',
+  avif: 'image/avif',
 };
 
 function getThumbnailDir() {
@@ -57,13 +81,20 @@ export function registerCatalogHandlers() {
     }
   });
 
-  ipcMain.handle('photo:loadFromPath', (event, filePath: string) => {
+  ipcMain.handle('photo:loadFromPath', async (event, filePath: string) => {
     validateEventFrame(event.senderFrame!);
     try {
       const ext = path.extname(filePath).toLowerCase().replace('.', '');
+      const rawBytes = fs.readFileSync(filePath);
+
+      // HEIC/HEIF: convert to JPEG for renderer display
+      if (isHeic(ext)) {
+        const jpegBuf = await convertHeicToJpeg(rawBytes);
+        return { mimeType: 'image/jpeg', bytes: Uint8Array.from(jpegBuf) };
+      }
+
       const mimeType = RAW_EXTENSIONS.has(ext) ? 'image/x-raw' : (MIME_MAP[ext] ?? 'image/jpeg');
-      const bytes = Uint8Array.from(fs.readFileSync(filePath));
-      return { mimeType, bytes };
+      return { mimeType, bytes: Uint8Array.from(rawBytes) };
     } catch {
       return null;
     }
