@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   --font-sans: 'Inter', system-ui, sans-serif;
@@ -15,7 +15,9 @@
 .fade-in {
   opacity: 0;
   transform: translateY(24px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  transition:
+    opacity 0.6s ease,
+    transform 0.6s ease;
 }
 
 .fade-in.visible {
@@ -24,18 +26,32 @@
 }
 
 /* Staggered children animation */
-.stagger > .fade-in:nth-child(1) { transition-delay: 0ms; }
-.stagger > .fade-in:nth-child(2) { transition-delay: 80ms; }
-.stagger > .fade-in:nth-child(3) { transition-delay: 160ms; }
-.stagger > .fade-in:nth-child(4) { transition-delay: 240ms; }
-.stagger > .fade-in:nth-child(5) { transition-delay: 320ms; }
-.stagger > .fade-in:nth-child(6) { transition-delay: 400ms; }
+.stagger > .fade-in:nth-child(1) {
+  transition-delay: 0ms;
+}
+.stagger > .fade-in:nth-child(2) {
+  transition-delay: 80ms;
+}
+.stagger > .fade-in:nth-child(3) {
+  transition-delay: 160ms;
+}
+.stagger > .fade-in:nth-child(4) {
+  transition-delay: 240ms;
+}
+.stagger > .fade-in:nth-child(5) {
+  transition-delay: 320ms;
+}
+.stagger > .fade-in:nth-child(6) {
+  transition-delay: 400ms;
+}
 
 /* Window frame for screenshots */
 .window-frame {
   border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .window-dots {
@@ -51,9 +67,15 @@
   border-radius: 50%;
 }
 
-.window-dots span:nth-child(1) { background: #ff5f57; }
-.window-dots span:nth-child(2) { background: #febc2e; }
-.window-dots span:nth-child(3) { background: #28c840; }
+.window-dots span:nth-child(1) {
+  background: #ff5f57;
+}
+.window-dots span:nth-child(2) {
+  background: #febc2e;
+}
+.window-dots span:nth-child(3) {
+  background: #28c840;
+}
 
 /* Gradient glow behind hero */
 .hero-glow {
