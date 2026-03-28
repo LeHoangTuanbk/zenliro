@@ -14,7 +14,8 @@ import {
   readExifOrientation,
   readJpegRawDimensions,
   getOrientedDimensions,
-} from './exif-orientation.js';
+} from './libs/exif-orientation.js';
+import { isHeic, convertHeicToJpeg } from './libs/heic-converter.js';
 
 app.on('ready', () => {
   const mainWindow = new BrowserWindow({
@@ -78,6 +79,9 @@ app.on('ready', () => {
             'tif',
             'bmp',
             'gif',
+            'heic',
+            'heif',
+            'avif',
             'cr2',
             'cr3',
             'nef',
@@ -120,6 +124,9 @@ app.on('ready', () => {
           tif: 'image/tiff',
           bmp: 'image/bmp',
           gif: 'image/gif',
+          heic: 'image/heic',
+          heif: 'image/heif',
+          avif: 'image/avif',
         };
         const RAW_EXTENSIONS = new Set([
           'cr2',
@@ -141,6 +148,7 @@ app.on('ready', () => {
           'raw',
         ]);
         const isRaw = RAW_EXTENSIONS.has(ext);
+        const isHeicFile = isHeic(ext);
         const mimeType = isRaw ? 'image/x-raw' : mimeMap[ext] || 'image/jpeg';
         const rawBuf = fs.readFileSync(filePath);
         const photoId = `${filePath}-${stats.mtimeMs}`;
@@ -148,16 +156,22 @@ app.on('ready', () => {
         const thumbnailDataUrl = '';
         let photoWidth = 0;
         let photoHeight = 0;
+
+        // HEIC: convert to JPEG for dimension detection
+        const decodeBuf = isHeicFile ? await convertHeicToJpeg(rawBuf) : rawBuf;
+
         // RAW files: skip dimension detection here, renderer will update via onImageLoaded
-        const orientation = isRaw ? 1 : await readExifOrientation(rawBuf);
+        const orientation = isRaw ? 1 : await readExifOrientation(decodeBuf);
         if (!isRaw) {
-          const rawDims = readJpegRawDimensions(rawBuf);
+          const rawDims = readJpegRawDimensions(decodeBuf);
           if (rawDims) {
             const orientedDims = getOrientedDimensions(rawDims, orientation);
             photoWidth = orientedDims.width;
             photoHeight = orientedDims.height;
           } else {
-            const img = nativeImage.createFromPath(filePath);
+            const img = isHeicFile
+              ? nativeImage.createFromBuffer(decodeBuf)
+              : nativeImage.createFromPath(filePath);
             if (!img.isEmpty()) {
               const imgSize = getOrientedDimensions(img.getSize(), orientation);
               photoWidth = imgSize.width;
