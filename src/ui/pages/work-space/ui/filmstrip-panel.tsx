@@ -3,23 +3,15 @@ import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { HistoryPanel } from '@features/develop/history';
 import { useShortcut } from '@shared/lib/shortcuts';
 import { ShortcutHint } from '@shared/ui/shortcut-hint';
-import { BrButton } from '@/shared/ui/base';
 
 type FilmstripPanelProps = {
   photos: ImportedPhoto[];
   selectedId: string | null;
   isVisible: boolean;
   onSelect: (id: string) => void;
-  onImport: () => void;
 };
 
-export function FilmstripPanel({
-  photos,
-  selectedId,
-  isVisible,
-  onSelect,
-  onImport,
-}: FilmstripPanelProps) {
+export function FilmstripPanel({ photos, selectedId, isVisible, onSelect }: FilmstripPanelProps) {
   const filmstripRef = useRef<HTMLDivElement | null>(null);
   const itemRefs = useRef(new Map<string, HTMLButtonElement>());
   const [isOpen, setIsOpen] = useState(true);

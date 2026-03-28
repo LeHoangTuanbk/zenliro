@@ -1,6 +1,5 @@
 import { useCallback, useRef } from 'react';
 import { Search, X, Trash2 } from 'lucide-react';
-import { BrButton } from '@/shared/ui/base';
 import { useShortcut } from '@shared/lib/shortcuts';
 import { ShortcutHint } from '@shared/ui/shortcut-hint';
 import { StarRating } from './star-rating';
@@ -13,7 +12,6 @@ type LibraryToolbarProps = {
   selectedCount: number;
   allTags: string[];
   onFilterChange: (filter: LibraryFilter) => void;
-  onImport: () => void;
   onBulkDelete: () => void;
   onClearSelection: () => void;
 };
@@ -25,7 +23,6 @@ export function LibraryToolbar({
   selectedCount,
   allTags,
   onFilterChange,
-  onImport,
   onBulkDelete,
   onClearSelection,
 }: LibraryToolbarProps) {

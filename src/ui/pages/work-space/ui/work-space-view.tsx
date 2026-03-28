@@ -200,7 +200,6 @@ export function WorkSpaceView({
           selectedId={selectedId}
           isVisible={activeView === 'develop'}
           onSelect={onSelectId}
-          onImport={onImport}
         />
 
         {/* Canvas + toolbar */}
