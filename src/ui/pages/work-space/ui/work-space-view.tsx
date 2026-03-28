@@ -21,7 +21,7 @@ import { CompareBeforePanel, useCompareStore } from '@features/develop/compare';
 import type { ExternalZoomPan, MaskInteractionProps } from '@widgets/image-canvas/ui/image-canvas';
 import { MaskPanel } from '@/features/develop/mask/ui/mask-panel';
 import type { Mask } from '@/features/develop/mask';
-import { ModuleTab } from '@/shared/ui/base';
+import { ModuleTab, BrButton } from '@/shared/ui/base';
 import { ShortcutHint } from '@shared/ui/shortcut-hint';
 import { CanvasToolbar } from './canvas-toolbar';
 import { FilmstripPanel } from './filmstrip-panel';
@@ -120,11 +120,18 @@ export function WorkSpaceView({
     <div className="flex flex-col w-full h-screen bg-[#1a1a1a] text-[#929292] font-sans text-[11px]">
       {/* ── Title bar ────────────────────────────────────────────────────────── */}
       <header
-        className="flex items-center h-9 bg-[#111] border-b border-black flex-shrink-0 relative"
+        className="flex items-center h-9 bg-[#111] border-b border-black shrink-0 relative py-4"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
       >
-        <div className="w-44 px-3 flex items-center flex-shrink-0">
-          <span className="text-lg font-bold text-[#f2f2f2] tracking-wide">Zenliro</span>
+        {/* Traffic lights spacer + Import */}
+        <div
+          className="pl-3 pr-3 flex items-center shrink-0"
+          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+        >
+          <BrButton variant="primary" size="xs" onClick={onImport}>
+            + Import
+            <ShortcutHint shortcutId="library.import" className="text-white/40" />
+          </BrButton>
         </div>
 
         {/* Module tabs */}
@@ -156,7 +163,7 @@ export function WorkSpaceView({
         >
           {selected && (
             <button
-              className="px-3 py-1 text-[10px] text-[#7ec88a] bg-[#2e5533] border border-[#3a6b40] rounded-[3px] cursor-pointer hover:bg-[#38683f] transition-colors"
+              className="px-3 text-[10px] text-[#7ec88a] bg-[#2e5533] border border-[#3a6b40] rounded-[3px] cursor-pointer hover:bg-[#38683f] transition-colors"
               onClick={() => onShowExportChange(true)}
             >
               Export

@@ -41,11 +41,6 @@ export function LibraryToolbar({
 
   return (
     <div className="flex items-center gap-2 px-4 py-2 bg-br-bg border-b border-black shrink-0">
-      <BrButton variant="primary" size="md" onClick={onImport}>
-        + Import
-        <ShortcutHint shortcutId="library.import" className="text-white/40" />
-      </BrButton>
-
       {/* Selection actions */}
       {selectedCount > 0 && (
         <>
