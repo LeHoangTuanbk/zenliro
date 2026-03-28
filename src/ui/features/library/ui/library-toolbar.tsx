@@ -140,9 +140,7 @@ export function LibraryToolbar({
 
       <span className="ml-auto text-[10px] text-br-dim">
         {selectedCount === 0 && photoCount > 1 && (
-          <span className="mr-2 text-[9px] text-[#555]">
-            Hold ⌘ to multi-select
-          </span>
+          <span className="mr-2 text-[9px] text-[#555]">Hold ⌘ to multi-select</span>
         )}
         {hasActiveFilter ? `${filteredCount} / ` : ''}
         {photoCount} {photoCount === 1 ? 'photo' : 'photos'}
