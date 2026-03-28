@@ -154,6 +154,7 @@ export function usePhotos() {
       setSelectedId(id);
       catalogSetId(id);
       saveToDisk();
+      if (id) log.info(`Photo selected: ${id.slice(0, 40)}...`);
     },
     [catalogSetId, saveToDisk],
   );
@@ -161,6 +162,7 @@ export function usePhotos() {
   const handleImport = useCallback(async () => {
     const imported = await window.electron.importPhotos();
     if (imported.length === 0) return;
+    log.info(`Importing ${imported.length} photo(s)...`);
 
     // Generate all thumbnails with progress overlay before showing photos
     const total = imported.length;
@@ -211,6 +213,7 @@ export function usePhotos() {
     addPhotos(catalogEntries);
     setSelectedId(imported[0].id);
     catalogSetId(imported[0].id);
+    log.info(`Import complete: ${imported.length} photo(s) added`);
     void queryClient.prefetchQuery(
       photoResourceQueryOptions({
         id: imported[0].id,
@@ -236,6 +239,7 @@ export function usePhotos() {
       await window.electron.photo.deletePhoto(id, thumbPath);
       queryClient.removeQueries({ queryKey: ['photo-resource', id] });
       cleanupPhotoEdits(id);
+      log.info(`Photo deleted: ${id.slice(0, 40)}...`);
       setPhotos((prev) => prev.filter((p) => p.id !== id));
       if (selectedId === id) {
         setSelectedId(null);
@@ -265,6 +269,7 @@ export function usePhotos() {
       }
 
       if (total > 1) setImportProgress(null);
+      log.info(`Bulk delete complete: ${total} photo(s) removed`);
       setPhotos((prev) => prev.filter((p) => !ids.has(p.id)));
       if (selectedId && ids.has(selectedId)) {
         setSelectedId(null);
@@ -294,6 +299,7 @@ export function usePhotos() {
       setSelectedId(id);
       catalogSetId(id);
       setActiveView(ActiveView.Develop);
+      log.info('Switched to Develop view');
     },
     [catalogSetId],
   );

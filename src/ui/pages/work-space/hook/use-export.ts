@@ -51,6 +51,7 @@ export function useExport(
           log.error('Failed to generate data URL');
           return;
         }
+        log.info(`Exporting: ${selected.fileName} (${settings.format})`);
         await window.electron.exportPhoto({
           base64: dataUrl.split(',')[1],
           mimeType: settings.format as ExportPhotoRequest['mimeType'],
@@ -60,6 +61,7 @@ export function useExport(
           startNumber: settings.startNumber,
           destFolder: settings.exportFolder || undefined,
         });
+        log.info('Export complete');
       } catch (err) {
         log.error('Export failed', err);
         throw err;

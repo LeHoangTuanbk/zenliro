@@ -170,6 +170,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     if (!canvas || !container || !renderer) return;
 
     onImageLoaded?.(imgW, imgH);
+    log.info(`Image loaded: ${imgW}x${imgH}`);
 
     // Prepare refs before touching the canvas (no visual change yet)
     imageDataRef.current = imageData;
@@ -207,6 +208,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     try {
       renderer.init(canvas, { preserveDrawingBuffer: true });
       rendererRef.current = renderer;
+      log.info('WebGL renderer initialized');
     } catch (err) {
       log.error('Init failed', err);
     }

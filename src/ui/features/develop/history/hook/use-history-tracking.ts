@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { createRendererLogger } from '@shared/lib/logger';
 import { useAdjustmentsStore } from '@features/develop/edit/store/adjustments-store';
+
+const log = createRendererLogger('history');
 import { useToneCurveStore } from '@features/develop/edit/tone-curve/store/tone-curve-store';
 import { useColorMixerStore } from '@features/develop/edit/color-mixer/store/color-mixer-store';
 import { useColorGradingStore } from '@features/develop/edit/color-grading/store/color-grading-store';
@@ -89,6 +92,7 @@ export function useHistoryTracking(photoId: string | null) {
       const store = useHistoryStore.getState();
       const snapshot = direction === 'redo' ? store.redo(id) : store.undo(id);
       if (!snapshot) return;
+      log.info(`${direction === 'undo' ? 'Undo' : 'Redo'} applied`);
       store.setIsApplying(true);
       applySnapshot(id, snapshot);
       lastSnapshotRef.current = structuredClone(snapshot);
