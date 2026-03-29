@@ -43,12 +43,16 @@ export function FilmstripPanel({ photos, selectedId, isVisible, onSelect }: Film
               }`}
               title={p.fileName}
             >
-              <img
-                src={p.thumbnailDataUrl || p.dataUrl}
-                alt={p.fileName}
-                className="w-full h-[90px] object-cover block"
-                loading="lazy"
-              />
+              {p.thumbnailDataUrl || p.dataUrl ? (
+                <img
+                  src={p.thumbnailDataUrl || p.dataUrl}
+                  alt={p.fileName}
+                  className="w-full h-[90px] object-cover block"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-[90px] bg-[#1a1a1a]" />
+              )}
             </button>
           ))}
         </div>
