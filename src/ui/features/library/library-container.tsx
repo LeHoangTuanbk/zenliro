@@ -214,12 +214,12 @@ export function LibraryContainer({
         return;
       }
 
-      // Photo dropped onto collection → add to collection
+      // Photo dropped onto collection → move to that collection
       if (!isActiveCollection && isOverCollection) {
         const collectionId = overId.replace('collection:', '');
-        const photoIdsToAdd =
+        const photoIdsToMove =
           selectedIds.size > 0 && selectedIds.has(activeId) ? Array.from(selectedIds) : [activeId];
-        addPhotosToCollection(collectionId, photoIdsToAdd);
+        movePhotosToCollection(photoIdsToMove, collectionId);
         saveToDisk();
         handleDragCancel();
         return;
@@ -244,7 +244,7 @@ export function LibraryContainer({
       handleDragCancel,
       selectedIds,
       activeCollectionId,
-      addPhotosToCollection,
+      movePhotosToCollection,
       moveCollection,
       reorderLibrary,
       reorderInsideCollection,
