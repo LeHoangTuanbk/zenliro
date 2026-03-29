@@ -1,24 +1,23 @@
 // ── Texture ──────────────────────────────────────────────────────────────────
-// Lightroom "Texture" enhances medium-frequency detail (skin, fabric, foliage)
-// without affecting overall contrast like clarity does. It operates on a
-// smaller radius (fine detail) and is luminance-weighted to avoid noise
-// amplification in deep shadows.
+// Medium-frequency detail enhancement. Blur is in linear, gamma-convert
+// to match the sRGB working color.
 
-vec3 applyTexture(vec3 color, vec2 blurCoord) {
+vec3 applyTexture(vec3 color, vec2 imageUV) {
   if (abs(u_texture) < 0.5) return color;
 
   float tex = u_texture / 100.0;
-  vec3 blur = texture(u_smallBlur, blurCoord).rgb;
 
-  // Medium-frequency detail
+  // Gamma-convert linear blur
+  vec3 blur = linearToSrgb(texture(u_smallBlur, imageUV).rgb);
+
   vec3 detail = color - blur;
   float lumDetail = luma(detail);
 
-  // Luminance-aware: suppress in deep shadows to avoid noise amplification
+  // Shadow noise suppression
   float lum = luma(color);
   float lumMask = smoothstep(0.02, 0.12, lum);
 
-  // Apply on luminance to preserve color
+  // Apply on luminance with color-ratio preservation
   float lumAdj = lumDetail * tex * lumMask * 1.5;
   float newLum = clamp(lum + lumAdj, 0.0, 1.0);
 

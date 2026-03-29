@@ -1,6 +1,8 @@
 // ── Local Adjustments (Masks) ────────────────────────────────────────────────
 // Brush, linear gradient, and radial gradient masks with per-mask adjustments.
-// Each mask has its own set of development parameters applied independently.
+// In the linear pipeline, the working color is in sRGB gamma.
+// WB and exposure need to round-trip to linear for correctness.
+// Blur reads are gamma-converted from linear RGBA16F textures.
 
 float sampleBrushTex(int slot, vec2 uv) {
   float paint = 0.0, erase = 0.0;
@@ -44,11 +46,9 @@ float sampleMaskWeight(int slot, vec2 uv) {
 }
 
 // ── Per-mask local adjustment ────────────────────────────────────────────────
-// Uses the same Lightroom-accurate algorithms as the global adjustments
-// but with per-mask delta parameters.
 
-vec3 applyLocalAdj(vec3 color, vec2 imageUV, vec2 blurCoord, int i) {
-  // ── White Balance ───────────────────────────────────────────────────
+vec3 applyLocalAdj(vec3 color, vec2 imageUV, int i) {
+  // ── White Balance (round-trip to linear for correctness) ────────────
   float t_ = u_maskTemp[i] / 100.0;
   float tnt_ = u_maskTint_[i] / 100.0;
   if (abs(t_) > 0.005 || abs(tnt_) > 0.005) {
@@ -60,9 +60,11 @@ vec3 applyLocalAdj(vec3 color, vec2 imageUV, vec2 blurCoord, int i) {
     color = linearToSrgb(lin);
   }
 
-  // ── Exposure ────────────────────────────────────────────────────────
+  // ── Exposure (round-trip to linear) ─────────────────────────────────
   if (abs(u_maskExp[i]) > 0.005) {
-    color *= pow(2.0, u_maskExp[i]);
+    vec3 lin = srgbToLinear(color);
+    lin *= pow(2.0, u_maskExp[i]);
+    color = linearToSrgb(lin);
   }
 
   // ── Tone (Blacks/Shadows/Highlights/Whites) ─────────────────────────
@@ -93,7 +95,6 @@ vec3 applyLocalAdj(vec3 color, vec2 imageUV, vec2 blurCoord, int i) {
       color += (newLum - lm2);
     }
     color = clamp(color, 0.0, 1.0);
-    lm2 = luma(color);
   }
 
   // ── Contrast ────────────────────────────────────────────────────────
@@ -102,18 +103,15 @@ vec3 applyLocalAdj(vec3 color, vec2 imageUV, vec2 blurCoord, int i) {
     float pivot = 0.43;
     float factor2 = tan(PI * 0.25 * (1.0 + con2 * 0.55));
     float lumBefore = luma(color);
-    float lumAfter = (lumBefore - pivot) * factor2 + pivot;
-    lumAfter = clamp(lumAfter, 0.0, 1.0);
-    if (lumBefore > 0.001) {
-      color *= lumAfter / lumBefore;
-    }
+    float lumAfter = clamp((lumBefore - pivot) * factor2 + pivot, 0.0, 1.0);
+    if (lumBefore > 0.001) color *= lumAfter / lumBefore;
     color = clamp(color, 0.0, 1.0);
   }
 
-  // ── Clarity ─────────────────────────────────────────────────────────
+  // ── Clarity (gamma-convert linear blur) ─────────────────────────────
   float clar2 = u_maskClar[i] / 100.0;
   if (abs(clar2) > 0.005) {
-    vec3 lb2 = texture(u_largeBlur, blurCoord).rgb;
+    vec3 lb2 = linearToSrgb(texture(u_largeBlur, imageUV).rgb);
     float lmc2 = luma(color);
     float lumDetail = luma(color - lb2);
     float midMask = exp(-3.5 * (lmc2 - 0.5) * (lmc2 - 0.5));
@@ -126,10 +124,10 @@ vec3 applyLocalAdj(vec3 color, vec2 imageUV, vec2 blurCoord, int i) {
     color = clamp(color, 0.0, 1.0);
   }
 
-  // ── Texture ─────────────────────────────────────────────────────────
+  // ── Texture (gamma-convert linear blur) ─────────────────────────────
   float texv = u_maskTexVal[i] / 100.0;
   if (abs(texv) > 0.005) {
-    vec3 sb2 = texture(u_smallBlur, blurCoord).rgb;
+    vec3 sb2 = linearToSrgb(texture(u_smallBlur, imageUV).rgb);
     float lmc3 = luma(color);
     float lumDet = luma(color - sb2);
     float lumMask = smoothstep(0.02, 0.12, lmc3);
@@ -140,11 +138,11 @@ vec3 applyLocalAdj(vec3 color, vec2 imageUV, vec2 blurCoord, int i) {
     color = clamp(color, 0.0, 1.0);
   }
 
-  // ── Dehaze ──────────────────────────────────────────────────────────
+  // ── Dehaze (gamma-convert samples + blur) ───────────────────────────
   float dhz2 = u_maskDehaze[i] / 100.0;
   if (abs(dhz2) > 0.005) {
     float dc = sampleDarkChannel(imageUV);
-    vec3 lb3 = texture(u_largeBlur, blurCoord).rgb;
+    vec3 lb3 = linearToSrgb(texture(u_largeBlur, imageUV).rgb);
     float A = clamp(max(lb3.r, max(lb3.g, lb3.b)), 0.15, 1.0);
     float trans = clamp(1.0 - 0.90 * abs(dhz2) * dc / A, 0.08, 1.0);
     if (dhz2 > 0.0) {

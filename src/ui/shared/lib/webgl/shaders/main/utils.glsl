@@ -4,15 +4,37 @@ float luma(vec3 c) {
   return dot(c, vec3(0.2126, 0.7152, 0.0722));
 }
 
-// sRGB -> linear (approximate)
+// ── Accurate sRGB transfer functions (IEC 61966-2-1) ────────────────────────
+// These use the official piecewise definition, not the pow(2.2) approximation.
+
 vec3 srgbToLinear(vec3 c) {
-  return pow(max(c, vec3(0.0)), vec3(2.2));
+  return mix(
+    c / 12.92,
+    pow((c + 0.055) / 1.055, vec3(2.4)),
+    step(0.04045, c)
+  );
 }
 
-// linear -> sRGB (approximate)
 vec3 linearToSrgb(vec3 c) {
-  return pow(max(c, vec3(0.0)), vec3(1.0 / 2.2));
+  c = clamp(c, 0.0, 1.0);
+  return mix(
+    c * 12.92,
+    1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055,
+    step(0.0031308, c)
+  );
 }
+
+// Scalar versions for single-channel operations
+float srgbToLinear_s(float c) {
+  return c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
+}
+
+float linearToSrgb_s(float c) {
+  c = clamp(c, 0.0, 1.0);
+  return c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1.0 / 2.4) - 0.055;
+}
+
+// ── HSL conversions ─────────────────────────────────────────────────────────
 
 vec3 rgb2hsl(vec3 c) {
   float maxC = max(c.r, max(c.g, c.b));
@@ -53,7 +75,7 @@ float hueDist(float h1, float h2) {
   return d > 0.5 ? 1.0 - d : d;
 }
 
-// Soft-knee helper: smooth zone transition (like a Gaussian bell)
+// Soft-knee helper: smooth zone transition (Gaussian bell)
 float zoneWeight(float lum, float center, float width) {
   float d = (lum - center) / max(width, 0.001);
   return exp(-0.5 * d * d);

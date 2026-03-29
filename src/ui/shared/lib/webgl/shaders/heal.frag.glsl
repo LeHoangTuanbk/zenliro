@@ -18,6 +18,11 @@ out vec4 fragColor;
 void main() {
   vec3 color = texture(u_image, v_texCoord).rgb;
 
+  // DEBUG: Tint image when spots exist
+  if (u_spotCount > 0) {
+    color = mix(color, vec3(0.0, 1.0, 0.0), 0.3);  // 30% green tint
+  }
+
   for (int i = 0; i < MAX_SPOTS; i++) {
     if (i >= u_spotCount) break;
 
@@ -52,11 +57,11 @@ void main() {
       srcColor = texture(u_image, srcUV).rgb;
       if (mode == 0) {
         float hw = (1.0 - dist / radius) * 0.6 + 0.4;
-        srcColor = clamp(srcColor + u_colorData[i].rgb * hw, 0.0, 1.0);
+        srcColor = srcColor + u_colorData[i].rgb * hw;
       }
     }
 
-    color = mix(color, clamp(srcColor, 0.0, 1.0), alpha);
+    color = mix(color, srcColor, alpha);
   }
 
   fragColor = vec4(color, 1.0);

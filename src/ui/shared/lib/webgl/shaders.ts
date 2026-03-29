@@ -4,5 +4,6 @@ export {
   HEAL_FRAG_SRC,
   BRUSH_VERT_SRC,
   BRUSH_FRAG_SRC,
+  LINEARIZE_FRAG_SRC,
   MAIN_FRAG_SRC,
 } from './shaders/index';

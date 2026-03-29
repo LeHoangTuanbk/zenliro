@@ -1,18 +1,12 @@
 // ── Main Entry Point ─────────────────────────────────────────────────────────
-// Processing order follows Lightroom's ACR pipeline:
-//   1. Crop & Rotate
-//   2. White Balance
-//   3. Exposure
-//   4. Tone (Blacks/Shadows/Highlights/Whites)
-//   5. Contrast
-//   6. Clarity / Texture / Dehaze
-//   7. Tone Curve
-//   8. Color Mixer (HSL)
-//   9. Vibrance / Saturation
-//  10. Color Grading
-//  11. Local Adjustments (Masks)
-//  12. Vignette
-//  13. Grain
+// Linear pipeline: u_image and blur textures contain LINEAR data (RGBA16F).
+//
+// Processing order (matches Lightroom ACR):
+//   [LINEAR SPACE]  WB → Exposure
+//   [TRANSITION]    linearToSrgb()
+//   [sRGB/GAMMA]    Tone → Contrast → Clarity → Texture → Dehaze →
+//                   Tone Curve → Color Mixer → Vibrance → Saturation →
+//                   Color Grading → Masks → Vignette → Grain → Output
 
 void main() {
   vec2 uv = v_texCoord;
@@ -20,7 +14,6 @@ void main() {
   // ── 1. CROP & ROTATE ──────────────────────────────────────────────
   vec2 imageUV = u_cropOrigin + uv * u_cropSize;
 
-  // Fine rotation (straighten) around crop center
   if (u_rotation != 0.0) {
     vec2 center = u_cropOrigin + u_cropSize * 0.5;
     vec2 d = imageUV - center;
@@ -33,11 +26,9 @@ void main() {
     imageUV = center + rd;
   }
 
-  // Flips (in rotated image space)
   if (u_flipH > 0.5) imageUV.x = 1.0 - imageUV.x;
   if (u_flipV > 0.5) imageUV.y = 1.0 - imageUV.y;
 
-  // Undo 90-deg rotation steps to map back to original texture coords
   if (u_rotSteps > 0) {
     int s = u_rotSteps % 4;
     vec2 tmp = imageUV;
@@ -46,19 +37,31 @@ void main() {
     else if (s == 3) imageUV = vec2(tmp.y, 1.0 - tmp.x);
   }
 
-  // Out-of-bounds: dark grey background
   if (imageUV.x < 0.0 || imageUV.x > 1.0 || imageUV.y < 0.0 || imageUV.y > 1.0) {
     fragColor = vec4(0.078, 0.078, 0.078, 1.0);
     return;
   }
 
-  vec3 color = texture(u_image, imageUV).rgb;
+  // ══════════════════════════════════════════════════════════════════════
+  // ██ LINEAR SPACE — u_image contains linear data (RGBA16F)
+  // ══════════════════════════════════════════════════════════════════════
+  vec3 color = texture(u_image, imageUV).rgb;  // already linear
 
-  // ── 2. WHITE BALANCE ───────────────────────────────────────────────
+  // ── 2. WHITE BALANCE (linear multiply — no hue shift) ──────────────
   color = applyWhiteBalance(color);
 
-  // ── 3. EXPOSURE ────────────────────────────────────────────────────
+  // ── 3. EXPOSURE (2^EV in linear — physically correct) ──────────────
   color = applyExposure(color);
+
+  // ══════════════════════════════════════════════════════════════════════
+  // ██ TRANSITION: linear → sRGB gamma (perceptual working space)
+  // ██ 16-bit float precision prevents banding in recovered shadows
+  // ══════════════════════════════════════════════════════════════════════
+  color = linearToSrgb(clamp(color, 0.0, 1.0));
+
+  // ══════════════════════════════════════════════════════════════════════
+  // ██ sRGB/GAMMA SPACE — perceptual operations
+  // ══════════════════════════════════════════════════════════════════════
 
   // ── 4. TONE ────────────────────────────────────────────────────────
   color = applyTone(color);
@@ -67,9 +70,10 @@ void main() {
   color = applyContrast(color);
 
   // ── 6. CLARITY / TEXTURE / DEHAZE ──────────────────────────────────
-  color = applyClarity(color, v_texCoord);
-  color = applyTexture(color, v_texCoord);
-  color = applyDehaze(color, imageUV, v_texCoord);
+  // Blur textures live in image space, so sample them with imageUV.
+  color = applyClarity(color, imageUV);
+  color = applyTexture(color, imageUV);
+  color = applyDehaze(color, imageUV);
 
   // ── 7. TONE CURVE ──────────────────────────────────────────────────
   color = clamp(color, 0.0, 1.0);
@@ -90,7 +94,7 @@ void main() {
     if (mi >= u_maskCount || u_maskType[mi] == 0) continue;
     float mw = sampleMaskWeight(mi, imageUV);
     if (mw > 0.001) {
-      vec3 localColor = applyLocalAdj(color, imageUV, v_texCoord, mi);
+      vec3 localColor = applyLocalAdj(color, imageUV, mi);
       color = mix(color, clamp(localColor, 0.0, 1.0), mw);
     }
   }

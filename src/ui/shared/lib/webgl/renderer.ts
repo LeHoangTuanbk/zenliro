@@ -2,11 +2,12 @@ import type { Adjustments } from '@/features/develop/edit/store/adjustments-stor
 import type { CropState } from '@/features/develop/crop/store/types';
 import type { Mask } from '@/features/develop/mask/store/types';
 import type { SpotGPUData, MaskGPUData } from './types';
-import { linkProgram, createTexture, createFBO } from './gl-utils';
+import { linkProgram, createTextureF16, createFBO } from './gl-utils';
 import {
   VERT_SRC,
   BLUR_FRAG_SRC,
   HEAL_FRAG_SRC,
+  LINEARIZE_FRAG_SRC,
   MAIN_FRAG_SRC,
   BRUSH_VERT_SRC,
   BRUSH_FRAG_SRC,
@@ -14,22 +15,30 @@ import {
 
 const MAX_MASKS = 4;
 
+/** sRGB → linear (IEC 61966-2-1 piecewise transfer) */
+function srgbToLinear(c: number): number {
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
 export class WebGLRenderer {
   private gl!: WebGL2RenderingContext;
   private blurProg!: WebGLProgram;
+  private linearizeProg!: WebGLProgram;
   private mainProg!: WebGLProgram;
   private healProg!: WebGLProgram;
   private brushProg!: WebGLProgram;
   private vao!: WebGLVertexArrayObject;
 
-  private imageTex!: WebGLTexture;
-  private smallBlurTex!: WebGLTexture;
-  private smallBlurTmpTex!: WebGLTexture;
-  private largeBlurTex!: WebGLTexture;
-  private largeBlurTmpTex!: WebGLTexture;
-  private healTex!: WebGLTexture;
+  private imageTex!: WebGLTexture; // RGBA8 sRGB (from DOM upload)
+  private linearTex!: WebGLTexture; // RGBA16F linear (after linearize pass)
+  private smallBlurTex!: WebGLTexture; // RGBA16F linear
+  private smallBlurTmpTex!: WebGLTexture; // RGBA16F linear
+  private largeBlurTex!: WebGLTexture; // RGBA16F linear
+  private largeBlurTmpTex!: WebGLTexture; // RGBA16F linear
+  private healTex!: WebGLTexture; // RGBA16F linear
   private toneCurveLUTTex!: WebGLTexture;
 
+  private linearFBO!: WebGLFramebuffer;
   private smallBlurHFBO!: WebGLFramebuffer;
   private smallBlurFBO!: WebGLFramebuffer;
   private largeBlurHFBO!: WebGLFramebuffer;
@@ -59,7 +68,13 @@ export class WebGLRenderer {
     if (!gl) throw new Error('WebGL2 not supported');
     this.gl = gl;
 
+    // Enable float FBO rendering (required for RGBA16F render targets)
+    if (!gl.getExtension('EXT_color_buffer_float')) {
+      throw new Error('EXT_color_buffer_float not supported — required for linear pipeline');
+    }
+
     this.blurProg = linkProgram(gl, VERT_SRC, BLUR_FRAG_SRC);
+    this.linearizeProg = linkProgram(gl, VERT_SRC, LINEARIZE_FRAG_SRC);
     this.mainProg = linkProgram(gl, VERT_SRC, MAIN_FRAG_SRC);
     this.healProg = linkProgram(gl, VERT_SRC, HEAL_FRAG_SRC);
     this.brushProg = linkProgram(gl, BRUSH_VERT_SRC, BRUSH_FRAG_SRC);
@@ -70,7 +85,7 @@ export class WebGLRenderer {
     const buf = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, buf);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-    for (const prog of [this.blurProg, this.mainProg, this.healProg]) {
+    for (const prog of [this.blurProg, this.linearizeProg, this.mainProg, this.healProg]) {
       const aPos = gl.getAttribLocation(prog, 'a_position');
       gl.enableVertexAttribArray(aPos);
       gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
@@ -166,15 +181,18 @@ export class WebGLRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    this.smallBlurTmpTex = createTexture(gl, w, h);
-    this.smallBlurTex = createTexture(gl, w, h);
-    this.largeBlurTmpTex = createTexture(gl, w, h);
-    this.largeBlurTex = createTexture(gl, w, h);
+    // RGBA16F linear textures for the HDR pipeline
+    this.linearTex = createTextureF16(gl, w, h);
+    this.linearFBO = createFBO(gl, this.linearTex);
+    this.smallBlurTmpTex = createTextureF16(gl, w, h);
+    this.smallBlurTex = createTextureF16(gl, w, h);
+    this.largeBlurTmpTex = createTextureF16(gl, w, h);
+    this.largeBlurTex = createTextureF16(gl, w, h);
     this.smallBlurHFBO = createFBO(gl, this.smallBlurTmpTex);
     this.smallBlurFBO = createFBO(gl, this.smallBlurTex);
     this.largeBlurHFBO = createFBO(gl, this.largeBlurTmpTex);
     this.largeBlurFBO = createFBO(gl, this.largeBlurTex);
-    this.healTex = createTexture(gl, w, h);
+    this.healTex = createTextureF16(gl, w, h);
     this.healFBO = createFBO(gl, this.healTex);
 
     // Compute mask FBO dims (max 2048 on larger side)
@@ -491,7 +509,7 @@ export class WebGLRenderer {
     gl.bindVertexArray(this.vao);
     gl.useProgram(this.healProg);
     gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, this.imageTex);
+    gl.bindTexture(gl.TEXTURE_2D, this.linearTex);
     gl.uniform1i(gl.getUniformLocation(this.healProg, 'u_image'), 0);
 
     const count = this.spotsData.length;
@@ -512,9 +530,26 @@ export class WebGLRenderer {
       params[b + 1] = s.feather;
       params[b + 2] = s.opacity;
       params[b + 3] = s.mode;
-      color[b] = s.colorData[0];
-      color[b + 1] = s.colorData[1];
-      color[b + 2] = s.colorData[2];
+      // colorData handling depends on mode:
+      // - fill (mode=2): absolute sRGB color → linearize
+      // - heal (mode=0): sRGB difference (dst-src border means) → linearize each
+      //   mean separately then take the difference
+      // - clone (mode=1): always [0,0,0] → no conversion needed
+      if (s.mode === 2) {
+        // Fill: absolute color, linearize directly
+        color[b] = srgbToLinear(s.colorData[0]);
+        color[b + 1] = srgbToLinear(s.colorData[1]);
+        color[b + 2] = srgbToLinear(s.colorData[2]);
+      } else {
+        // Heal/clone: pass through (heal offset is applied additively in shader)
+        // For heal mode, the offset was computed in sRGB space. Since we now work
+        // in linear space, we approximate by scaling the offset by ~2.2 (average
+        // gamma) to account for the expanded linear range in midtones.
+        const scale = s.mode === 0 ? 2.2 : 1.0;
+        color[b] = s.colorData[0] * scale;
+        color[b + 1] = s.colorData[1] * scale;
+        color[b + 2] = s.colorData[2] * scale;
+      }
     }
     gl.uniform4fv(gl.getUniformLocation(this.healProg, 'u_dstSrc'), dstSrc);
     gl.uniform4fv(gl.getUniformLocation(this.healProg, 'u_params'), params);
@@ -528,11 +563,25 @@ export class WebGLRenderer {
   render(canvas: HTMLCanvasElement, adjustments: Adjustments): void {
     if (!this.ready) return;
     const gl = this.gl;
-    const activeImageTex = this.runHealPass() ?? this.imageTex;
 
     gl.bindVertexArray(this.vao);
 
-    // Blur passes
+    // ── Linearize pass: sRGB (RGBA8) → linear (RGBA16F) ─────────────
+    gl.useProgram(this.linearizeProg);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.linearFBO);
+    gl.viewport(0, 0, this.imgW, this.imgH);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, this.imageTex);
+    gl.uniform1i(gl.getUniformLocation(this.linearizeProg, 'u_src'), 0);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    // From here on, everything uses linearTex (or healTex) as the source
+    const activeImageTex = this.runHealPass() ?? this.linearTex;
+
+    // Re-bind VAO (heal pass unbinds it)
+    gl.bindVertexArray(this.vao);
+
+    // Blur passes (operate on linear data)
     gl.useProgram(this.blurProg);
     const uStep = gl.getUniformLocation(this.blurProg, 'u_step');
     const uSrc = gl.getUniformLocation(this.blurProg, 'u_src');

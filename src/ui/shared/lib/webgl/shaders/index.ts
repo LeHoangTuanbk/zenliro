@@ -4,6 +4,7 @@ import BLUR_FRAG_SRC from './blur.frag.glsl?raw';
 import HEAL_FRAG_SRC from './heal.frag.glsl?raw';
 import BRUSH_VERT_SRC from './brush-vert.glsl?raw';
 import BRUSH_FRAG_SRC from './brush-frag.glsl?raw';
+import LINEARIZE_FRAG_SRC from './linearize.frag.glsl?raw';
 
 // Main fragment shader — assembled from modular .glsl parts
 import header from './main/header.glsl?raw';
@@ -46,4 +47,12 @@ const MAIN_FRAG_SRC = [
   entry,
 ].join('\n');
 
-export { VERT_SRC, BLUR_FRAG_SRC, HEAL_FRAG_SRC, BRUSH_VERT_SRC, BRUSH_FRAG_SRC, MAIN_FRAG_SRC };
+export {
+  VERT_SRC,
+  BLUR_FRAG_SRC,
+  HEAL_FRAG_SRC,
+  BRUSH_VERT_SRC,
+  BRUSH_FRAG_SRC,
+  LINEARIZE_FRAG_SRC,
+  MAIN_FRAG_SRC,
+};
