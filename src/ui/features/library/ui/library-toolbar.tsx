@@ -1,5 +1,5 @@
 import { useCallback, useRef } from 'react';
-import { Search, X, Trash2 } from 'lucide-react';
+import { Search, X, Trash2, FolderPlus } from 'lucide-react';
 import { useShortcut } from '@shared/lib/shortcuts';
 import { ShortcutHint } from '@shared/ui/shortcut-hint';
 import { StarRating } from './star-rating';
@@ -14,6 +14,7 @@ type LibraryToolbarProps = {
   onFilterChange: (filter: LibraryFilter) => void;
   onBulkDelete: () => void;
   onClearSelection: () => void;
+  onCollectionCreate: () => void;
 };
 
 export function LibraryToolbar({
@@ -25,6 +26,7 @@ export function LibraryToolbar({
   onFilterChange,
   onBulkDelete,
   onClearSelection,
+  onCollectionCreate,
 }: LibraryToolbarProps) {
   const hasActiveFilter = filter.search || filter.minRating > 0 || filter.tags.length > 0;
   const searchRef = useRef<HTMLInputElement>(null);
@@ -62,6 +64,16 @@ export function LibraryToolbar({
           <div className="h-4 w-px bg-[#444]" />
         </>
       )}
+
+      {/* New collection */}
+      <button
+        onClick={onCollectionCreate}
+        className="flex items-center gap-1.5 px-3 py-1 text-[11px] font-medium text-[#ccc] hover:text-white bg-[#2a2a2a] border border-[#444] rounded-[3px] cursor-pointer hover:bg-[#333] hover:border-[#555] transition-colors"
+        title="New Collection"
+      >
+        <FolderPlus className="w-4 h-4" />
+        New Collection
+      </button>
 
       {/* Search */}
       <div className="relative flex items-center">

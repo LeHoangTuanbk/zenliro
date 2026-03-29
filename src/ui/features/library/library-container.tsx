@@ -6,6 +6,7 @@ import { useLibrary } from './hook/use-library';
 import { useInfiniteScroll } from './hook/use-infinite-scroll';
 import { useLibraryFilter } from './hook/use-library-filter';
 import { useDragReorder } from './hook/use-drag-reorder';
+import { useCatalogStore } from '@/pages/work-space/store/catalog-store';
 import { DEFAULT_FILTER } from './const/filter';
 import type { LibraryFilter } from './const/filter';
 import type { HistogramData } from '@features/histogram/lib/compute-histogram';
@@ -46,7 +47,34 @@ export function LibraryContainer({
   onRatingChange,
 }: LibraryContainerProps) {
   const [filter, setFilter] = useState<LibraryFilter>(DEFAULT_FILTER);
-  const filteredPhotos = useLibraryFilter(photos, catalogPhotos, filter);
+
+  // Collections
+  const collections = useCatalogStore((s) => s.collections);
+  const activeCollectionId = useCatalogStore((s) => s.activeCollectionId);
+  const setActiveCollectionId = useCatalogStore((s) => s.setActiveCollectionId);
+  const addCollection = useCatalogStore((s) => s.addCollection);
+  const renameCollection = useCatalogStore((s) => s.renameCollection);
+  const deleteCollection = useCatalogStore((s) => s.deleteCollection);
+  const addPhotosToCollection = useCatalogStore((s) => s.addPhotosToCollection);
+  const libraryOrder = useCatalogStore((s) => s.libraryOrder);
+  const reorderLibrary = useCatalogStore((s) => s.reorderLibrary);
+  const saveToDisk = useCatalogStore((s) => s.saveToDisk);
+
+  // Filter photos by active collection or show uncategorized at root
+  const collectionFilteredPhotos = useMemo(() => {
+    if (activeCollectionId) {
+      const col = collections.find((c) => c.id === activeCollectionId);
+      if (!col) return photos;
+      const idSet = new Set(col.photoIds);
+      return photos.filter((p) => idSet.has(p.id));
+    }
+    // Root: show only photos not in any collection
+    const allCollectionPhotoIds = new Set<string>();
+    collections.forEach((c) => c.photoIds.forEach((pid) => allCollectionPhotoIds.add(pid)));
+    return photos.filter((p) => !allCollectionPhotoIds.has(p.id));
+  }, [photos, activeCollectionId, collections]);
+
+  const filteredPhotos = useLibraryFilter(collectionFilteredPhotos, catalogPhotos, filter);
   const photoIds = useMemo(() => filteredPhotos.map((p) => p.id), [filteredPhotos]);
 
   const {
@@ -63,14 +91,101 @@ export function LibraryContainer({
   } = useLibrary({ photoIds });
 
   const { visibleCount, setSentinel } = useInfiniteScroll(filteredPhotos.length);
-  const { activePhoto, handleDragStart, handleDragEnd, handleDragCancel } =
-    useDragReorder(filteredPhotos, onReorder);
+  const {
+    activeId: activeDragId,
+    activePhoto,
+    handleDragStart,
+    handleDragEnd,
+    handleDragCancel,
+  } = useDragReorder(filteredPhotos, onReorder);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
     catalogPhotos.forEach((p) => p.tags?.forEach((t) => set.add(t)));
     return Array.from(set).sort();
   }, [catalogPhotos]);
+
+  // Collection handlers
+  const handleCollectionClick = useCallback(
+    (id: string) => {
+      setActiveCollectionId(id);
+      saveToDisk();
+    },
+    [setActiveCollectionId, saveToDisk],
+  );
+
+  const handleCollectionBack = useCallback(() => {
+    setActiveCollectionId(null);
+    saveToDisk();
+  }, [setActiveCollectionId, saveToDisk]);
+
+  const handleCollectionCreate = useCallback(() => {
+    addCollection('New Collection');
+    saveToDisk();
+  }, [addCollection, saveToDisk]);
+
+  const handleCollectionRename = useCallback(
+    (id: string, name: string) => {
+      renameCollection(id, name);
+      saveToDisk();
+    },
+    [renameCollection, saveToDisk],
+  );
+
+  const [deleteCollectionTarget, setDeleteCollectionTarget] = useState<string | null>(null);
+  const deleteCollectionName = deleteCollectionTarget
+    ? (collections.find((c) => c.id === deleteCollectionTarget)?.name ?? '')
+    : '';
+
+  const handleConfirmCollectionDelete = useCallback(() => {
+    if (deleteCollectionTarget) {
+      deleteCollection(deleteCollectionTarget);
+      saveToDisk();
+      setDeleteCollectionTarget(null);
+    }
+  }, [deleteCollectionTarget, deleteCollection, saveToDisk]);
+
+  // Unified drag end: reorder in libraryOrder, or add photo to collection
+  const handleDragEndWithCollections = useCallback(
+    (event: import('@dnd-kit/core').DragEndEvent) => {
+      const activeId = event.active.id as string;
+      const overId = event.over?.id as string | undefined;
+      if (!overId || activeId === overId) return;
+
+      const isActiveCollection = activeId.startsWith('collection:');
+      const isOverCollection = overId.startsWith('collection:');
+
+      // Photo dropped onto collection → add to collection (not reorder)
+      if (!isActiveCollection && isOverCollection) {
+        const collectionId = overId.replace('collection:', '');
+        const photoIdsToAdd =
+          selectedIds.size > 0 && selectedIds.has(activeId) ? Array.from(selectedIds) : [activeId];
+        addPhotosToCollection(collectionId, photoIdsToAdd);
+        saveToDisk();
+        return;
+      }
+
+      // Inside a collection: reorder photos within that collection
+      if (activeCollectionId && !isActiveCollection && !isOverCollection) {
+        handleDragEnd(event);
+        return;
+      }
+
+      // Root level: reorder anything (collections, photos, mixed)
+      if (!activeCollectionId) {
+        reorderLibrary(activeId, overId);
+        saveToDisk();
+      }
+    },
+    [
+      handleDragEnd,
+      selectedIds,
+      activeCollectionId,
+      addPhotosToCollection,
+      reorderLibrary,
+      saveToDisk,
+    ],
+  );
 
   const deleteTarget = photos.find((p) => p.id === deleteTargetId);
 
@@ -87,19 +202,25 @@ export function LibraryContainer({
     clearSelection();
   }, [selectedIds, onBulkDelete, clearSelection, closeBulkDelete]);
 
-  const onPhotoClick = useCallback((id: string, e: React.MouseEvent) => {
-    handlePhotoClick(id, e, photoIds);
-    // Also set the primary selection (for info panel) on normal click
-    if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
-      onSelect(id);
-    }
-  }, [handlePhotoClick, photoIds, onSelect]);
+  const onPhotoClick = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      handlePhotoClick(id, e, photoIds);
+      // Also set the primary selection (for info panel) on normal click
+      if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        onSelect(id);
+      }
+    },
+    [handlePhotoClick, photoIds, onSelect],
+  );
 
   return (
     <div className="flex flex-1 overflow-hidden">
       <LibraryView
         photos={filteredPhotos}
         catalogPhotos={catalogPhotos}
+        collections={collections}
+        libraryOrder={libraryOrder}
+        activeCollectionId={activeCollectionId}
         importProgress={importProgress}
         selectedId={selectedId}
         selectedIds={selectedIds}
@@ -107,9 +228,10 @@ export function LibraryContainer({
         filter={filter}
         allTags={allTags}
         visibleCount={visibleCount}
-        totalCount={photos.length}
+        totalCount={collectionFilteredPhotos.length}
         filteredCount={filteredPhotos.length}
         activePhoto={activePhoto}
+        activeDragId={activeDragId}
         setSentinel={setSentinel}
         onPhotoClick={onPhotoClick}
         onImport={onImport}
@@ -120,8 +242,13 @@ export function LibraryContainer({
         onFilterChange={setFilter}
         onRatingChange={onRatingChange}
         onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
+        onDragEnd={handleDragEndWithCollections}
         onDragCancel={handleDragCancel}
+        onCollectionClick={handleCollectionClick}
+        onCollectionBack={handleCollectionBack}
+        onCollectionCreate={handleCollectionCreate}
+        onCollectionRename={handleCollectionRename}
+        onCollectionDelete={setDeleteCollectionTarget}
       />
       {selected && (
         <aside className="w-[260px] bg-[#222] border-l border-black flex flex-col shrink-0 overflow-y-auto">
@@ -147,6 +274,18 @@ export function LibraryContainer({
           open={showBulkDelete}
           onConfirm={handleConfirmBulkDelete}
           onCancel={closeBulkDelete}
+        />
+      )}
+
+      {/* Collection delete dialog */}
+      {deleteCollectionTarget && (
+        <DeleteConfirmDialog
+          count={1}
+          fileName={deleteCollectionName}
+          open={!!deleteCollectionTarget}
+          onConfirm={handleConfirmCollectionDelete}
+          onCancel={() => setDeleteCollectionTarget(null)}
+          collectionMode
         />
       )}
     </div>

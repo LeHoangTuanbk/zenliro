@@ -1,5 +1,6 @@
 import { BrButton } from '@/shared/ui/base';
 import { LibraryPhotoCard, DragOverlayCard } from './library-photo-card';
+import { CollectionCard, CollectionDragOverlay } from './collection-card';
 import { LibraryToolbar } from './library-toolbar';
 import { ImportProgressOverlay } from './import-progress-overlay';
 import {
@@ -10,6 +11,7 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import { ChevronRight } from 'lucide-react';
 import type { LibraryFilter } from '../const/filter';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import type { ImportProgress } from '@/pages/work-space/hook/use-photos';
@@ -17,6 +19,9 @@ import type { ImportProgress } from '@/pages/work-space/hook/use-photos';
 type LibraryViewProps = {
   photos: ImportedPhoto[];
   catalogPhotos: CatalogPhoto[];
+  collections: Collection[];
+  libraryOrder: string[];
+  activeCollectionId: string | null;
   importProgress: ImportProgress;
   selectedId: string | null;
   selectedIds: Set<string>;
@@ -27,6 +32,7 @@ type LibraryViewProps = {
   totalCount: number;
   filteredCount: number;
   activePhoto: ImportedPhoto | null;
+  activeDragId: string | null;
   setSentinel: (node: HTMLDivElement | null) => void;
   onPhotoClick: (id: string, e: React.MouseEvent) => void;
   onImport: () => void;
@@ -39,6 +45,11 @@ type LibraryViewProps = {
   onDragStart: (event: DragStartEvent) => void;
   onDragEnd: (event: DragEndEvent) => void;
   onDragCancel: () => void;
+  onCollectionClick: (id: string) => void;
+  onCollectionBack: () => void;
+  onCollectionCreate: () => void;
+  onCollectionRename: (id: string, name: string) => void;
+  onCollectionDelete: (id: string) => void;
 };
 
 const ACTIVATION_CONSTRAINT = { distance: 8 };
@@ -46,6 +57,9 @@ const ACTIVATION_CONSTRAINT = { distance: 8 };
 export function LibraryView({
   photos,
   catalogPhotos,
+  collections,
+  libraryOrder,
+  activeCollectionId,
   importProgress,
   selectedId,
   selectedIds,
@@ -56,6 +70,7 @@ export function LibraryView({
   totalCount,
   filteredCount,
   activePhoto,
+  activeDragId,
   setSentinel,
   onPhotoClick,
   onImport,
@@ -68,12 +83,35 @@ export function LibraryView({
   onDragStart,
   onDragEnd,
   onDragCancel,
+  onCollectionClick,
+  onCollectionBack,
+  onCollectionCreate,
+  onCollectionRename,
+  onCollectionDelete,
 }: LibraryViewProps) {
   const visiblePhotos = photos.slice(0, visibleCount);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: ACTIVATION_CONSTRAINT }),
   );
   const hasMultiSelection = selectedIds.size > 0 || isMetaHeld;
+  const activeCollection = activeCollectionId
+    ? (collections.find((c) => c.id === activeCollectionId) ?? null)
+    : null;
+  const isRoot = !activeCollectionId;
+
+  // Build lookup maps
+  const photoMap = new Map(photos.map((p) => [p.id, p]));
+  const collectionMap = new Map(collections.map((c) => [c.id, c]));
+
+  // Get first photo thumbnail for a collection
+  const getCollectionThumbnail = (col: Collection): string | null => {
+    if (col.photoIds.length === 0) return null;
+    const firstPhoto = photoMap.get(col.photoIds[0]);
+    return firstPhoto?.thumbnailDataUrl || null;
+  };
+
+  const hasContent = photos.length > 0 || (isRoot && collections.length > 0);
+  const isEmpty = !hasContent;
 
   return (
     <div className="relative flex flex-col w-full h-full bg-br-bg">
@@ -86,9 +124,25 @@ export function LibraryView({
         onFilterChange={onFilterChange}
         onBulkDelete={onBulkDelete}
         onClearSelection={onClearSelection}
+        onCollectionCreate={onCollectionCreate}
       />
 
-      {photos.length === 0 ? (
+      {/* Breadcrumb */}
+      {activeCollection && (
+        <div className="flex items-center gap-1 px-4 py-1.5 text-[11px] border-b border-[#222]">
+          <button
+            onClick={onCollectionBack}
+            className="text-[#888] hover:text-[#ccc] cursor-pointer transition-colors"
+          >
+            Library
+          </button>
+          <ChevronRight className="w-3 h-3 text-[#555]" />
+          <span className="text-[#ccc]">{activeCollection.name}</span>
+          <span className="text-[#555] ml-1">({activeCollection.photoIds.length})</span>
+        </div>
+      )}
+
+      {isEmpty ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-4 text-br-dim select-none">
           <svg
             width="56"
@@ -129,28 +183,78 @@ export function LibraryView({
               data-library-grid
               className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-3"
             >
-              {visiblePhotos.map((p) => {
-                const catPhoto = catalogPhotos.find((c) => c.id === p.id);
-                return (
-                  <LibraryPhotoCard
-                    key={p.id}
-                    photo={p}
-                    isSelected={p.id === selectedId}
-                    isMultiSelected={selectedIds.has(p.id)}
-                    hasMultiSelection={hasMultiSelection}
-                    rating={catPhoto?.rating ?? 0}
-                    onClick={(e) => onPhotoClick(p.id, e)}
-                    onOpenDevelop={() => onOpenDevelop(p.id)}
-                    onDelete={() => onDelete(p.id)}
-                    onRatingChange={(val) => onRatingChange(p.id, val)}
-                  />
-                );
-              })}
+              {isRoot ? (
+                <>
+                  {/* Root: render items in libraryOrder (collections + photos interleaved) */}
+                  {libraryOrder.map((entry) => {
+                    if (entry.startsWith('collection:')) {
+                      const colId = entry.replace('collection:', '');
+                      const col = collectionMap.get(colId);
+                      if (!col) return null;
+                      return (
+                        <CollectionCard
+                          key={entry}
+                          collection={col}
+                          photoCount={col.photoIds.length}
+                          thumbnail={getCollectionThumbnail(col)}
+                          onClick={() => onCollectionClick(col.id)}
+                          onRename={(name) => onCollectionRename(col.id, name)}
+                          onDelete={() => onCollectionDelete(col.id)}
+                        />
+                      );
+                    }
+                    const photo = photoMap.get(entry);
+                    if (!photo) return null;
+                    const catPhoto = catalogPhotos.find((c) => c.id === photo.id);
+                    return (
+                      <LibraryPhotoCard
+                        key={photo.id}
+                        photo={photo}
+                        isSelected={photo.id === selectedId}
+                        isMultiSelected={selectedIds.has(photo.id)}
+                        hasMultiSelection={hasMultiSelection}
+                        rating={catPhoto?.rating ?? 0}
+                        onClick={(e) => onPhotoClick(photo.id, e)}
+                        onOpenDevelop={() => onOpenDevelop(photo.id)}
+                        onDelete={() => onDelete(photo.id)}
+                        onRatingChange={(val) => onRatingChange(photo.id, val)}
+                      />
+                    );
+                  })}
+                </>
+              ) : (
+                <>
+                  {/* Inside collection: show only its photos */}
+                  {visiblePhotos.map((p) => {
+                    const catPhoto = catalogPhotos.find((c) => c.id === p.id);
+                    return (
+                      <LibraryPhotoCard
+                        key={p.id}
+                        photo={p}
+                        isSelected={p.id === selectedId}
+                        isMultiSelected={selectedIds.has(p.id)}
+                        hasMultiSelection={hasMultiSelection}
+                        rating={catPhoto?.rating ?? 0}
+                        onClick={(e) => onPhotoClick(p.id, e)}
+                        onOpenDevelop={() => onOpenDevelop(p.id)}
+                        onDelete={() => onDelete(p.id)}
+                        onRatingChange={(val) => onRatingChange(p.id, val)}
+                      />
+                    );
+                  })}
+                </>
+              )}
             </div>
             {visibleCount < photos.length && <div ref={setSentinel} className="h-4" />}
           </div>
           <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
-            {activePhoto ? <DragOverlayCard photo={activePhoto} /> : null}
+            {activePhoto ? (
+              <DragOverlayCard photo={activePhoto} />
+            ) : activeDragId?.startsWith('collection:') ? (
+              <CollectionDragOverlay
+                collection={collections.find((c) => `collection:${c.id}` === activeDragId) ?? null}
+              />
+            ) : null}
           </DragOverlay>
         </DndContext>
       )}

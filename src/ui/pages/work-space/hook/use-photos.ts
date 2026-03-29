@@ -37,7 +37,7 @@ export function usePhotos() {
   const addPhotos = useCatalogStore((s) => s.addPhotos);
   const catalogSetId = useCatalogStore((s) => s.setSelectedId);
   const catalogDeletePhoto = useCatalogStore((s) => s.deletePhoto);
-  const catalogReorderPhotos = useCatalogStore((s) => s.reorderPhotos);
+  const catalogReorderLibrary = useCatalogStore((s) => s.reorderLibrary);
   const saveToDisk = useCatalogStore((s) => s.saveToDisk);
 
   const buildThumbnail = useCallback(
@@ -213,6 +213,16 @@ export function usePhotos() {
         return [...prev, ...importedForList.filter((p) => !ids.has(p.id))];
       });
       addPhotos(catalogEntries);
+
+      // Auto-add to active collection
+      const activeColId = useCatalogStore.getState().activeCollectionId;
+      if (activeColId) {
+        useCatalogStore.getState().addPhotosToCollection(
+          activeColId,
+          imported.map((p) => p.id),
+        );
+      }
+
       setSelectedId(imported[0].id);
       catalogSetId(imported[0].id);
       log.info(`Import complete: ${imported.length} photo(s) added`);
@@ -305,10 +315,10 @@ export function usePhotos() {
         next.splice(toIndex, 0, moved);
         return next;
       });
-      catalogReorderPhotos(fromIndex, toIndex);
+      // Inside collection: reorder local state only (collection photoIds order)
       saveToDisk();
     },
-    [catalogReorderPhotos, saveToDisk],
+    [saveToDisk],
   );
 
   const openDevelop = useCallback(
