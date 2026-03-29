@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import type { CurvePoint } from '../store/types';
 import { monotonicCubicSpline } from '../lib/curve-math';
 
@@ -6,6 +6,9 @@ type Props = {
   points: CurvePoint[];
   onChange: (pts: CurvePoint[]) => void;
   color?: string;
+  activeZone?: string | null;
+  activeValue?: number;
+  parametricOffset?: (x: number) => number;
 };
 
 const SIZE = 200;
@@ -16,9 +19,17 @@ function sortPoints(pts: CurvePoint[]): CurvePoint[] {
   return [...pts].sort((a, b) => a.x - b.x);
 }
 
-export function CurveEditor({ points, onChange, color = '#ffffff' }: Props) {
+export function CurveEditor({
+  points,
+  onChange,
+  color = '#ffffff',
+  activeZone,
+  activeValue,
+  parametricOffset,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const draggingRef = useRef<number | null>(null);
+  const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -26,7 +37,6 @@ export function CurveEditor({ points, onChange, color = '#ffffff' }: Props) {
     const ctx = canvas.getContext('2d')!;
     ctx.clearRect(0, 0, SIZE, SIZE);
 
-    // Background
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(0, 0, SIZE, SIZE);
 
@@ -53,7 +63,7 @@ export function CurveEditor({ points, onChange, color = '#ffffff' }: Props) {
     ctx.lineTo(SIZE, 0);
     ctx.stroke();
 
-    // Curve
+    // Curve (base spline + parametric offset)
     const sorted = sortPoints(points);
     const fn = monotonicCubicSpline(sorted);
     ctx.strokeStyle = color;
@@ -61,7 +71,9 @@ export function CurveEditor({ points, onChange, color = '#ffffff' }: Props) {
     ctx.beginPath();
     for (let px = 0; px <= SIZE; px++) {
       const x = px / SIZE;
-      const y = fn(x);
+      const base = fn(x);
+      const offset = parametricOffset ? parametricOffset(x) : 0;
+      const y = Math.max(0, Math.min(1, base + offset));
       const cy = (1 - y) * SIZE;
       if (px === 0) ctx.moveTo(px, cy);
       else ctx.lineTo(px, cy);
@@ -80,7 +92,7 @@ export function CurveEditor({ points, onChange, color = '#ffffff' }: Props) {
       ctx.lineWidth = 1;
       ctx.stroke();
     }
-  }, [points, color]);
+  }, [points, color, parametricOffset]);
 
   useEffect(() => {
     draw();
@@ -120,8 +132,16 @@ export function CurveEditor({ points, onChange, color = '#ffffff' }: Props) {
     const idx = findHit(norm);
     if (idx === -1) return;
     const pt = points[idx];
-    if (pt.x === 0 || pt.x === 1) return; // corner points cannot be removed
+    if (pt.x === 0 || pt.x === 1) return;
     onChange(points.filter((_, i) => i !== idx));
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const norm = toNorm(e, e.currentTarget);
+    const fn = monotonicCubicSpline(sortPoints(points));
+    const base = fn(norm.x);
+    const offset = parametricOffset ? parametricOffset(norm.x) : 0;
+    setHover({ x: norm.x, y: Math.max(0, Math.min(1, base + offset)) });
   };
 
   useEffect(() => {
@@ -153,14 +173,35 @@ export function CurveEditor({ points, onChange, color = '#ffffff' }: Props) {
     };
   }, [points, onChange]);
 
+  const fmtVal = (v: number) => (v > 0 ? `+${v}` : String(v));
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={SIZE}
-      height={SIZE}
-      className="w-full cursor-crosshair rounded-[2px]"
-      onMouseDown={handleMouseDown}
-      onDoubleClick={handleDblClick}
-    />
+    <div className="relative">
+      <canvas
+        ref={canvasRef}
+        width={SIZE}
+        height={SIZE}
+        className="w-full cursor-crosshair rounded-[2px]"
+        onMouseDown={handleMouseDown}
+        onDoubleClick={handleDblClick}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={() => setHover(null)}
+      />
+
+      {/* Coordinate readout (top-left) */}
+      {hover && (
+        <div className="absolute top-1.5 left-2 text-[10px] text-br-text font-[tabular-nums] pointer-events-none select-none opacity-80">
+          {Math.round(hover.x * 255)} / {Math.round(hover.y * 255)}
+        </div>
+      )}
+
+      {/* Active zone info (bottom) */}
+      {activeZone && activeValue !== undefined && (
+        <div className="absolute bottom-1.5 left-2 right-2 flex justify-between text-[10px] pointer-events-none select-none">
+          <span className="text-br-text font-semibold">{activeZone}</span>
+          <span className="text-br-text font-[tabular-nums]">{fmtVal(activeValue)}</span>
+        </div>
+      )}
+    </div>
   );
 }

@@ -8,7 +8,11 @@ import { useAdjustmentsStore } from '@/features/develop/edit';
 import { type Mask } from '@/features/develop/mask';
 import { type HealSpot, HealEngine } from '@/features/develop/heal';
 import { useToneCurveStore } from '@/features/develop/edit/tone-curve';
-import { generateLUT, combineLUTs } from '@/features/develop/edit/tone-curve';
+import {
+  generateLUT,
+  combineLUTs,
+  buildParametricOffset,
+} from '@/features/develop/edit/tone-curve';
 import { useColorMixerStore } from '@/features/develop/edit/color-mixer';
 import type { HslChannel } from '@/features/develop/edit/color-mixer';
 import { useColorGradingStore } from '@/features/develop/edit/color-grading';
@@ -82,6 +86,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   const adjustments = useAdjustmentsStore((s) => s.adjustments);
   const toneCurvePoints = useToneCurveStore((s) => s.points);
   const toneCurveParametric = useToneCurveStore((s) => s.parametric);
+  const toneCurveZoneSplits = useToneCurveStore((s) => s.zoneSplits);
   const colorMixerHue = useColorMixerStore((s) => s.hue);
   const colorMixerSat = useColorMixerStore((s) => s.saturation);
   const colorMixerLum = useColorMixerStore((s) => s.luminance);
@@ -99,8 +104,9 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       if (!img) return null;
 
       // Tone curve LUT
-      const { points } = useToneCurveStore.getState();
-      const rgbLut = generateLUT(points.rgb);
+      const { points, parametric, zoneSplits } = useToneCurveStore.getState();
+      const offset = buildParametricOffset(parametric, zoneSplits);
+      const rgbLut = generateLUT(points.rgb, offset);
       const rLut = combineLUTs(rgbLut, generateLUT(points.r));
       const gLut = combineLUTs(rgbLut, generateLUT(points.g));
       const bLut = combineLUTs(rgbLut, generateLUT(points.b));
@@ -420,14 +426,15 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   useEffect(() => {
     const renderer = rendererRef.current;
     if (!renderer) return;
-    const { points } = useToneCurveStore.getState();
-    const rgbLut = generateLUT(points.rgb);
+    const { points, parametric, zoneSplits } = useToneCurveStore.getState();
+    const offset = buildParametricOffset(parametric, zoneSplits);
+    const rgbLut = generateLUT(points.rgb, offset);
     const rLut = combineLUTs(rgbLut, generateLUT(points.r));
     const gLut = combineLUTs(rgbLut, generateLUT(points.g));
     const bLut = combineLUTs(rgbLut, generateLUT(points.b));
     renderer.setToneCurveLUT(rLut, gLut, bLut);
     renderToCanvas();
-  }, [renderToCanvas, toneCurveParametric, toneCurvePoints]);
+  }, [renderToCanvas, toneCurveParametric, toneCurvePoints, toneCurveZoneSplits]);
 
   useEffect(() => {
     const renderer = rendererRef.current;

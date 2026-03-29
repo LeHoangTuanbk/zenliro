@@ -1,6 +1,10 @@
+import { useMemo, useState } from 'react';
 import { useToneCurveStore } from '../store/tone-curve-store';
 import type { CurveChannel } from '../store/types';
+import { buildParametricOffset } from '../lib/curve-math';
 import { CurveEditor } from './curve-editor';
+import { ZoneDividers } from './zone-dividers';
+import { ParametricRow } from './parametric-row';
 
 const CHANNELS: { id: CurveChannel; label: string; color: string; dot: string }[] = [
   { id: 'rgb', label: 'RGB', color: '#ffffff', dot: '#cccccc' },
@@ -17,10 +21,26 @@ const PARAMETRIC_SLIDERS = [
 ];
 
 export function ToneCurvePanel() {
-  const { channel, points, parametric, setChannel, setPoints, setParametric, reset } =
-    useToneCurveStore();
+  const {
+    channel,
+    points,
+    parametric,
+    zoneSplits,
+    setChannel,
+    setPoints,
+    setParametric,
+    setZoneSplits,
+    reset,
+  } = useToneCurveStore();
 
+  const [activeSlider, setActiveSlider] = useState<string | null>(null);
   const activeColor = CHANNELS.find((c) => c.id === channel)?.color ?? '#ffffff';
+  const activeKey = PARAMETRIC_SLIDERS.find((s) => s.label === activeSlider)?.key;
+
+  const parametricOffset = useMemo(
+    () => buildParametricOffset(parametric, zoneSplits),
+    [parametric, zoneSplits],
+  );
 
   return (
     <div className="flex flex-col">
@@ -59,12 +79,20 @@ export function ToneCurvePanel() {
       </div>
 
       {/* Curve editor */}
-      <div className="px-3 pb-2">
+      <div className="px-3">
         <CurveEditor
           points={points[channel]}
           onChange={(pts) => setPoints(channel, pts)}
           color={activeColor}
+          activeZone={activeSlider}
+          activeValue={activeKey ? parametric[activeKey] : undefined}
+          parametricOffset={parametricOffset}
         />
+      </div>
+
+      {/* Zone dividers */}
+      <div className="px-3 pb-1">
+        <ZoneDividers splits={zoneSplits} onChange={setZoneSplits} />
       </div>
 
       {/* Parametric sliders */}
@@ -76,58 +104,9 @@ export function ToneCurvePanel() {
             label={label}
             value={parametric[key]}
             onChange={(v) => setParametric(key, v)}
+            onActiveChange={(active) => setActiveSlider(active ? label : null)}
           />
         ))}
-      </div>
-    </div>
-  );
-}
-
-function ParametricRow({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  const pct = ((value + 100) / 200) * 100;
-  return (
-    <div className="flex flex-col gap-0.5 py-[3px]">
-      <div className="flex justify-between items-baseline">
-        <span className={`text-[10.5px] ${value !== 0 ? 'text-br-text' : 'text-br-muted'}`}>
-          {label}
-        </span>
-        <span
-          className={`text-[10px] font-[tabular-nums] min-w-[28px] text-right ${value !== 0 ? 'text-br-warm' : 'text-br-dim'}`}
-        >
-          {value > 0 ? `+${value}` : value}
-        </span>
-      </div>
-      <div className="relative h-[14px]" onDoubleClick={() => onChange(0)}>
-        <div className="absolute top-1/2 -translate-y-1/2 left-0 right-0 h-[3px] bg-br-elevated rounded-[1px]">
-          <div className="absolute left-1/2 -top-[1px] w-px h-[5px] bg-br-mark -translate-x-1/2" />
-          {value !== 0 && (
-            <div
-              className="absolute top-0 h-full bg-br-accent opacity-70 rounded-[1px]"
-              style={
-                value > 0
-                  ? { left: '50%', width: `${pct - 50}%` }
-                  : { left: `${pct}%`, width: `${50 - pct}%` }
-              }
-            />
-          )}
-        </div>
-        <input
-          type="range"
-          min={-100}
-          max={100}
-          step={1}
-          value={value}
-          onChange={(e) => onChange(parseInt(e.target.value, 10))}
-          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer m-0"
-        />
       </div>
     </div>
   );
