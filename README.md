@@ -1,5 +1,8 @@
 # Zenliro
 
+![Downloads](https://img.shields.io/github/downloads/LeHoangTuanbk/zenliro/total)
+![GitHub Stars](https://img.shields.io/github/stars/LeHoangTuanbk/zenliro)
+
 > **Enhance, not alter.** A Lightroom Classic-inspired photo development app powered by AI Agent.
 
 Zenliro is a desktop photo processing and color grading tool built for photographers who care about mood, tone, and authenticity. Not a destructive editor — no object removal, no inpainting. Just light, color, and feel.
