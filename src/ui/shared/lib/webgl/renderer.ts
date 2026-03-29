@@ -556,7 +556,7 @@ export class WebGLRenderer {
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
     };
     runBlur(activeImageTex, this.smallBlurHFBO, this.smallBlurFBO, this.smallBlurTmpTex, 2.0);
-    runBlur(activeImageTex, this.largeBlurHFBO, this.largeBlurFBO, this.largeBlurTmpTex, 18.0);
+    runBlur(activeImageTex, this.largeBlurHFBO, this.largeBlurFBO, this.largeBlurTmpTex, 28.0);
 
     // Main pass
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
