@@ -7,6 +7,7 @@ export type ParametricSliders = {
   darks: number;
   shadows: number;
 };
+export type ParametricPerChannel = Record<CurveChannel, ParametricSliders>;
 
 export const DEFAULT_ZONE_SPLITS: ZoneSplits = [0.25, 0.5, 0.75];
 
@@ -27,4 +28,11 @@ export const defaultParametric = (): ParametricSliders => ({
   lights: 0,
   darks: 0,
   shadows: 0,
+});
+
+export const defaultParametricPerChannel = (): ParametricPerChannel => ({
+  rgb: defaultParametric(),
+  r: defaultParametric(),
+  g: defaultParametric(),
+  b: defaultParametric(),
 });

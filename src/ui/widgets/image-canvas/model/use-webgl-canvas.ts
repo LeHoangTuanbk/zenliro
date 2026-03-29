@@ -103,13 +103,16 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       const img = originalImgRef.current;
       if (!img) return null;
 
-      // Tone curve LUT
+      // Tone curve LUT (per-channel parametric offsets + point-pinning)
       const { points, parametric, zoneSplits } = useToneCurveStore.getState();
-      const offset = buildParametricOffset(parametric, zoneSplits);
-      const rgbLut = generateLUT(points.rgb, offset);
-      const rLut = combineLUTs(rgbLut, generateLUT(points.r));
-      const gLut = combineLUTs(rgbLut, generateLUT(points.g));
-      const bLut = combineLUTs(rgbLut, generateLUT(points.b));
+      const rgbOffset = buildParametricOffset(parametric.rgb, zoneSplits, points.rgb);
+      const rgbLut = generateLUT(points.rgb, rgbOffset);
+      const rOffset = buildParametricOffset(parametric.r, zoneSplits, points.r);
+      const gOffset = buildParametricOffset(parametric.g, zoneSplits, points.g);
+      const bOffset = buildParametricOffset(parametric.b, zoneSplits, points.b);
+      const rLut = combineLUTs(rgbLut, generateLUT(points.r, rOffset));
+      const gLut = combineLUTs(rgbLut, generateLUT(points.g, gOffset));
+      const bLut = combineLUTs(rgbLut, generateLUT(points.b, bOffset));
 
       // Color mixer
       const cmState = useColorMixerStore.getState();
@@ -427,11 +430,14 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     const renderer = rendererRef.current;
     if (!renderer) return;
     const { points, parametric, zoneSplits } = useToneCurveStore.getState();
-    const offset = buildParametricOffset(parametric, zoneSplits);
-    const rgbLut = generateLUT(points.rgb, offset);
-    const rLut = combineLUTs(rgbLut, generateLUT(points.r));
-    const gLut = combineLUTs(rgbLut, generateLUT(points.g));
-    const bLut = combineLUTs(rgbLut, generateLUT(points.b));
+    const rgbOffset = buildParametricOffset(parametric.rgb, zoneSplits, points.rgb);
+    const rgbLut = generateLUT(points.rgb, rgbOffset);
+    const rOffset = buildParametricOffset(parametric.r, zoneSplits, points.r);
+    const gOffset = buildParametricOffset(parametric.g, zoneSplits, points.g);
+    const bOffset = buildParametricOffset(parametric.b, zoneSplits, points.b);
+    const rLut = combineLUTs(rgbLut, generateLUT(points.r, rOffset));
+    const gLut = combineLUTs(rgbLut, generateLUT(points.g, gOffset));
+    const bLut = combineLUTs(rgbLut, generateLUT(points.b, bOffset));
     renderer.setToneCurveLUT(rLut, gLut, bLut);
     renderToCanvas();
   }, [renderToCanvas, toneCurveParametric, toneCurvePoints, toneCurveZoneSplits]);

@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, Tray, Menu, nativeImage } from 'el
 import { ipcMainHandle, isDev, validateEventFrame } from './utils.js';
 import { getPreloadPath, getUIPath, getTrayIconPath } from './path-resolver.js';
 import { registerCatalogHandlers } from './catalog.js';
+import { registerHistoryHandlers } from './history.js';
 import { registerAgentIpc } from './agent/agent-ipc.js';
 import { setMainWindow } from './mcp/ipc-bridge.js';
 import { startLocalServer, stopLocalServer } from './mcp/local-server.js';
@@ -72,6 +73,7 @@ app.on('ready', () => {
 
   createMenu(mainWindow);
   registerCatalogHandlers();
+  registerHistoryHandlers();
   registerAgentIpc(mainWindow);
   setMainWindow(mainWindow);
   setupTray(mainWindow);

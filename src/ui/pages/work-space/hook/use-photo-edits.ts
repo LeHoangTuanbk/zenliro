@@ -1,15 +1,22 @@
 import { useEffect, useRef } from 'react';
 import { useCatalogStore } from '../store/catalog-store';
-import { useAdjustmentsStore, DEFAULT_ADJUSTMENTS, type Adjustments } from '@features/develop/edit/store/adjustments-store';
+import {
+  useAdjustmentsStore,
+  DEFAULT_ADJUSTMENTS,
+  type Adjustments,
+} from '@features/develop/edit/store/adjustments-store';
 import { useColorMixerStore } from '@features/develop/edit/color-mixer/store/color-mixer-store';
 import { defaultChannelValues } from '@features/develop/edit/color-mixer/store/types';
 import { useColorGradingStore } from '@features/develop/edit/color-grading/store/color-grading-store';
 import { defaultWheel } from '@features/develop/edit/color-grading/store/types';
-import { useEffectsStore, type EffectsState } from '@features/develop/edit/effects/model/effects-store';
+import {
+  useEffectsStore,
+  type EffectsState,
+} from '@features/develop/edit/effects/model/effects-store';
 import { useToneCurveStore } from '@features/develop/edit/tone-curve/store/tone-curve-store';
 import {
   defaultCurvePoints,
-  defaultParametric,
+  defaultParametricPerChannel,
 } from '@features/develop/edit/tone-curve/store/types';
 import { useCropStore } from '@features/develop/crop/store/crop-store';
 import { useMaskStore } from '@/features/develop/mask';
@@ -64,7 +71,7 @@ function captureEdits(photoId: string): PhotoEdits {
           },
         }
       : {}),
-  masks: useMaskStore.getState().getMasks(photoId) as PhotoEdits['masks'],
+    masks: useMaskStore.getState().getMasks(photoId) as PhotoEdits['masks'],
   };
 }
 
@@ -93,7 +100,7 @@ function applyEdits(photoId: string, edits: PhotoEdits) {
 
   useToneCurveStore.setState({
     points: { ...defaultCurvePoints(), ...edits.toneCurve.points } as never,
-    parametric: { ...defaultParametric(), ...edits.toneCurve.parametric },
+    parametric: { ...defaultParametricPerChannel(), ...edits.toneCurve.parametric },
   });
 
   if (edits.crop) {
@@ -150,7 +157,7 @@ export function usePhotoEdits(selectedId: string | null) {
 
     prevIdRef.current = selectedId;
     saveToDisk();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
   // Auto-save 1.5s after any edit store change
@@ -182,7 +189,7 @@ export function usePhotoEdits(selectedId: string | null) {
       clearTimeout(timer);
       unsubs.forEach((u) => u());
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
   // Main process asks renderer to save before quitting
@@ -195,6 +202,6 @@ export function usePhotoEdits(selectedId: string | null) {
       }
       window.electron.sendSaveDone();
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

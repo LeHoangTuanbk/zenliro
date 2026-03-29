@@ -612,14 +612,28 @@ export function useAgentIpc(
       },
 
       [AGENT_CHANNELS.SET_TONE_CURVE]: (req) => {
-        const { channel, points } = (req.payload ?? {}) as {
+        const { channel, points, parametric } = (req.payload ?? {}) as {
           channel?: string;
           points?: Array<{ x: number; y: number }>;
+          parametric?: { highlights?: number; lights?: number; darks?: number; shadows?: number };
         };
-        if (!channel || !points || !photoId) return respond(req.requestId, null);
+        if (!channel || !photoId) return respond(req.requestId, null);
+        const ch = channel as 'rgb' | 'r' | 'g' | 'b';
 
         withHistory(photoId, `Tone curve ${channel}`, () => {
-          useToneCurveStore.getState().setPoints(channel as 'rgb' | 'r' | 'g' | 'b', points);
+          const store = useToneCurveStore.getState();
+          if (points) store.setPoints(ch, points);
+          if (parametric) {
+            for (const [key, value] of Object.entries(parametric)) {
+              if (typeof value === 'number') {
+                store.setParametric(
+                  ch,
+                  key as 'highlights' | 'lights' | 'darks' | 'shadows',
+                  value,
+                );
+              }
+            }
+          }
         });
         useAgentStore.getState().showActionToast(`Tone curve: ${channel}`);
         respond(req.requestId, { ok: true });

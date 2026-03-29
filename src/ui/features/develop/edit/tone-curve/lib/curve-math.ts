@@ -76,13 +76,17 @@ export function monotonicCubicSpline(points: Point[]): (x: number) => number {
 /**
  * Build a parametric offset function from slider values + zone splits.
  * Each slider bends the curve in its zone using a smooth cosine bell.
- * Returns (x: 0-1) => y-offset (-1 to 1).
+ * Wider zones produce proportionally stronger bends.
+ * Manual control points pin the offset to 0 (point-pinning).
+ * Returns (x: 0-1) => y-offset.
  */
 export function buildParametricOffset(
   parametric: { shadows: number; darks: number; lights: number; highlights: number },
   splits: [number, number, number],
+  pinPoints?: Point[],
 ): (x: number) => number {
-  const MAX_BEND = 0.35;
+  const BASE_BEND = 0.5;
+  const REF_WIDTH = 0.25;
   const zones = [
     { value: parametric.shadows, start: 0, end: splits[0] },
     { value: parametric.darks, start: splits[0], end: splits[1] },
@@ -90,19 +94,35 @@ export function buildParametricOffset(
     { value: parametric.highlights, start: splits[2], end: 1 },
   ];
 
+  // Non-corner manual points act as pins
+  const pins = pinPoints ? pinPoints.filter((p) => p.x > 0.001 && p.x < 0.999).map((p) => p.x) : [];
+
   return (x: number) => {
     let offset = 0;
     for (const zone of zones) {
       if (zone.value === 0) continue;
       const center = (zone.start + zone.end) / 2;
       const halfWidth = (zone.end - zone.start) / 2;
-      // Extend 40% beyond zone boundary for smooth blending
-      const extended = halfWidth * 1.4;
+      const widthScale = Math.min((zone.end - zone.start) / REF_WIDTH, 1.5);
+      const maxBend = BASE_BEND * widthScale;
+      const extended = halfWidth * 1.3;
       const dist = Math.abs(x - center);
       if (dist >= extended) continue;
       const bump = (1 + Math.cos((Math.PI * dist) / extended)) / 2;
-      offset += (zone.value / 100) * MAX_BEND * bump;
+      offset += (zone.value / 100) * maxBend * bump;
     }
+
+    // Point-pinning: smoothstep notch to 0 near each manual point
+    if (pins.length > 0) {
+      const PIN_RADIUS = 0.06;
+      let mask = 1;
+      for (const px of pins) {
+        const d = Math.abs(x - px) / PIN_RADIUS;
+        if (d < 1) mask *= d * d * (3 - 2 * d);
+      }
+      offset *= mask;
+    }
+
     return offset;
   };
 }

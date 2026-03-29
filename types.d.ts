@@ -79,7 +79,7 @@ type PhotoEdits = {
   effects: Record<string, number>;
   toneCurve: {
     points: Record<string, Array<{ x: number; y: number }>>;
-    parametric: Record<string, number>;
+    parametric: Record<string, Record<string, number>>;
   };
   crop?: {
     x: number;
@@ -121,6 +121,11 @@ interface Window {
     catalog: {
       load: () => Promise<Catalog | null>;
       save: (data: Catalog) => Promise<boolean>;
+    };
+    history: {
+      load: (photoId: string) => Promise<unknown>;
+      save: (photoId: string, data: unknown) => Promise<boolean>;
+      delete: (photoId: string) => Promise<boolean>;
     };
     photo: {
       loadFromPath: (filePath: string) => Promise<LoadedPhotoBinary | null>;
