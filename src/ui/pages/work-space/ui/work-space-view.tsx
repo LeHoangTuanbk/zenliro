@@ -31,6 +31,8 @@ import { ScanOverlay } from '@/features/agent/ui/scan-overlay';
 import { AgentActionToast } from '@/features/agent/ui/agent-action-toast';
 import type { ImportProgress } from '../hook/use-photos';
 import type { DragEvent } from 'react';
+import { useMemo } from 'react';
+import { useCatalogStore } from '../store/catalog-store';
 
 type DropHandlers = {
   onDragEnter: (e: DragEvent) => void;
@@ -116,6 +118,21 @@ export function WorkSpaceView({
   onActiveToolChange,
   onShowExportChange,
 }: WorkSpaceViewProps) {
+  // Filter filmstrip photos by active collection (or uncategorized at root)
+  const activeCollectionId = useCatalogStore((s) => s.activeCollectionId);
+  const collections = useCatalogStore((s) => s.collections);
+  const filmstripPhotos = useMemo(() => {
+    if (activeCollectionId) {
+      const col = collections.find((c) => c.id === activeCollectionId);
+      if (!col) return photos;
+      const idSet = new Set(col.photoIds);
+      return photos.filter((p) => idSet.has(p.id));
+    }
+    const allColIds = new Set<string>();
+    collections.forEach((c) => c.photoIds.forEach((pid) => allColIds.add(pid)));
+    return photos.filter((p) => !allColIds.has(p.id));
+  }, [photos, activeCollectionId, collections]);
+
   const isCompareMode = useCompareStore((s) => s.isCompareMode);
   const toggleCompare = useCompareStore((s) => s.toggle);
   const compareZoom = useCompareStore((s) => s.zoom);
@@ -230,7 +247,7 @@ export function WorkSpaceView({
       {/* ── Develop view ─────────────────────────────────────────────────────── */}
       <div className={activeView === 'develop' ? 'flex flex-1 overflow-hidden' : 'hidden'}>
         <FilmstripPanel
-          photos={photos}
+          photos={filmstripPhotos}
           selectedId={selectedId}
           isVisible={activeView === 'develop'}
           onSelect={onSelectId}

@@ -12,6 +12,7 @@ type DeleteConfirmDialogProps = {
   count: number;
   fileName?: string;
   open: boolean;
+  collectionMode?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -20,6 +21,7 @@ export function DeleteConfirmDialog({
   count,
   fileName,
   open,
+  collectionMode,
   onConfirm,
   onCancel,
 }: DeleteConfirmDialogProps) {
@@ -30,10 +32,19 @@ export function DeleteConfirmDialog({
       <DialogContent className="bg-br-input border border-br-elevated text-br-text sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-[13px]">
-            {isBulk ? `Remove ${count} Photos` : 'Remove Photo'}
+            {collectionMode
+              ? 'Delete Collection'
+              : isBulk
+                ? `Remove ${count} Photos`
+                : 'Remove Photo'}
           </DialogTitle>
           <DialogDescription className="text-[11px] text-br-muted">
-            {isBulk ? (
+            {collectionMode ? (
+              <>
+                Delete collection <span className="text-br-text">{fileName}</span>? Photos inside
+                will be moved back to the library root.
+              </>
+            ) : isBulk ? (
               `Remove ${count} photos from catalog? Original files will not be deleted.`
             ) : (
               <>
@@ -48,7 +59,7 @@ export function DeleteConfirmDialog({
             Cancel
           </BrButton>
           <BrButton variant="primary" size="sm" onClick={onConfirm}>
-            Remove
+            {collectionMode ? 'Delete' : 'Remove'}
           </BrButton>
         </DialogFooter>
       </DialogContent>

@@ -40,13 +40,13 @@ export function useZoomPan(
     else setLocalPan(p);
   };
 
-  const reset = () => {
+  const reset = useCallback(() => {
     if (external) external.onChange(1, { x: 0, y: 0 });
     else {
       setLocalZoom(1);
       setLocalPan({ x: 0, y: 0 });
     }
-  };
+  }, [external]);
 
   // Cmd/Ctrl + scroll to zoom
   useEffect(() => {

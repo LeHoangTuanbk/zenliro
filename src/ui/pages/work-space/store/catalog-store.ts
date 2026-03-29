@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { createRendererLogger } from '@shared/lib/logger';
+
+const log = createRendererLogger('catalog');
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingSaveResolvers: Array<() => void> = [];
@@ -6,9 +9,12 @@ let pendingSaveResolvers: Array<() => void> = [];
 type CatalogStore = {
   photos: CatalogPhoto[];
   edits: Record<string, PhotoEdits>;
+  collections: Collection[];
+  libraryOrder: string[];
   selectedId: string | null;
+  activeCollectionId: string | null;
   isLoaded: boolean;
-  // actions
+  // photo actions
   initFromDisk: () => Promise<void>;
   saveToDisk: () => Promise<void>;
   addPhotos: (photos: CatalogPhoto[]) => void;
@@ -16,20 +22,35 @@ type CatalogStore = {
   savePhotoEdits: (id: string, edits: PhotoEdits) => void;
   getPhotoEdits: (id: string) => PhotoEdits | undefined;
   deletePhoto: (id: string) => void;
-  reorderPhotos: (fromIndex: number, toIndex: number) => void;
   setPhotoRating: (id: string, rating: number) => void;
   setPhotoTags: (id: string, tags: string[]) => void;
+  // library order
+  reorderLibrary: (fromId: string, toId: string) => void;
+  // collection actions
+  setActiveCollectionId: (id: string | null) => void;
+  addCollection: (name: string, parentId?: string | null) => string;
+  renameCollection: (id: string, name: string) => void;
+  deleteCollection: (id: string) => void;
+  addPhotosToCollection: (collectionId: string, photoIds: string[]) => void;
+  removePhotosFromCollection: (collectionId: string, photoIds: string[]) => void;
+  movePhotosToCollection: (photoIds: string[], targetId: string | null) => void;
+  moveCollection: (collectionId: string, targetParentId: string | null) => void;
+  reorderInsideCollection: (collectionId: string, fromId: string, toId: string) => void;
 };
 
 export const useCatalogStore = create<CatalogStore>((set, get) => ({
   photos: [],
   edits: {},
+  collections: [],
+  libraryOrder: [],
   selectedId: null,
+  activeCollectionId: null,
   isLoaded: false,
 
   initFromDisk: async () => {
     const catalog = await window.electron.catalog.load();
     if (!catalog) {
+      log.info('No catalog found, starting fresh');
       set({ isLoaded: true });
       return;
     }
@@ -40,12 +61,25 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
       rating: p.rating ?? 0,
       tags: p.tags ?? [],
     }));
+    const collections = catalog.collections ?? [];
+    // Build libraryOrder from saved data, or generate from existing items
+    let libraryOrder = catalog.libraryOrder ?? [];
+    if (libraryOrder.length === 0) {
+      libraryOrder = [
+        ...collections.map((c: Collection) => `collection:${c.id}`),
+        ...photos.map((p: CatalogPhoto) => p.id),
+      ];
+    }
     set({
       photos,
       edits: catalog.edits ?? {},
+      collections,
+      libraryOrder,
       selectedId: catalog.selectedId ?? null,
+      activeCollectionId: catalog.activeCollectionId ?? null,
       isLoaded: true,
     });
+    log.info(`Catalog loaded: ${photos.length} photos, ${collections.length} collections`);
   },
 
   saveToDisk: async () => {
@@ -58,13 +92,24 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
 
       saveTimer = setTimeout(async () => {
         saveTimer = null;
-        const { photos, edits, selectedId, isLoaded } = get();
+        const {
+          photos,
+          edits,
+          collections,
+          libraryOrder,
+          selectedId,
+          activeCollectionId,
+          isLoaded,
+        } = get();
         if (isLoaded) {
           await window.electron.catalog.save({
             version: 1,
             photos,
             edits,
+            collections,
+            libraryOrder,
             selectedId,
+            activeCollectionId,
             lastOpenedAt: Date.now(),
           });
         }
@@ -79,7 +124,11 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
   addPhotos: (newPhotos) => {
     set((s) => {
       const ids = new Set(s.photos.map((p) => p.id));
-      return { photos: [...s.photos, ...newPhotos.filter((p) => !ids.has(p.id))] };
+      const added = newPhotos.filter((p) => !ids.has(p.id));
+      return {
+        photos: [...s.photos, ...added],
+        libraryOrder: [...s.libraryOrder, ...added.map((p) => p.id)],
+      };
     });
   },
 
@@ -97,17 +146,24 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
       return {
         photos: s.photos.filter((p) => p.id !== id),
         edits: restEdits,
+        collections: s.collections.map((c) =>
+          c.photoIds.includes(id) ? { ...c, photoIds: c.photoIds.filter((pid) => pid !== id) } : c,
+        ),
+        libraryOrder: s.libraryOrder.filter((entry) => entry !== id),
         selectedId: s.selectedId === id ? null : s.selectedId,
       };
     });
   },
 
-  reorderPhotos: (fromIndex, toIndex) => {
+  reorderLibrary: (fromId, toId) => {
     set((s) => {
-      const next = [...s.photos];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return { photos: next };
+      const order = [...s.libraryOrder];
+      const fromIdx = order.indexOf(fromId);
+      const toIdx = order.indexOf(toId);
+      if (fromIdx === -1 || toIdx === -1) return s;
+      const [moved] = order.splice(fromIdx, 1);
+      order.splice(toIdx, 0, moved);
+      return { libraryOrder: order };
     });
   },
 
@@ -120,6 +176,161 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
   setPhotoTags: (id, tags) => {
     set((s) => ({
       photos: s.photos.map((p) => (p.id === id ? { ...p, tags } : p)),
+    }));
+  },
+
+  // ── Collections ──────────────────────────────────────────────────────────
+  setActiveCollectionId: (id) => set({ activeCollectionId: id }),
+
+  addCollection: (name, parentId = null) => {
+    const id = crypto.randomUUID();
+    set((s) => ({
+      collections: [...s.collections, { id, name, parentId, photoIds: [], createdAt: Date.now() }],
+      libraryOrder: parentId ? s.libraryOrder : [...s.libraryOrder, `collection:${id}`],
+    }));
+    log.info(
+      `Collection created: "${name}"${parentId ? ` (parent: ${parentId.slice(0, 8)})` : ' (root)'}`,
+    );
+    return id;
+  },
+
+  renameCollection: (id, name) => {
+    const oldName = get().collections.find((c) => c.id === id)?.name;
+    set((s) => ({
+      collections: s.collections.map((c) => (c.id === id ? { ...c, name } : c)),
+    }));
+    log.info(`Collection renamed: "${oldName}" → "${name}"`);
+  },
+
+  deleteCollection: (id) => {
+    const colName = get().collections.find((c) => c.id === id)?.name;
+    set((s) => {
+      // Collect all descendant IDs recursively
+      const toDelete = new Set<string>();
+      const collect = (parentId: string) => {
+        toDelete.add(parentId);
+        s.collections.filter((c) => c.parentId === parentId).forEach((c) => collect(c.id));
+      };
+      collect(id);
+      return {
+        collections: s.collections.filter((c) => !toDelete.has(c.id)),
+        libraryOrder: s.libraryOrder.filter((entry) => {
+          if (!entry.startsWith('collection:')) return true;
+          return !toDelete.has(entry.replace('collection:', ''));
+        }),
+        activeCollectionId: toDelete.has(s.activeCollectionId ?? '') ? null : s.activeCollectionId,
+      };
+    });
+    log.info(`Collection deleted: "${colName}"`);
+  },
+
+  addPhotosToCollection: (collectionId, photoIds) => {
+    set((s) => ({
+      collections: s.collections.map((c) => {
+        if (c.id !== collectionId) return c;
+        const existing = new Set(c.photoIds);
+        const newIds = photoIds.filter((pid) => !existing.has(pid));
+        return newIds.length > 0 ? { ...c, photoIds: [...c.photoIds, ...newIds] } : c;
+      }),
+    }));
+    const colName = get().collections.find((c) => c.id === collectionId)?.name;
+    log.info(`Added ${photoIds.length} photo(s) to "${colName}"`);
+  },
+
+  removePhotosFromCollection: (collectionId, photoIds) => {
+    const toRemove = new Set(photoIds);
+    set((s) => ({
+      collections: s.collections.map((c) =>
+        c.id === collectionId
+          ? { ...c, photoIds: c.photoIds.filter((pid) => !toRemove.has(pid)) }
+          : c,
+      ),
+    }));
+  },
+
+  movePhotosToCollection: (photoIds, targetId) => {
+    const targetName = targetId ? get().collections.find((c) => c.id === targetId)?.name : 'root';
+    log.info(`Moving ${photoIds.length} photo(s) to "${targetName}"`);
+    const toMove = new Set(photoIds);
+    set((s) => {
+      // Remove from all collections
+      const collections = s.collections.map((c) => ({
+        ...c,
+        photoIds: c.photoIds.filter((pid) => !toMove.has(pid)),
+      }));
+      // Add to target collection (if not root)
+      if (targetId) {
+        const idx = collections.findIndex((c) => c.id === targetId);
+        if (idx !== -1) {
+          const existing = new Set(collections[idx].photoIds);
+          const newIds = photoIds.filter((pid) => !existing.has(pid));
+          collections[idx] = {
+            ...collections[idx],
+            photoIds: [...collections[idx].photoIds, ...newIds],
+          };
+        }
+      }
+      // Update libraryOrder: add to root if moving to root, remove from root if moving to collection
+      let libraryOrder = s.libraryOrder;
+      if (targetId === null) {
+        // Moving to root — add IDs not already in libraryOrder
+        const orderSet = new Set(libraryOrder);
+        const toAdd = photoIds.filter((pid) => !orderSet.has(pid));
+        libraryOrder = [...libraryOrder, ...toAdd];
+      } else {
+        // Moving to collection — remove from root libraryOrder
+        libraryOrder = libraryOrder.filter((entry) => !toMove.has(entry));
+      }
+      return { collections, libraryOrder };
+    });
+  },
+
+  moveCollection: (collectionId, targetParentId) => {
+    const colName = get().collections.find((c) => c.id === collectionId)?.name;
+    const targetName = targetParentId
+      ? get().collections.find((c) => c.id === targetParentId)?.name
+      : 'root';
+    log.info(`Moving collection "${colName}" to "${targetName}"`);
+    set((s) => {
+      // Prevent moving into itself or its own descendants
+      const isDescendant = (parentId: string, childId: string): boolean => {
+        if (parentId === childId) return true;
+        return s.collections
+          .filter((c) => c.parentId === parentId)
+          .some((c) => isDescendant(c.id, childId));
+      };
+      if (targetParentId && isDescendant(collectionId, targetParentId)) return s;
+
+      const entry = `collection:${collectionId}`;
+      const collections = s.collections.map((c) =>
+        c.id === collectionId ? { ...c, parentId: targetParentId } : c,
+      );
+      let libraryOrder = s.libraryOrder;
+      if (targetParentId === null) {
+        // Moving to root — add to libraryOrder if not there
+        if (!libraryOrder.includes(entry)) {
+          libraryOrder = [...libraryOrder, entry];
+        }
+      } else {
+        // Moving into a collection — remove from root libraryOrder
+        libraryOrder = libraryOrder.filter((e) => e !== entry);
+      }
+      return { collections, libraryOrder };
+    });
+  },
+
+  reorderInsideCollection: (collectionId, fromId, toId) => {
+    set((s) => ({
+      collections: s.collections.map((c) => {
+        if (c.id !== collectionId) return c;
+        const order = [...c.photoIds];
+        const fromIdx = order.indexOf(fromId);
+        const toIdx = order.indexOf(toId);
+        if (fromIdx === -1 || toIdx === -1) return c;
+        const [moved] = order.splice(fromIdx, 1);
+        order.splice(toIdx, 0, moved);
+        return { ...c, photoIds: order };
+      }),
     }));
   },
 }));

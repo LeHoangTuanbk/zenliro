@@ -52,6 +52,14 @@ type CatalogPhoto = {
   tags: string[];
 };
 
+type Collection = {
+  id: string;
+  name: string;
+  parentId: string | null;
+  photoIds: string[];
+  createdAt: number;
+};
+
 type WheelData = { hue: number; sat: number; lum: number };
 
 type PhotoEdits = {
@@ -95,7 +103,11 @@ type Catalog = {
   version: 1;
   photos: CatalogPhoto[];
   edits: Record<string, PhotoEdits>;
+  collections: Collection[];
+  /** Unified order of items in library grid. Photo IDs or "collection:{id}" */
+  libraryOrder: string[];
   selectedId: string | null;
+  activeCollectionId: string | null;
   lastOpenedAt: number;
 };
 
