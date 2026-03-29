@@ -98,9 +98,9 @@ function CollectionCardInner({
             autoFocus
           />
         ) : (
-          <p className="text-[9px] text-br-dim truncate">{collection.name}</p>
+          <p className="text-[9px] text-br-label truncate">{collection.name}</p>
         )}
-        <p className="text-[8px] text-[#505050]">
+        <p className="text-[8px] text-br-sub">
           {photoCount} {photoCount === 1 ? 'photo' : 'photos'}
           {childCount > 0 && `, ${childCount} ${childCount === 1 ? 'collection' : 'collections'}`}
         </p>
