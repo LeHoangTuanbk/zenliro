@@ -73,12 +73,49 @@ export function monotonicCubicSpline(points: Point[]): (x: number) => number {
   };
 }
 
-/** Generate 256-entry LUT (values 0-255) from control points. */
-export function generateLUT(points: Point[]): Uint8Array {
+/**
+ * Build a parametric offset function from slider values + zone splits.
+ * Each slider bends the curve in its zone using a smooth cosine bell.
+ * Returns (x: 0-1) => y-offset (-1 to 1).
+ */
+export function buildParametricOffset(
+  parametric: { shadows: number; darks: number; lights: number; highlights: number },
+  splits: [number, number, number],
+): (x: number) => number {
+  const MAX_BEND = 0.35;
+  const zones = [
+    { value: parametric.shadows, start: 0, end: splits[0] },
+    { value: parametric.darks, start: splits[0], end: splits[1] },
+    { value: parametric.lights, start: splits[1], end: splits[2] },
+    { value: parametric.highlights, start: splits[2], end: 1 },
+  ];
+
+  return (x: number) => {
+    let offset = 0;
+    for (const zone of zones) {
+      if (zone.value === 0) continue;
+      const center = (zone.start + zone.end) / 2;
+      const halfWidth = (zone.end - zone.start) / 2;
+      // Extend 40% beyond zone boundary for smooth blending
+      const extended = halfWidth * 1.4;
+      const dist = Math.abs(x - center);
+      if (dist >= extended) continue;
+      const bump = (1 + Math.cos((Math.PI * dist) / extended)) / 2;
+      offset += (zone.value / 100) * MAX_BEND * bump;
+    }
+    return offset;
+  };
+}
+
+/** Generate 256-entry LUT (values 0-255) from control points + optional parametric offset. */
+export function generateLUT(points: Point[], offset?: (x: number) => number): Uint8Array {
   const fn = monotonicCubicSpline(points);
   const lut = new Uint8Array(256);
   for (let i = 0; i < 256; i++) {
-    lut[i] = Math.round(fn(i / 255) * 255);
+    const x = i / 255;
+    const base = fn(x);
+    const y = offset ? Math.max(0, Math.min(1, base + offset(x))) : base;
+    lut[i] = Math.round(y * 255);
   }
   return lut;
 }
