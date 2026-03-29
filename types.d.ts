@@ -122,6 +122,11 @@ interface Window {
       load: () => Promise<Catalog | null>;
       save: (data: Catalog) => Promise<boolean>;
     };
+    history: {
+      load: (photoId: string) => Promise<unknown>;
+      save: (photoId: string, data: unknown) => Promise<boolean>;
+      delete: (photoId: string) => Promise<boolean>;
+    };
     photo: {
       loadFromPath: (filePath: string) => Promise<LoadedPhotoBinary | null>;
       saveThumbnail: (

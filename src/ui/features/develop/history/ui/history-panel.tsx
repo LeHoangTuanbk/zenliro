@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useHistoryStore } from '../store/history-store';
 import { applySnapshot } from '../lib/snapshot';
+import { saveHistory } from '../lib/history-db';
 
 type HistoryPanelProps = {
   photoId: string | null;
@@ -30,12 +31,14 @@ export function HistoryPanel({ photoId }: HistoryPanelProps) {
     if (index === currentIndex || !photoId) return;
     const store = useHistoryStore.getState();
     store.setIsApplying(true);
+    const updated = { ...history, currentIndex: index };
     useHistoryStore.setState((s) => ({
       historyByPhoto: {
         ...s.historyByPhoto,
-        [photoId]: { ...history, currentIndex: index },
+        [photoId]: updated,
       },
     }));
+    saveHistory(photoId, updated);
     applySnapshot(photoId, entries[index].snapshot);
     requestAnimationFrame(() => store.setIsApplying(false));
   };

@@ -29,6 +29,12 @@ electron.contextBridge.exposeInMainWorld('electron', {
     load: () => electron.ipcRenderer.invoke('catalog:load'),
     save: (data: unknown) => electron.ipcRenderer.invoke('catalog:save', data),
   },
+  history: {
+    load: (photoId: string) => electron.ipcRenderer.invoke('history:load', photoId),
+    save: (photoId: string, data: unknown) =>
+      electron.ipcRenderer.invoke('history:save', photoId, data),
+    delete: (photoId: string) => electron.ipcRenderer.invoke('history:delete', photoId),
+  },
   photo: {
     loadFromPath: (filePath: string) => electron.ipcRenderer.invoke('photo:loadFromPath', filePath),
     saveThumbnail: (photoId: string, thumbnailDataUrl: string) =>

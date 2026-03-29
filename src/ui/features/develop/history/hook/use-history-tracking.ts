@@ -26,23 +26,43 @@ export function useHistoryTracking(photoId: string | null) {
     photoIdRef.current = photoId;
   }, [photoId]);
 
-  // Push initial snapshot when photo is selected
+  // Restore persisted history & push initial snapshot when photo is selected
   useEffect(() => {
     if (!photoId) {
       lastSnapshotRef.current = null;
       return;
     }
-    // Small delay to let stores settle after photo switch
-    const t = setTimeout(() => {
+    let cancelled = false;
+    const init = async () => {
+      const store = useHistoryStore.getState();
+      const restored = await store.restoreHistory(photoId);
+
+      if (cancelled) return;
+
+      // Small delay to let stores settle after photo switch
+      await new Promise((r) => setTimeout(r, 50));
+      if (cancelled) return;
+
       const snap = captureSnapshot(photoId);
       lastSnapshotRef.current = snap;
-      const store = useHistoryStore.getState();
-      const h = store.getHistory(photoId);
-      if (h.entries.length === 0) {
+
+      if (restored.entries.length === 0) {
         store.push(photoId, 'Import', 'Initial state', snap);
+      } else {
+        // Apply the persisted current snapshot to restore edit state
+        const currentSnap = restored.entries[restored.currentIndex]?.snapshot;
+        if (currentSnap) {
+          store.setIsApplying(true);
+          applySnapshot(photoId, currentSnap);
+          lastSnapshotRef.current = structuredClone(currentSnap);
+          requestAnimationFrame(() => store.setIsApplying(false));
+        }
       }
-    }, 50);
-    return () => clearTimeout(t);
+    };
+    init();
+    return () => {
+      cancelled = true;
+    };
   }, [photoId]);
 
   // Subscribe to all stores and debounce-push history entries
@@ -85,21 +105,18 @@ export function useHistoryTracking(photoId: string | null) {
     };
   }, [photoId]);
 
-  const applyHistory = useCallback(
-    (direction: 'undo' | 'redo') => {
-      const id = photoIdRef.current;
-      if (!id) return;
-      const store = useHistoryStore.getState();
-      const snapshot = direction === 'redo' ? store.redo(id) : store.undo(id);
-      if (!snapshot) return;
-      log.info(`${direction === 'undo' ? 'Undo' : 'Redo'} applied`);
-      store.setIsApplying(true);
-      applySnapshot(id, snapshot);
-      lastSnapshotRef.current = structuredClone(snapshot);
-      requestAnimationFrame(() => store.setIsApplying(false));
-    },
-    [],
-  );
+  const applyHistory = useCallback((direction: 'undo' | 'redo') => {
+    const id = photoIdRef.current;
+    if (!id) return;
+    const store = useHistoryStore.getState();
+    const snapshot = direction === 'redo' ? store.redo(id) : store.undo(id);
+    if (!snapshot) return;
+    log.info(`${direction === 'undo' ? 'Undo' : 'Redo'} applied`);
+    store.setIsApplying(true);
+    applySnapshot(id, snapshot);
+    lastSnapshotRef.current = structuredClone(snapshot);
+    requestAnimationFrame(() => store.setIsApplying(false));
+  }, []);
 
   const handleUndo = useCallback(() => applyHistory('undo'), [applyHistory]);
   const handleRedo = useCallback(() => applyHistory('redo'), [applyHistory]);
