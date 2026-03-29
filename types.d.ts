@@ -55,6 +55,7 @@ type CatalogPhoto = {
 type Collection = {
   id: string;
   name: string;
+  parentId: string | null;
   photoIds: string[];
   createdAt: number;
 };

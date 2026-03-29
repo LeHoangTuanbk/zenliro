@@ -5,7 +5,10 @@ import { Folder, Trash2, Pencil } from 'lucide-react';
 type CollectionCardProps = {
   collection: Collection;
   photoCount: number;
+  childCount: number;
   thumbnail: string | null;
+  autoEdit?: boolean;
+  onEditingDone?: () => void;
   onClick: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
@@ -14,12 +17,15 @@ type CollectionCardProps = {
 function CollectionCardInner({
   collection,
   photoCount,
+  childCount,
   thumbnail,
+  autoEdit,
+  onEditingDone,
   onClick,
   onRename,
   onDelete,
 }: CollectionCardProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(!!autoEdit);
   const [editName, setEditName] = useState(collection.name);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -40,6 +46,7 @@ function CollectionCardInner({
     if (trimmed && trimmed !== collection.name) onRename(trimmed);
     else setEditName(collection.name);
     setIsEditing(false);
+    onEditingDone?.();
   };
 
   return (
@@ -103,7 +110,10 @@ function CollectionCardInner({
         ) : (
           <p className="text-[9px] text-br-dim truncate">{collection.name}</p>
         )}
-        <p className="text-[8px] text-[#505050]">{photoCount} photos</p>
+        <p className="text-[8px] text-[#505050]">
+          {photoCount} {photoCount === 1 ? 'photo' : 'photos'}
+          {childCount > 0 && `, ${childCount} ${childCount === 1 ? 'collection' : 'collections'}`}
+        </p>
       </div>
 
       {/* Hover actions */}
@@ -153,5 +163,7 @@ export const CollectionCard = memo(
     prev.collection.id === next.collection.id &&
     prev.collection.name === next.collection.name &&
     prev.photoCount === next.photoCount &&
-    prev.thumbnail === next.thumbnail,
+    prev.childCount === next.childCount &&
+    prev.thumbnail === next.thumbnail &&
+    prev.autoEdit === next.autoEdit,
 );

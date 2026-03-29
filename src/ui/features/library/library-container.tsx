@@ -1,6 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
+import { useShortcut } from '@shared/lib/shortcuts';
 import { LibraryView } from './ui/library-view';
 import { DeleteConfirmDialog } from './ui/delete-confirm-dialog';
+import { MoveToDialog } from './ui/move-to-dialog';
 import { LibraryInfoPanel } from '@features/histogram/ui/library-info-panel';
 import { useLibrary } from './hook/use-library';
 import { useInfiniteScroll } from './hook/use-infinite-scroll';
@@ -56,11 +58,18 @@ export function LibraryContainer({
   const renameCollection = useCatalogStore((s) => s.renameCollection);
   const deleteCollection = useCatalogStore((s) => s.deleteCollection);
   const addPhotosToCollection = useCatalogStore((s) => s.addPhotosToCollection);
+  const movePhotosToCollection = useCatalogStore((s) => s.movePhotosToCollection);
   const libraryOrder = useCatalogStore((s) => s.libraryOrder);
   const reorderLibrary = useCatalogStore((s) => s.reorderLibrary);
   const saveToDisk = useCatalogStore((s) => s.saveToDisk);
 
-  // Filter photos by active collection or show uncategorized at root
+  // Child collections of current level
+  const childCollections = useMemo(
+    () => collections.filter((c) => c.parentId === (activeCollectionId ?? null)),
+    [collections, activeCollectionId],
+  );
+
+  // Filter photos for current level
   const collectionFilteredPhotos = useMemo(() => {
     if (activeCollectionId) {
       const col = collections.find((c) => c.id === activeCollectionId);
@@ -108,21 +117,28 @@ export function LibraryContainer({
   // Collection handlers
   const handleCollectionClick = useCallback(
     (id: string) => {
-      setActiveCollectionId(id);
+      setActiveCollectionId(id === '__root__' ? null : id);
       saveToDisk();
     },
     [setActiveCollectionId, saveToDisk],
   );
 
   const handleCollectionBack = useCallback(() => {
-    setActiveCollectionId(null);
+    // Go to parent collection, or root
+    const active = collections.find((c) => c.id === activeCollectionId);
+    setActiveCollectionId(active?.parentId ?? null);
     saveToDisk();
-  }, [setActiveCollectionId, saveToDisk]);
+  }, [collections, activeCollectionId, setActiveCollectionId, saveToDisk]);
+
+  const editingCollectionIdRef = useRef<string | null>(null);
 
   const handleCollectionCreate = useCallback(() => {
-    addCollection('New Collection');
+    const id = addCollection('New Collection', activeCollectionId);
+    editingCollectionIdRef.current = id;
     saveToDisk();
-  }, [addCollection, saveToDisk]);
+  }, [addCollection, activeCollectionId, saveToDisk]);
+
+  useShortcut([{ id: 'library.new-collection', handler: handleCollectionCreate }]);
 
   const handleCollectionRename = useCallback(
     (id: string, name: string) => {
@@ -130,6 +146,29 @@ export function LibraryContainer({
       saveToDisk();
     },
     [renameCollection, saveToDisk],
+  );
+
+  // Move dialog
+  const [movePhotoIds, setMovePhotoIds] = useState<string[] | null>(null);
+
+  const handleOpenMove = useCallback(
+    (photoId: string) => {
+      const ids =
+        selectedIds.size > 0 && selectedIds.has(photoId) ? Array.from(selectedIds) : [photoId];
+      setMovePhotoIds(ids);
+    },
+    [selectedIds],
+  );
+
+  const handleConfirmMove = useCallback(
+    (targetId: string | null) => {
+      if (movePhotoIds) {
+        movePhotosToCollection(movePhotoIds, targetId);
+        saveToDisk();
+        setMovePhotoIds(null);
+      }
+    },
+    [movePhotoIds, movePhotosToCollection, saveToDisk],
   );
 
   const [deleteCollectionTarget, setDeleteCollectionTarget] = useState<string | null>(null);
@@ -249,6 +288,11 @@ export function LibraryContainer({
         onCollectionCreate={handleCollectionCreate}
         onCollectionRename={handleCollectionRename}
         onCollectionDelete={setDeleteCollectionTarget}
+        onMovePhoto={handleOpenMove}
+        editingCollectionId={editingCollectionIdRef.current}
+        onEditingDone={() => {
+          editingCollectionIdRef.current = null;
+        }}
       />
       {selected && (
         <aside className="w-[260px] bg-[#222] border-l border-black flex flex-col shrink-0 overflow-y-auto">
@@ -286,6 +330,18 @@ export function LibraryContainer({
           onConfirm={handleConfirmCollectionDelete}
           onCancel={() => setDeleteCollectionTarget(null)}
           collectionMode
+        />
+      )}
+
+      {/* Move to dialog */}
+      {movePhotoIds && (
+        <MoveToDialog
+          open={!!movePhotoIds}
+          photoCount={movePhotoIds.length}
+          collections={collections}
+          currentCollectionId={activeCollectionId}
+          onMove={handleConfirmMove}
+          onCancel={() => setMovePhotoIds(null)}
         />
       )}
     </div>

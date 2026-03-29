@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { Trash2, Check } from 'lucide-react';
+import { Trash2, Check, FolderInput } from 'lucide-react';
 import { StarRating } from './star-rating';
 
 type LibraryPhotoCardProps = {
@@ -13,6 +13,7 @@ type LibraryPhotoCardProps = {
   onClick: (e: React.MouseEvent) => void;
   onOpenDevelop: () => void;
   onDelete: () => void;
+  onMove: () => void;
   onRatingChange: (rating: number) => void;
 };
 
@@ -26,6 +27,7 @@ function LibraryPhotoCardInner({
   onClick,
   onOpenDevelop,
   onDelete,
+  onMove,
   onRatingChange,
 }: LibraryPhotoCardProps) {
   const {
@@ -103,6 +105,16 @@ function LibraryPhotoCardInner({
           className="flex items-center gap-1.5 pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMove();
+            }}
+            className="p-1 rounded-[2px] text-white/60 hover:text-white cursor-pointer"
+            title="Move to collection"
+          >
+            <FolderInput className="w-3 h-3" />
+          </button>
           <button
             onClick={(e) => {
               e.stopPropagation();

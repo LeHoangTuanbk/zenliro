@@ -25,11 +25,12 @@ type CatalogStore = {
   reorderLibrary: (fromId: string, toId: string) => void;
   // collection actions
   setActiveCollectionId: (id: string | null) => void;
-  addCollection: (name: string) => string;
+  addCollection: (name: string, parentId?: string | null) => string;
   renameCollection: (id: string, name: string) => void;
   deleteCollection: (id: string) => void;
   addPhotosToCollection: (collectionId: string, photoIds: string[]) => void;
   removePhotosFromCollection: (collectionId: string, photoIds: string[]) => void;
+  movePhotosToCollection: (photoIds: string[], targetId: string | null) => void;
 };
 
 export const useCatalogStore = create<CatalogStore>((set, get) => ({
@@ -174,11 +175,12 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
   // ── Collections ──────────────────────────────────────────────────────────
   setActiveCollectionId: (id) => set({ activeCollectionId: id }),
 
-  addCollection: (name) => {
+  addCollection: (name, parentId = null) => {
     const id = crypto.randomUUID();
     set((s) => ({
-      collections: [...s.collections, { id, name, photoIds: [], createdAt: Date.now() }],
-      libraryOrder: [...s.libraryOrder, `collection:${id}`],
+      collections: [...s.collections, { id, name, parentId, photoIds: [], createdAt: Date.now() }],
+      // Only add to libraryOrder if root-level
+      libraryOrder: parentId ? s.libraryOrder : [...s.libraryOrder, `collection:${id}`],
     }));
     return id;
   },
@@ -190,11 +192,23 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
   },
 
   deleteCollection: (id) => {
-    set((s) => ({
-      collections: s.collections.filter((c) => c.id !== id),
-      libraryOrder: s.libraryOrder.filter((entry) => entry !== `collection:${id}`),
-      activeCollectionId: s.activeCollectionId === id ? null : s.activeCollectionId,
-    }));
+    set((s) => {
+      // Collect all descendant IDs recursively
+      const toDelete = new Set<string>();
+      const collect = (parentId: string) => {
+        toDelete.add(parentId);
+        s.collections.filter((c) => c.parentId === parentId).forEach((c) => collect(c.id));
+      };
+      collect(id);
+      return {
+        collections: s.collections.filter((c) => !toDelete.has(c.id)),
+        libraryOrder: s.libraryOrder.filter((entry) => {
+          if (!entry.startsWith('collection:')) return true;
+          return !toDelete.has(entry.replace('collection:', ''));
+        }),
+        activeCollectionId: toDelete.has(s.activeCollectionId ?? '') ? null : s.activeCollectionId,
+      };
+    });
   },
 
   addPhotosToCollection: (collectionId, photoIds) => {
@@ -217,5 +231,40 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
           : c,
       ),
     }));
+  },
+
+  movePhotosToCollection: (photoIds, targetId) => {
+    const toMove = new Set(photoIds);
+    set((s) => {
+      // Remove from all collections
+      const collections = s.collections.map((c) => ({
+        ...c,
+        photoIds: c.photoIds.filter((pid) => !toMove.has(pid)),
+      }));
+      // Add to target collection (if not root)
+      if (targetId) {
+        const idx = collections.findIndex((c) => c.id === targetId);
+        if (idx !== -1) {
+          const existing = new Set(collections[idx].photoIds);
+          const newIds = photoIds.filter((pid) => !existing.has(pid));
+          collections[idx] = {
+            ...collections[idx],
+            photoIds: [...collections[idx].photoIds, ...newIds],
+          };
+        }
+      }
+      // Update libraryOrder: add to root if moving to root, remove from root if moving to collection
+      let libraryOrder = s.libraryOrder;
+      if (targetId === null) {
+        // Moving to root — add IDs not already in libraryOrder
+        const orderSet = new Set(libraryOrder);
+        const toAdd = photoIds.filter((pid) => !orderSet.has(pid));
+        libraryOrder = [...libraryOrder, ...toAdd];
+      } else {
+        // Moving to collection — remove from root libraryOrder
+        libraryOrder = libraryOrder.filter((entry) => !toMove.has(entry));
+      }
+      return { collections, libraryOrder };
+    });
   },
 }));

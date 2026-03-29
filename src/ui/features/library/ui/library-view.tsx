@@ -50,6 +50,9 @@ type LibraryViewProps = {
   onCollectionCreate: () => void;
   onCollectionRename: (id: string, name: string) => void;
   onCollectionDelete: (id: string) => void;
+  onMovePhoto: (id: string) => void;
+  editingCollectionId: string | null;
+  onEditingDone: () => void;
 };
 
 const ACTIVATION_CONSTRAINT = { distance: 8 };
@@ -88,6 +91,9 @@ export function LibraryView({
   onCollectionCreate,
   onCollectionRename,
   onCollectionDelete,
+  onMovePhoto,
+  editingCollectionId,
+  onEditingDone,
 }: LibraryViewProps) {
   const visiblePhotos = photos.slice(0, visibleCount);
   const sensors = useSensors(
@@ -110,8 +116,21 @@ export function LibraryView({
     return firstPhoto?.thumbnailDataUrl || null;
   };
 
-  const hasContent = photos.length > 0 || (isRoot && collections.length > 0);
+  // Child collections at current level
+  const childCollections = collections.filter((c) => c.parentId === (activeCollectionId ?? null));
+
+  const hasContent = photos.length > 0 || childCollections.length > 0;
   const isEmpty = !hasContent;
+
+  // Build breadcrumb path
+  const breadcrumbPath: Collection[] = [];
+  if (activeCollection) {
+    let current: Collection | undefined = activeCollection;
+    while (current) {
+      breadcrumbPath.unshift(current);
+      current = current.parentId ? collections.find((c) => c.id === current!.parentId) : undefined;
+    }
+  }
 
   return (
     <div className="relative flex flex-col w-full h-full bg-br-bg">
@@ -131,13 +150,29 @@ export function LibraryView({
       {activeCollection && (
         <div className="flex items-center gap-1 px-4 py-1.5 text-[11px] border-b border-[#222]">
           <button
-            onClick={onCollectionBack}
+            onClick={() => onCollectionClick('__root__')}
             className="text-[#888] hover:text-[#ccc] cursor-pointer transition-colors"
           >
             Library
           </button>
-          <ChevronRight className="w-3 h-3 text-[#555]" />
-          <span className="text-[#ccc]">{activeCollection.name}</span>
+          {breadcrumbPath.map((crumb, i) => {
+            const isLast = i === breadcrumbPath.length - 1;
+            return (
+              <span key={crumb.id} className="flex items-center gap-1">
+                <ChevronRight className="w-3 h-3 text-[#555]" />
+                {isLast ? (
+                  <span className="text-[#ccc]">{crumb.name}</span>
+                ) : (
+                  <button
+                    onClick={() => onCollectionClick(crumb.id)}
+                    className="text-[#888] hover:text-[#ccc] cursor-pointer transition-colors"
+                  >
+                    {crumb.name}
+                  </button>
+                )}
+              </span>
+            );
+          })}
           <span className="text-[#555] ml-1">({activeCollection.photoIds.length})</span>
         </div>
       )}
@@ -196,7 +231,10 @@ export function LibraryView({
                           key={entry}
                           collection={col}
                           photoCount={col.photoIds.length}
+                          childCount={collections.filter((c) => c.parentId === col.id).length}
                           thumbnail={getCollectionThumbnail(col)}
+                          autoEdit={col.id === editingCollectionId}
+                          onEditingDone={onEditingDone}
                           onClick={() => onCollectionClick(col.id)}
                           onRename={(name) => onCollectionRename(col.id, name)}
                           onDelete={() => onCollectionDelete(col.id)}
@@ -217,6 +255,7 @@ export function LibraryView({
                         onClick={(e) => onPhotoClick(photo.id, e)}
                         onOpenDevelop={() => onOpenDevelop(photo.id)}
                         onDelete={() => onDelete(photo.id)}
+                        onMove={() => onMovePhoto(photo.id)}
                         onRatingChange={(val) => onRatingChange(photo.id, val)}
                       />
                     );
@@ -224,7 +263,20 @@ export function LibraryView({
                 </>
               ) : (
                 <>
-                  {/* Inside collection: show only its photos */}
+                  {/* Inside collection: child collections + photos */}
+                  {childCollections.map((col) => (
+                    <CollectionCard
+                      key={col.id}
+                      collection={col}
+                      photoCount={col.photoIds.length}
+                      thumbnail={getCollectionThumbnail(col)}
+                      autoEdit={col.id === editingCollectionId}
+                      onEditingDone={onEditingDone}
+                      onClick={() => onCollectionClick(col.id)}
+                      onRename={(name) => onCollectionRename(col.id, name)}
+                      onDelete={() => onCollectionDelete(col.id)}
+                    />
+                  ))}
                   {visiblePhotos.map((p) => {
                     const catPhoto = catalogPhotos.find((c) => c.id === p.id);
                     return (
@@ -238,6 +290,7 @@ export function LibraryView({
                         onClick={(e) => onPhotoClick(p.id, e)}
                         onOpenDevelop={() => onOpenDevelop(p.id)}
                         onDelete={() => onDelete(p.id)}
+                        onMove={() => onMovePhoto(p.id)}
                         onRatingChange={(val) => onRatingChange(p.id, val)}
                       />
                     );
