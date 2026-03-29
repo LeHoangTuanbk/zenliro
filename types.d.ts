@@ -79,7 +79,7 @@ type PhotoEdits = {
   effects: Record<string, number>;
   toneCurve: {
     points: Record<string, Array<{ x: number; y: number }>>;
-    parametric: Record<string, number>;
+    parametric: Record<string, Record<string, number>>;
   };
   crop?: {
     x: number;

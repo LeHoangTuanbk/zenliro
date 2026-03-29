@@ -74,7 +74,7 @@ If ANY answer is "no", fix it before declaring success.
   - texture, clarity, dehaze: -30 to 30 (typical: ±5 to ±15)
   - vibrance: -40 to 40, saturation: -30 to 30 (typical: ±5 to ±15)
   - IMPORTANT: Start with small values. You can always increase later. Going too high ruins the photo.
-- set_tone_curve — set control points for rgb/r/g/b curves (x,y in 0–1)
+- set_tone_curve — set control points and/or parametric sliders for rgb/r/g/b curves. Points: {x,y} in 0–1. Parametric: {highlights, lights, darks, shadows} -100 to 100, bends curve per tonal zone. Each channel has independent parametric values.
 - set_color_mixer — set HSL mixer (mode: hue/saturation/luminance, channel: red/orange/yellow/green/aqua/blue/purple/magenta, value: -100 to 100)
 - set_color_grading — set color wheels (range: shadows/midtones/highlights, hue: 0–360, sat: 0–1, lum: -100 to 100)
 - set_effects — set vignette & grain (vigAmount: -100 to 100, grain params: 0 to 100)

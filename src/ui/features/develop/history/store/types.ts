@@ -1,5 +1,9 @@
 import type { Adjustments } from '@features/develop/edit/store/adjustments-store';
-import type { CurveChannel, CurvePoint, ParametricSliders } from '@features/develop/edit/tone-curve/store/types';
+import type {
+  CurveChannel,
+  CurvePoint,
+  ParametricPerChannel,
+} from '@features/develop/edit/tone-curve/store/types';
 import type { ChannelValues } from '@features/develop/edit/color-mixer/store/types';
 import type { WheelState } from '@features/develop/edit/color-grading/store/types';
 import type { EffectsState } from '@features/develop/edit/effects/model/effects-store';
@@ -13,7 +17,7 @@ export type EditSnapshot = {
   adjustments: Adjustments;
   toneCurve: {
     points: Record<CurveChannel, CurvePoint[]>;
-    parametric: ParametricSliders;
+    parametric: ParametricPerChannel;
   };
   colorMixer: {
     hue: ChannelValues;

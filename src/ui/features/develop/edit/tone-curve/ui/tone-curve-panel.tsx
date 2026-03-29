@@ -36,10 +36,11 @@ export function ToneCurvePanel() {
   const [activeSlider, setActiveSlider] = useState<string | null>(null);
   const activeColor = CHANNELS.find((c) => c.id === channel)?.color ?? '#ffffff';
   const activeKey = PARAMETRIC_SLIDERS.find((s) => s.label === activeSlider)?.key;
+  const channelParametric = parametric[channel];
 
   const parametricOffset = useMemo(
-    () => buildParametricOffset(parametric, zoneSplits),
-    [parametric, zoneSplits],
+    () => buildParametricOffset(channelParametric, zoneSplits, points[channel]),
+    [channelParametric, zoneSplits, points, channel],
   );
 
   return (
@@ -85,7 +86,7 @@ export function ToneCurvePanel() {
           onChange={(pts) => setPoints(channel, pts)}
           color={activeColor}
           activeZone={activeSlider}
-          activeValue={activeKey ? parametric[activeKey] : undefined}
+          activeValue={activeKey ? channelParametric[activeKey] : undefined}
           parametricOffset={parametricOffset}
         />
       </div>
@@ -102,8 +103,8 @@ export function ToneCurvePanel() {
           <ParametricRow
             key={key}
             label={label}
-            value={parametric[key]}
-            onChange={(v) => setParametric(key, v)}
+            value={channelParametric[key]}
+            onChange={(v) => setParametric(channel, key, v)}
             onActiveChange={(active) => setActiveSlider(active ? label : null)}
           />
         ))}

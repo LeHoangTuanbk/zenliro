@@ -3,30 +3,54 @@ import type { EditSnapshot } from '../store/types';
 export type DiffResult = { label: string; details: string };
 
 const ADJ_LABELS: Record<string, string> = {
-  temp: 'Temp', tint: 'Tint', exposure: 'Exposure', contrast: 'Contrast',
-  highlights: 'Highlights', shadows: 'Shadows', whites: 'Whites', blacks: 'Blacks',
-  texture: 'Texture', clarity: 'Clarity', dehaze: 'Dehaze',
-  vibrance: 'Vibrance', saturation: 'Saturation',
+  temp: 'Temp',
+  tint: 'Tint',
+  exposure: 'Exposure',
+  contrast: 'Contrast',
+  highlights: 'Highlights',
+  shadows: 'Shadows',
+  whites: 'Whites',
+  blacks: 'Blacks',
+  texture: 'Texture',
+  clarity: 'Clarity',
+  dehaze: 'Dehaze',
+  vibrance: 'Vibrance',
+  saturation: 'Saturation',
 };
 
 const EFFECTS_LABELS: Record<string, string> = {
-  vigAmount: 'Vignette Amount', vigMidpoint: 'Vignette Midpoint',
-  vigRoundness: 'Vignette Roundness', vigFeather: 'Vignette Feather',
+  vigAmount: 'Vignette Amount',
+  vigMidpoint: 'Vignette Midpoint',
+  vigRoundness: 'Vignette Roundness',
+  vigFeather: 'Vignette Feather',
   vigHighlights: 'Vignette Highlights',
-  grainAmount: 'Grain Amount', grainSize: 'Grain Size', grainRoughness: 'Grain Roughness',
+  grainAmount: 'Grain Amount',
+  grainSize: 'Grain Size',
+  grainRoughness: 'Grain Roughness',
 };
 
 const CHANNEL_LABELS: Record<string, string> = {
-  rgb: 'RGB', r: 'Red', g: 'Green', b: 'Blue',
+  rgb: 'RGB',
+  r: 'Red',
+  g: 'Green',
+  b: 'Blue',
 };
 
 const HSL_LABELS: Record<string, string> = {
-  red: 'Red', orange: 'Orange', yellow: 'Yellow', green: 'Green',
-  aqua: 'Aqua', blue: 'Blue', purple: 'Purple', magenta: 'Magenta',
+  red: 'Red',
+  orange: 'Orange',
+  yellow: 'Yellow',
+  green: 'Green',
+  aqua: 'Aqua',
+  blue: 'Blue',
+  purple: 'Purple',
+  magenta: 'Magenta',
 };
 
 const MODE_LABELS: Record<string, string> = {
-  hue: 'Hue', saturation: 'Saturation', luminance: 'Luminance',
+  hue: 'Hue',
+  saturation: 'Saturation',
+  luminance: 'Luminance',
 };
 
 const fmt = (v: number) => (v > 0 ? '+' : '') + Number(v.toFixed(2));
@@ -97,14 +121,20 @@ export function generateLabel(prev: EditSnapshot | null, next: EditSnapshot): Di
         details.push(`${CHANNEL_LABELS[ch]} curve: ${pts} points`);
       }
     }
-    for (const key of Object.keys(next.toneCurve.parametric) as (keyof typeof next.toneCurve.parametric)[]) {
-      if (prev.toneCurve.parametric[key] !== next.toneCurve.parametric[key]) {
-        const cap = key.charAt(0).toUpperCase() + key.slice(1);
-        details.push(`${cap} ${fmt(next.toneCurve.parametric[key])}`);
+    for (const ch of ['rgb', 'r', 'g', 'b'] as const) {
+      const prevP = prev.toneCurve.parametric[ch];
+      const nextP = next.toneCurve.parametric[ch];
+      for (const key of Object.keys(nextP) as (keyof typeof nextP)[]) {
+        if (prevP[key] !== nextP[key]) {
+          const cap = key.charAt(0).toUpperCase() + key.slice(1);
+          const chLabel = ch === 'rgb' ? '' : ` (${CHANNEL_LABELS[ch]})`;
+          details.push(`${cap}${chLabel} ${fmt(nextP[key])}`);
+        }
       }
     }
     const changedCh = (['rgb', 'r', 'g', 'b'] as const).find(
-      (ch) => JSON.stringify(prev.toneCurve.points[ch]) !== JSON.stringify(next.toneCurve.points[ch]),
+      (ch) =>
+        JSON.stringify(prev.toneCurve.points[ch]) !== JSON.stringify(next.toneCurve.points[ch]),
     );
     const label = changedCh
       ? `Tone Curve ${CHANNEL_LABELS[changedCh]}`
@@ -137,7 +167,9 @@ export function generateLabel(prev: EditSnapshot | null, next: EditSnapshot): Di
       const pw = prev.colorGrading[range];
       const nw = next.colorGrading[range];
       if (pw.hue !== nw.hue || pw.sat !== nw.sat) {
-        details.push(`${range.charAt(0).toUpperCase() + range.slice(1)}: H${Math.round(nw.hue)}° S${(nw.sat * 100).toFixed(0)}%`);
+        details.push(
+          `${range.charAt(0).toUpperCase() + range.slice(1)}: H${Math.round(nw.hue)}° S${(nw.sat * 100).toFixed(0)}%`,
+        );
       }
       if (pw.lum !== nw.lum) {
         details.push(`${range.charAt(0).toUpperCase() + range.slice(1)} Lum ${fmt(nw.lum)}`);
@@ -170,7 +202,8 @@ export function generateLabel(prev: EditSnapshot | null, next: EditSnapshot): Di
     if (prev.crop.rotationSteps !== next.crop.rotationSteps) details.push('Rotate 90°');
     if (prev.crop.flipH !== next.crop.flipH) details.push('Flip Horizontal');
     if (prev.crop.flipV !== next.crop.flipV) details.push('Flip Vertical');
-    if (prev.crop.rotation !== next.crop.rotation) details.push(`Straighten ${fmt(next.crop.rotation)}°`);
+    if (prev.crop.rotation !== next.crop.rotation)
+      details.push(`Straighten ${fmt(next.crop.rotation)}°`);
     if (JSON.stringify(prev.crop.rect) !== JSON.stringify(next.crop.rect)) {
       const r = next.crop.rect;
       details.push(`Crop ${(r.w * 100).toFixed(0)}% × ${(r.h * 100).toFixed(0)}%`);
@@ -190,12 +223,20 @@ export function generateLabel(prev: EditSnapshot | null, next: EditSnapshot): Di
     }
     const removed = prev.healSpots.find((s) => !next.healSpots.some((n) => n.id === s.id));
     const mode = removed?.mode ?? 'heal';
-    return { label: `Remove ${mode.charAt(0).toUpperCase() + mode.slice(1)} Spot`, details: `${next.healSpots.length} spots remaining` };
+    return {
+      label: `Remove ${mode.charAt(0).toUpperCase() + mode.slice(1)} Spot`,
+      details: `${next.healSpots.length} spots remaining`,
+    };
   }
   if (JSON.stringify(prev.healSpots) !== JSON.stringify(next.healSpots)) {
-    const changed = next.healSpots.find((s, i) => JSON.stringify(s) !== JSON.stringify(prev.healSpots[i]));
+    const changed = next.healSpots.find(
+      (s, i) => JSON.stringify(s) !== JSON.stringify(prev.healSpots[i]),
+    );
     const mode = changed?.mode ?? 'heal';
-    return { label: `Move ${mode.charAt(0).toUpperCase() + mode.slice(1)} Spot`, details: `${next.healSpots.length} spots total` };
+    return {
+      label: `Move ${mode.charAt(0).toUpperCase() + mode.slice(1)} Spot`,
+      details: `${next.healSpots.length} spots total`,
+    };
   }
 
   // Masks
