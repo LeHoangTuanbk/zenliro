@@ -77,7 +77,7 @@ function LibraryPhotoCardInner({
 
       {/* Bottom info bar */}
       <div className="px-1.5 py-1 bg-br-bg-deep flex flex-col gap-0.5">
-        <p className="text-[9px] text-br-dim truncate">{photo.fileName}</p>
+        <p className="text-[9px] text-br-label truncate">{photo.fileName}</p>
         {/* Star rating — always visible on hover, shown if rated */}
         <div
           className={`transition-opacity ${rating > 0 ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
@@ -153,7 +153,7 @@ export function DragOverlayCard({ photo }: { photo: ImportedPhoto }) {
         <div className="w-full aspect-3/2 bg-[#161616]" />
       )}
       <div className="px-1.5 py-1 bg-br-bg-deep">
-        <p className="text-[9px] text-br-dim truncate">{photo.fileName}</p>
+        <p className="text-[9px] text-br-label truncate">{photo.fileName}</p>
       </div>
     </div>
   );
