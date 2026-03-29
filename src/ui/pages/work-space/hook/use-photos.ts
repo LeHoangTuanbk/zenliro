@@ -37,7 +37,6 @@ export function usePhotos() {
   const addPhotos = useCatalogStore((s) => s.addPhotos);
   const catalogSetId = useCatalogStore((s) => s.setSelectedId);
   const catalogDeletePhoto = useCatalogStore((s) => s.deletePhoto);
-  const catalogReorderLibrary = useCatalogStore((s) => s.reorderLibrary);
   const saveToDisk = useCatalogStore((s) => s.saveToDisk);
 
   const buildThumbnail = useCallback(

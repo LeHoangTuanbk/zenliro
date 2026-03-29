@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useShortcut } from '@shared/lib/shortcuts';
 import { LibraryView } from './ui/library-view';
 import { DeleteConfirmDialog } from './ui/delete-confirm-dialog';
@@ -125,11 +125,11 @@ export function LibraryContainer({
     [setActiveCollectionId, saveToDisk],
   );
 
-  const editingCollectionIdRef = useRef<string | null>(null);
+  const [editingCollectionId, setEditingCollectionId] = useState<string | null>(null);
 
   const handleCollectionCreate = useCallback(() => {
     const id = addCollection('New Collection', activeCollectionId);
-    editingCollectionIdRef.current = id;
+    setEditingCollectionId(id);
     saveToDisk();
   }, [addCollection, activeCollectionId, saveToDisk]);
 
@@ -315,9 +315,9 @@ export function LibraryContainer({
         onCollectionDelete={setDeleteCollectionTarget}
         onMovePhoto={handleOpenMove}
         onMoveCollection={setMoveCollectionId}
-        editingCollectionId={editingCollectionIdRef.current}
+        editingCollectionId={editingCollectionId}
         onEditingDone={() => {
-          editingCollectionIdRef.current = null;
+          setEditingCollectionId(null);
         }}
       />
       {selected && (
