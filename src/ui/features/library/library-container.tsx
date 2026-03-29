@@ -59,8 +59,10 @@ export function LibraryContainer({
   const deleteCollection = useCatalogStore((s) => s.deleteCollection);
   const addPhotosToCollection = useCatalogStore((s) => s.addPhotosToCollection);
   const movePhotosToCollection = useCatalogStore((s) => s.movePhotosToCollection);
+  const moveCollection = useCatalogStore((s) => s.moveCollection);
   const libraryOrder = useCatalogStore((s) => s.libraryOrder);
   const reorderLibrary = useCatalogStore((s) => s.reorderLibrary);
+  const reorderInsideCollection = useCatalogStore((s) => s.reorderInsideCollection);
   const saveToDisk = useCatalogStore((s) => s.saveToDisk);
 
   // Child collections of current level
@@ -69,13 +71,13 @@ export function LibraryContainer({
     [collections, activeCollectionId],
   );
 
-  // Filter photos for current level
+  // Filter photos for current level, preserving collection's photoIds order
   const collectionFilteredPhotos = useMemo(() => {
     if (activeCollectionId) {
       const col = collections.find((c) => c.id === activeCollectionId);
       if (!col) return photos;
-      const idSet = new Set(col.photoIds);
-      return photos.filter((p) => idSet.has(p.id));
+      const photoMap = new Map(photos.map((p) => [p.id, p]));
+      return col.photoIds.map((id) => photoMap.get(id)).filter(Boolean) as ImportedPhoto[];
     }
     // Root: show only photos not in any collection
     const allCollectionPhotoIds = new Set<string>();
@@ -123,13 +125,6 @@ export function LibraryContainer({
     [setActiveCollectionId, saveToDisk],
   );
 
-  const handleCollectionBack = useCallback(() => {
-    // Go to parent collection, or root
-    const active = collections.find((c) => c.id === activeCollectionId);
-    setActiveCollectionId(active?.parentId ?? null);
-    saveToDisk();
-  }, [collections, activeCollectionId, setActiveCollectionId, saveToDisk]);
-
   const editingCollectionIdRef = useRef<string | null>(null);
 
   const handleCollectionCreate = useCallback(() => {
@@ -148,8 +143,9 @@ export function LibraryContainer({
     [renameCollection, saveToDisk],
   );
 
-  // Move dialog
+  // Move dialogs
   const [movePhotoIds, setMovePhotoIds] = useState<string[] | null>(null);
+  const [moveCollectionId, setMoveCollectionId] = useState<string | null>(null);
 
   const handleOpenMove = useCallback(
     (photoId: string) => {
@@ -171,6 +167,17 @@ export function LibraryContainer({
     [movePhotoIds, movePhotosToCollection, saveToDisk],
   );
 
+  const handleConfirmMoveCollection = useCallback(
+    (targetId: string | null) => {
+      if (moveCollectionId) {
+        moveCollection(moveCollectionId, targetId);
+        saveToDisk();
+        setMoveCollectionId(null);
+      }
+    },
+    [moveCollectionId, moveCollection, saveToDisk],
+  );
+
   const [deleteCollectionTarget, setDeleteCollectionTarget] = useState<string | null>(null);
   const deleteCollectionName = deleteCollectionTarget
     ? (collections.find((c) => c.id === deleteCollectionTarget)?.name ?? '')
@@ -184,29 +191,45 @@ export function LibraryContainer({
     }
   }, [deleteCollectionTarget, deleteCollection, saveToDisk]);
 
-  // Unified drag end: reorder in libraryOrder, or add photo to collection
+  // Unified drag end: reorder in libraryOrder, or add photo/collection to collection
   const handleDragEndWithCollections = useCallback(
     (event: import('@dnd-kit/core').DragEndEvent) => {
       const activeId = event.active.id as string;
       const overId = event.over?.id as string | undefined;
-      if (!overId || activeId === overId) return;
+      if (!overId || activeId === overId) {
+        handleDragCancel();
+        return;
+      }
 
       const isActiveCollection = activeId.startsWith('collection:');
       const isOverCollection = overId.startsWith('collection:');
 
-      // Photo dropped onto collection → add to collection (not reorder)
+      // Collection dropped onto another collection → move into it
+      if (isActiveCollection && isOverCollection) {
+        const srcId = activeId.replace('collection:', '');
+        const dstId = overId.replace('collection:', '');
+        moveCollection(srcId, dstId);
+        saveToDisk();
+        handleDragCancel();
+        return;
+      }
+
+      // Photo dropped onto collection → add to collection
       if (!isActiveCollection && isOverCollection) {
         const collectionId = overId.replace('collection:', '');
         const photoIdsToAdd =
           selectedIds.size > 0 && selectedIds.has(activeId) ? Array.from(selectedIds) : [activeId];
         addPhotosToCollection(collectionId, photoIdsToAdd);
         saveToDisk();
+        handleDragCancel();
         return;
       }
 
       // Inside a collection: reorder photos within that collection
       if (activeCollectionId && !isActiveCollection && !isOverCollection) {
-        handleDragEnd(event);
+        reorderInsideCollection(activeCollectionId, activeId, overId);
+        saveToDisk();
+        handleDragCancel();
         return;
       }
 
@@ -215,13 +238,16 @@ export function LibraryContainer({
         reorderLibrary(activeId, overId);
         saveToDisk();
       }
+      handleDragCancel();
     },
     [
-      handleDragEnd,
+      handleDragCancel,
       selectedIds,
       activeCollectionId,
       addPhotosToCollection,
+      moveCollection,
       reorderLibrary,
+      reorderInsideCollection,
       saveToDisk,
     ],
   );
@@ -284,11 +310,11 @@ export function LibraryContainer({
         onDragEnd={handleDragEndWithCollections}
         onDragCancel={handleDragCancel}
         onCollectionClick={handleCollectionClick}
-        onCollectionBack={handleCollectionBack}
         onCollectionCreate={handleCollectionCreate}
         onCollectionRename={handleCollectionRename}
         onCollectionDelete={setDeleteCollectionTarget}
         onMovePhoto={handleOpenMove}
+        onMoveCollection={setMoveCollectionId}
         editingCollectionId={editingCollectionIdRef.current}
         onEditingDone={() => {
           editingCollectionIdRef.current = null;
@@ -333,7 +359,7 @@ export function LibraryContainer({
         />
       )}
 
-      {/* Move to dialog */}
+      {/* Move photo dialog */}
       {movePhotoIds && (
         <MoveToDialog
           open={!!movePhotoIds}
@@ -342,6 +368,19 @@ export function LibraryContainer({
           currentCollectionId={activeCollectionId}
           onMove={handleConfirmMove}
           onCancel={() => setMovePhotoIds(null)}
+        />
+      )}
+
+      {/* Move collection dialog */}
+      {moveCollectionId && (
+        <MoveToDialog
+          open={!!moveCollectionId}
+          photoCount={0}
+          collectionName={collections.find((c) => c.id === moveCollectionId)?.name}
+          collections={collections}
+          currentCollectionId={moveCollectionId}
+          onMove={handleConfirmMoveCollection}
+          onCancel={() => setMoveCollectionId(null)}
         />
       )}
     </div>

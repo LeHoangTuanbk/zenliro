@@ -31,6 +31,8 @@ type CatalogStore = {
   addPhotosToCollection: (collectionId: string, photoIds: string[]) => void;
   removePhotosFromCollection: (collectionId: string, photoIds: string[]) => void;
   movePhotosToCollection: (photoIds: string[], targetId: string | null) => void;
+  moveCollection: (collectionId: string, targetParentId: string | null) => void;
+  reorderInsideCollection: (collectionId: string, fromId: string, toId: string) => void;
 };
 
 export const useCatalogStore = create<CatalogStore>((set, get) => ({
@@ -266,5 +268,49 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
       }
       return { collections, libraryOrder };
     });
+  },
+
+  moveCollection: (collectionId, targetParentId) => {
+    set((s) => {
+      // Prevent moving into itself or its own descendants
+      const isDescendant = (parentId: string, childId: string): boolean => {
+        if (parentId === childId) return true;
+        return s.collections
+          .filter((c) => c.parentId === parentId)
+          .some((c) => isDescendant(c.id, childId));
+      };
+      if (targetParentId && isDescendant(collectionId, targetParentId)) return s;
+
+      const entry = `collection:${collectionId}`;
+      const collections = s.collections.map((c) =>
+        c.id === collectionId ? { ...c, parentId: targetParentId } : c,
+      );
+      let libraryOrder = s.libraryOrder;
+      if (targetParentId === null) {
+        // Moving to root — add to libraryOrder if not there
+        if (!libraryOrder.includes(entry)) {
+          libraryOrder = [...libraryOrder, entry];
+        }
+      } else {
+        // Moving into a collection — remove from root libraryOrder
+        libraryOrder = libraryOrder.filter((e) => e !== entry);
+      }
+      return { collections, libraryOrder };
+    });
+  },
+
+  reorderInsideCollection: (collectionId, fromId, toId) => {
+    set((s) => ({
+      collections: s.collections.map((c) => {
+        if (c.id !== collectionId) return c;
+        const order = [...c.photoIds];
+        const fromIdx = order.indexOf(fromId);
+        const toIdx = order.indexOf(toId);
+        if (fromIdx === -1 || toIdx === -1) return c;
+        const [moved] = order.splice(fromIdx, 1);
+        order.splice(toIdx, 0, moved);
+        return { ...c, photoIds: order };
+      }),
+    }));
   },
 }));

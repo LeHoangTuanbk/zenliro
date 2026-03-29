@@ -1,29 +1,29 @@
 import { memo, useState, useRef, useEffect } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { Folder, Trash2, Pencil } from 'lucide-react';
+import { Folder, Trash2, Pencil, FolderInput } from 'lucide-react';
 
 type CollectionCardProps = {
   collection: Collection;
   photoCount: number;
   childCount: number;
-  thumbnail: string | null;
   autoEdit?: boolean;
   onEditingDone?: () => void;
   onClick: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
+  onMove?: () => void;
 };
 
 function CollectionCardInner({
   collection,
   photoCount,
   childCount,
-  thumbnail,
   autoEdit,
   onEditingDone,
   onClick,
   onRename,
   onDelete,
+  onMove,
 }: CollectionCardProps) {
   const [isEditing, setIsEditing] = useState(!!autoEdit);
   const [editName, setEditName] = useState(collection.name);
@@ -69,16 +69,7 @@ function CollectionCardInner({
     >
       {/* Thumbnail preview or folder icon */}
       <div className="w-full aspect-3/2 bg-[#1a1a1a] flex items-center justify-center relative overflow-hidden">
-        {thumbnail ? (
-          <>
-            <img src={thumbnail} alt="" className="w-full h-full object-cover block opacity-60" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <Folder className="w-8 h-8 text-white/80" fill="currentColor" />
-            </div>
-          </>
-        ) : (
-          <Folder className="w-10 h-10 text-[#505050]" fill="currentColor" />
-        )}
+        <Folder className="w-10 h-10 text-[#505050]" fill="currentColor" />
         {isOver && (
           <div className="absolute inset-0 bg-[#4d9fec]/20 flex items-center justify-center">
             <span className="text-[10px] text-[#4d9fec] font-medium">Drop to add</span>
@@ -118,6 +109,18 @@ function CollectionCardInner({
 
       {/* Hover actions */}
       <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        {onMove && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onMove();
+            }}
+            className="p-0.5 rounded-[2px] bg-black/50 text-white/60 hover:text-white cursor-pointer"
+            title="Move to collection"
+          >
+            <FolderInput className="w-2.5 h-2.5" />
+          </button>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -164,6 +167,5 @@ export const CollectionCard = memo(
     prev.collection.name === next.collection.name &&
     prev.photoCount === next.photoCount &&
     prev.childCount === next.childCount &&
-    prev.thumbnail === next.thumbnail &&
     prev.autoEdit === next.autoEdit,
 );

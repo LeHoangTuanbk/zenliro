@@ -72,7 +72,8 @@ export function LibraryToolbar({
         title="New Collection"
       >
         <FolderPlus className="w-4 h-4" />
-        New Collection
+        New Collection{' '}
+        <ShortcutHint shortcutId="library.new-collection" className="text-[#ccc]/50" />
       </button>
 
       {/* Search */}
@@ -81,7 +82,7 @@ export function LibraryToolbar({
         <input
           ref={searchRef}
           type="text"
-          placeholder="Search... (⌘S)"
+          placeholder="Search... ⌘S"
           value={filter.search}
           onChange={(e) => onFilterChange({ ...filter, search: e.target.value })}
           onKeyDown={(e) => {

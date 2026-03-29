@@ -6,6 +6,7 @@ import { BrButton } from '@/shared/ui/base';
 type MoveToDialogProps = {
   open: boolean;
   photoCount: number;
+  collectionName?: string;
   collections: Collection[];
   currentCollectionId: string | null;
   onMove: (targetId: string | null) => void;
@@ -15,6 +16,7 @@ type MoveToDialogProps = {
 export function MoveToDialog({
   open,
   photoCount,
+  collectionName,
   collections,
   currentCollectionId,
   onMove,
@@ -31,7 +33,9 @@ export function MoveToDialog({
       <DialogContent className="bg-br-input border border-br-elevated text-br-text sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-[13px]">
-            Move {photoCount} {photoCount === 1 ? 'photo' : 'photos'} to...
+            {collectionName
+              ? `Move "${collectionName}" to...`
+              : `Move ${photoCount} ${photoCount === 1 ? 'photo' : 'photos'} to...`}
           </DialogTitle>
         </DialogHeader>
 
@@ -104,40 +108,39 @@ function CollectionTreeNode({
 
   return (
     <div>
-      <button
-        onClick={() => onSelect(collection.id)}
-        className={`flex items-center gap-1.5 w-full text-left py-1.5 rounded-[2px] transition-colors cursor-pointer ${
-          isSelected
-            ? 'bg-[#3b82f6]/20 text-white'
-            : isCurrent
-              ? 'text-[#666]'
-              : 'text-[#ccc] hover:bg-[#333]'
+      <div
+        onClick={() => !isCurrent && onSelect(collection.id)}
+        className={`flex items-center gap-1.5 w-full text-left py-1.5 rounded-[2px] transition-colors ${
+          isCurrent
+            ? 'text-[#666] cursor-default'
+            : isSelected
+              ? 'bg-[#3b82f6]/20 text-white cursor-pointer'
+              : 'text-[#ccc] hover:bg-[#333] cursor-pointer'
         }`}
         style={{ paddingLeft: 12 + depth * 16 }}
-        disabled={isCurrent}
         title={isCurrent ? 'Current location' : collection.name}
       >
         {hasChildren ? (
-          <button
+          <span
             onClick={(e) => {
               e.stopPropagation();
               setExpanded((v) => !v);
             }}
-            className="p-0 cursor-pointer"
+            className="cursor-pointer"
           >
             {expanded ? (
               <ChevronDown className="w-3 h-3 text-[#888]" />
             ) : (
               <ChevronRight className="w-3 h-3 text-[#888]" />
             )}
-          </button>
+          </span>
         ) : (
           <span className="w-3" />
         )}
         <Folder className="w-3.5 h-3.5 text-[#888]" fill="currentColor" />
         <span className="text-[11px] truncate">{collection.name}</span>
         {isCurrent && <span className="text-[9px] text-[#555] ml-auto mr-2">(current)</span>}
-      </button>
+      </div>
 
       {expanded &&
         children.map((child) => (

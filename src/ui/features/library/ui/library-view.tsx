@@ -46,11 +46,11 @@ type LibraryViewProps = {
   onDragEnd: (event: DragEndEvent) => void;
   onDragCancel: () => void;
   onCollectionClick: (id: string) => void;
-  onCollectionBack: () => void;
   onCollectionCreate: () => void;
   onCollectionRename: (id: string, name: string) => void;
   onCollectionDelete: (id: string) => void;
   onMovePhoto: (id: string) => void;
+  onMoveCollection: (id: string) => void;
   editingCollectionId: string | null;
   onEditingDone: () => void;
 };
@@ -87,11 +87,11 @@ export function LibraryView({
   onDragEnd,
   onDragCancel,
   onCollectionClick,
-  onCollectionBack,
   onCollectionCreate,
   onCollectionRename,
   onCollectionDelete,
   onMovePhoto,
+  onMoveCollection,
   editingCollectionId,
   onEditingDone,
 }: LibraryViewProps) {
@@ -108,13 +108,6 @@ export function LibraryView({
   // Build lookup maps
   const photoMap = new Map(photos.map((p) => [p.id, p]));
   const collectionMap = new Map(collections.map((c) => [c.id, c]));
-
-  // Get first photo thumbnail for a collection
-  const getCollectionThumbnail = (col: Collection): string | null => {
-    if (col.photoIds.length === 0) return null;
-    const firstPhoto = photoMap.get(col.photoIds[0]);
-    return firstPhoto?.thumbnailDataUrl || null;
-  };
 
   // Child collections at current level
   const childCollections = collections.filter((c) => c.parentId === (activeCollectionId ?? null));
@@ -232,12 +225,12 @@ export function LibraryView({
                           collection={col}
                           photoCount={col.photoIds.length}
                           childCount={collections.filter((c) => c.parentId === col.id).length}
-                          thumbnail={getCollectionThumbnail(col)}
                           autoEdit={col.id === editingCollectionId}
                           onEditingDone={onEditingDone}
                           onClick={() => onCollectionClick(col.id)}
                           onRename={(name) => onCollectionRename(col.id, name)}
                           onDelete={() => onCollectionDelete(col.id)}
+                          onMove={() => onMoveCollection(col.id)}
                         />
                       );
                     }
@@ -269,12 +262,13 @@ export function LibraryView({
                       key={col.id}
                       collection={col}
                       photoCount={col.photoIds.length}
-                      thumbnail={getCollectionThumbnail(col)}
+                      childCount={collections.filter((c) => c.parentId === col.id).length}
                       autoEdit={col.id === editingCollectionId}
                       onEditingDone={onEditingDone}
                       onClick={() => onCollectionClick(col.id)}
                       onRename={(name) => onCollectionRename(col.id, name)}
                       onDelete={() => onCollectionDelete(col.id)}
+                      onMove={() => onMoveCollection(col.id)}
                     />
                   ))}
                   {visiblePhotos.map((p) => {
