@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import { createRendererLogger } from '@shared/lib/logger';
+
+const log = createRendererLogger('catalog');
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingSaveResolvers: Array<() => void> = [];
@@ -47,6 +50,7 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
   initFromDisk: async () => {
     const catalog = await window.electron.catalog.load();
     if (!catalog) {
+      log.info('No catalog found, starting fresh');
       set({ isLoaded: true });
       return;
     }
@@ -75,6 +79,7 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
       activeCollectionId: catalog.activeCollectionId ?? null,
       isLoaded: true,
     });
+    log.info(`Catalog loaded: ${photos.length} photos, ${collections.length} collections`);
   },
 
   saveToDisk: async () => {
@@ -181,19 +186,24 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
     const id = crypto.randomUUID();
     set((s) => ({
       collections: [...s.collections, { id, name, parentId, photoIds: [], createdAt: Date.now() }],
-      // Only add to libraryOrder if root-level
       libraryOrder: parentId ? s.libraryOrder : [...s.libraryOrder, `collection:${id}`],
     }));
+    log.info(
+      `Collection created: "${name}"${parentId ? ` (parent: ${parentId.slice(0, 8)})` : ' (root)'}`,
+    );
     return id;
   },
 
   renameCollection: (id, name) => {
+    const oldName = get().collections.find((c) => c.id === id)?.name;
     set((s) => ({
       collections: s.collections.map((c) => (c.id === id ? { ...c, name } : c)),
     }));
+    log.info(`Collection renamed: "${oldName}" → "${name}"`);
   },
 
   deleteCollection: (id) => {
+    const colName = get().collections.find((c) => c.id === id)?.name;
     set((s) => {
       // Collect all descendant IDs recursively
       const toDelete = new Set<string>();
@@ -211,6 +221,7 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
         activeCollectionId: toDelete.has(s.activeCollectionId ?? '') ? null : s.activeCollectionId,
       };
     });
+    log.info(`Collection deleted: "${colName}"`);
   },
 
   addPhotosToCollection: (collectionId, photoIds) => {
@@ -222,6 +233,8 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
         return newIds.length > 0 ? { ...c, photoIds: [...c.photoIds, ...newIds] } : c;
       }),
     }));
+    const colName = get().collections.find((c) => c.id === collectionId)?.name;
+    log.info(`Added ${photoIds.length} photo(s) to "${colName}"`);
   },
 
   removePhotosFromCollection: (collectionId, photoIds) => {
@@ -236,6 +249,8 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
   },
 
   movePhotosToCollection: (photoIds, targetId) => {
+    const targetName = targetId ? get().collections.find((c) => c.id === targetId)?.name : 'root';
+    log.info(`Moving ${photoIds.length} photo(s) to "${targetName}"`);
     const toMove = new Set(photoIds);
     set((s) => {
       // Remove from all collections
@@ -271,6 +286,11 @@ export const useCatalogStore = create<CatalogStore>((set, get) => ({
   },
 
   moveCollection: (collectionId, targetParentId) => {
+    const colName = get().collections.find((c) => c.id === collectionId)?.name;
+    const targetName = targetParentId
+      ? get().collections.find((c) => c.id === targetParentId)?.name
+      : 'root';
+    log.info(`Moving collection "${colName}" to "${targetName}"`);
     set((s) => {
       // Prevent moving into itself or its own descendants
       const isDescendant = (parentId: string, childId: string): boolean => {

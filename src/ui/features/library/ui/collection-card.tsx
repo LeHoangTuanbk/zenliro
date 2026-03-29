@@ -67,7 +67,6 @@ function CollectionCardInner({
       }`}
       title={`${collection.name} — double-click to open`}
     >
-      {/* Thumbnail preview or folder icon */}
       <div className="w-full aspect-3/2 bg-[#1a1a1a] flex items-center justify-center relative overflow-hidden">
         <Folder className="w-10 h-10 text-[#505050]" fill="currentColor" />
         {isOver && (

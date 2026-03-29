@@ -57,19 +57,12 @@ export function LibraryContainer({
   const addCollection = useCatalogStore((s) => s.addCollection);
   const renameCollection = useCatalogStore((s) => s.renameCollection);
   const deleteCollection = useCatalogStore((s) => s.deleteCollection);
-  const addPhotosToCollection = useCatalogStore((s) => s.addPhotosToCollection);
   const movePhotosToCollection = useCatalogStore((s) => s.movePhotosToCollection);
   const moveCollection = useCatalogStore((s) => s.moveCollection);
   const libraryOrder = useCatalogStore((s) => s.libraryOrder);
   const reorderLibrary = useCatalogStore((s) => s.reorderLibrary);
   const reorderInsideCollection = useCatalogStore((s) => s.reorderInsideCollection);
   const saveToDisk = useCatalogStore((s) => s.saveToDisk);
-
-  // Child collections of current level
-  const childCollections = useMemo(
-    () => collections.filter((c) => c.parentId === (activeCollectionId ?? null)),
-    [collections, activeCollectionId],
-  );
 
   // Filter photos for current level, preserving collection's photoIds order
   const collectionFilteredPhotos = useMemo(() => {
@@ -106,7 +99,6 @@ export function LibraryContainer({
     activeId: activeDragId,
     activePhoto,
     handleDragStart,
-    handleDragEnd,
     handleDragCancel,
   } = useDragReorder(filteredPhotos, onReorder);
 
