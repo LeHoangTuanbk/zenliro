@@ -19,7 +19,11 @@ export class ClaudeCodeManager {
     return this.process !== null && !this.process.killed;
   }
 
-  sendMessage(text: string, onEvent: StreamCallback, options?: { model?: string }): void {
+  sendMessage(
+    text: string,
+    onEvent: StreamCallback,
+    options?: { model?: string; env?: Record<string, string> },
+  ): void {
     // Kill any running process
     if (this.isRunning()) {
       this.process?.kill('SIGTERM');
@@ -31,10 +35,13 @@ export class ClaudeCodeManager {
 
     const args = [
       '--print',
-      '--output-format', 'stream-json',
+      '--output-format',
+      'stream-json',
       '--verbose',
-      '--system-prompt', SYSTEM_PROMPT,
-      '--allowedTools', 'mcp__zenliro__*',
+      '--system-prompt',
+      SYSTEM_PROMPT,
+      '--allowedTools',
+      'mcp__zenliro__*',
       '--dangerously-skip-permissions',
     ];
 
@@ -50,9 +57,11 @@ export class ClaudeCodeManager {
     // Prompt as argument
     args.push(text);
 
+    const env = options?.env ? { ...getShellEnv(), ...options.env } : getShellEnv();
+
     this.process = spawn(CLAUDE_CLI, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: getShellEnv(),
+      env,
     });
 
     this.process.stdout?.on('data', (data: Buffer) => {

@@ -8,9 +8,14 @@ import {
   DragOverlay,
   PointerSensor,
   closestCenter,
+  pointerWithin,
   useSensor,
   useSensors,
+  useDroppable,
 } from '@dnd-kit/core';
+import type { CollisionDetection } from '@dnd-kit/core';
+import { useBulkEditStore } from '@features/bulk-edit';
+import { BulkEditPanel } from '@features/bulk-edit/ui/bulk-edit-panel';
 import { ChevronRight } from 'lucide-react';
 import type { LibraryFilter } from '../const/filter';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
@@ -53,9 +58,40 @@ type LibraryViewProps = {
   onMoveCollection: (id: string) => void;
   editingCollectionId: string | null;
   onEditingDone: () => void;
+  onBulkAiEdit?: () => void;
 };
 
 const ACTIVATION_CONSTRAINT = { distance: 8 };
+
+/** Prioritize bulk-edit-drop zone when pointer is over it, otherwise use closestCenter */
+const bulkEditAwareCollision: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  const bulkHit = pointerCollisions.find((c) => c.id === 'bulk-edit-drop');
+  if (bulkHit) return [bulkHit];
+  return closestCenter(args);
+};
+
+function BulkEditDropWrapper({ onOpenDevelop }: { onOpenDevelop?: (id: string) => void }) {
+  const isPanelOpen = useBulkEditStore((s) => s.isPanelOpen);
+  const phase = useBulkEditStore((s) => s.phase);
+  const { setNodeRef, isOver } = useDroppable({ id: 'bulk-edit-drop' });
+
+  if (!isPanelOpen) return null;
+
+  return (
+    <div
+      ref={phase === 'setup' ? setNodeRef : undefined}
+      className={`shrink-0 transition-colors ${isOver && phase === 'setup' ? 'ring-1 ring-inset ring-[#c4a0ff]/50' : ''}`}
+    >
+      {isOver && phase === 'setup' && (
+        <div className="h-6 flex items-center justify-center bg-[#c4a0ff]/10 border-t border-dashed border-[#c4a0ff]">
+          <span className="text-[10px] text-[#c4a0ff]">Drop to add to bulk edit</span>
+        </div>
+      )}
+      <BulkEditPanel onOpenDevelop={onOpenDevelop} />
+    </div>
+  );
+}
 
 export function LibraryView({
   photos,
@@ -94,6 +130,7 @@ export function LibraryView({
   onMoveCollection,
   editingCollectionId,
   onEditingDone,
+  onBulkAiEdit,
 }: LibraryViewProps) {
   const visiblePhotos = photos.slice(0, visibleCount);
   const sensors = useSensors(
@@ -137,6 +174,7 @@ export function LibraryView({
         onBulkDelete={onBulkDelete}
         onClearSelection={onClearSelection}
         onCollectionCreate={onCollectionCreate}
+        onBulkAiEdit={onBulkAiEdit}
       />
 
       {/* Breadcrumb */}
@@ -170,42 +208,42 @@ export function LibraryView({
         </div>
       )}
 
-      {isEmpty ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 text-br-dim select-none">
-          <svg
-            width="56"
-            height="56"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1"
-          >
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <polyline points="21 15 16 10 5 21" />
-          </svg>
-          <p className="text-[13px]">
-            {totalCount === 0 ? 'No photos yet' : 'No photos match filters'}
-          </p>
-          {totalCount === 0 && (
-            <BrButton
-              variant="primary"
-              size="md"
-              className="px-5 py-2 text-[12px]"
-              onClick={onImport}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={bulkEditAwareCollision}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
+        onDragCancel={onDragCancel}
+      >
+        {isEmpty ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-br-dim select-none">
+            <svg
+              width="56"
+              height="56"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1"
             >
-              Import Photos
-            </BrButton>
-          )}
-        </div>
-      ) : (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          onDragCancel={onDragCancel}
-        >
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            <p className="text-[13px]">
+              {totalCount === 0 ? 'No photos yet' : 'No photos match filters'}
+            </p>
+            {totalCount === 0 && (
+              <BrButton
+                variant="primary"
+                size="md"
+                className="px-5 py-2 text-[12px]"
+                onClick={onImport}
+              >
+                Import Photos
+              </BrButton>
+            )}
+          </div>
+        ) : (
           <div className="flex-1 overflow-y-auto p-4">
             <div
               data-library-grid
@@ -294,17 +332,18 @@ export function LibraryView({
             </div>
             {visibleCount < photos.length && <div ref={setSentinel} className="h-4" />}
           </div>
-          <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
-            {activePhoto ? (
-              <DragOverlayCard photo={activePhoto} />
-            ) : activeDragId?.startsWith('collection:') ? (
-              <CollectionDragOverlay
-                collection={collections.find((c) => `collection:${c.id}` === activeDragId) ?? null}
-              />
-            ) : null}
-          </DragOverlay>
-        </DndContext>
-      )}
+        )}
+        <BulkEditDropWrapper onOpenDevelop={onOpenDevelop} />
+        <DragOverlay dropAnimation={{ duration: 200, easing: 'ease' }}>
+          {activePhoto ? (
+            <DragOverlayCard photo={activePhoto} />
+          ) : activeDragId?.startsWith('collection:') ? (
+            <CollectionDragOverlay
+              collection={collections.find((c) => `collection:${c.id}` === activeDragId) ?? null}
+            />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <ImportProgressOverlay progress={importProgress} />
     </div>

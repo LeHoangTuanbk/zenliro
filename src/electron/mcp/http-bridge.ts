@@ -5,6 +5,8 @@ import os from 'os';
 
 const PORT_FILE = path.join(os.homedir(), '.zenliro', 'mcp-port');
 
+const BULK_PHOTO_ID = process.env.ZENLIRO_BULK_PHOTO_ID ?? null;
+
 function readPort(): number {
   try {
     return parseInt(fs.readFileSync(PORT_FILE, 'utf-8').trim(), 10);
@@ -13,13 +15,21 @@ function readPort(): number {
   }
 }
 
+function enrichPayload(payload: unknown): unknown {
+  if (!BULK_PHOTO_ID) return payload;
+  if (payload && typeof payload === 'object') {
+    return { ...(payload as Record<string, unknown>), __bulkPhotoId: BULK_PHOTO_ID };
+  }
+  return { __bulkPhotoId: BULK_PHOTO_ID };
+}
+
 export function requestFromApp<T>(
   channel: string,
   payload?: unknown,
   timeoutMs = 15_000,
 ): Promise<T> {
   const port = readPort();
-  const body = JSON.stringify({ channel, payload, timeout: timeoutMs });
+  const body = JSON.stringify({ channel, payload: enrichPayload(payload), timeout: timeoutMs });
 
   return new Promise((resolve, reject) => {
     const req = http.request(

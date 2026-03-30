@@ -14,6 +14,7 @@ export const Key = {
   Minus: '-',
   Slash: '/',
   A: 'a',
+  B: 'b',
   C: 'c',
   D: 'd',
   E: 'e',

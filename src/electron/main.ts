@@ -5,6 +5,7 @@ import { registerCatalogHandlers } from './catalog.js';
 import { registerHistoryHandlers } from './history.js';
 import { registerChatHistoryHandlers } from './chat-history.js';
 import { registerAgentIpc } from './agent/agent-ipc.js';
+import { registerBulkAgentIpc } from './agent/bulk-agent-ipc.js';
 import { setMainWindow } from './mcp/ipc-bridge.js';
 import { startLocalServer, stopLocalServer } from './mcp/local-server.js';
 import { registerMcpGlobally } from './mcp/register-global.js';
@@ -77,6 +78,7 @@ app.on('ready', () => {
   registerHistoryHandlers();
   registerChatHistoryHandlers();
   registerAgentIpc(mainWindow);
+  registerBulkAgentIpc(mainWindow);
   setMainWindow(mainWindow);
   setupTray(mainWindow);
   installRendererCrashHandler(mainWindow);

@@ -207,5 +207,41 @@ interface Window {
       onStreamDone: (cb: () => void) => () => void;
       onStreamError: (cb: (error: string) => void) => () => void;
     };
+
+    bulkEdit: {
+      start: (
+        photoIds: string[],
+        options: { prompt: string; model?: string; parallelCount: number },
+      ) => Promise<{ ok: boolean }>;
+      stop: () => Promise<{ ok: boolean }>;
+      stopJob: (photoId: string) => Promise<{ ok: boolean }>;
+      getStatus: () => Promise<{
+        running: boolean;
+        jobs: Array<{
+          photoId: string;
+          status: string;
+          agentIndex: number | null;
+          startedAt: number | null;
+          completedAt: number | null;
+          error: string | null;
+        }>;
+      }>;
+      onJobStatus: (
+        cb: (data: { photoId: string; status: string; agentIndex: number | null }) => void,
+      ) => () => void;
+      onJobThinking: (
+        cb: (data: { photoId: string; agentIndex: number; text: string }) => void,
+      ) => () => void;
+      onJobText: (
+        cb: (data: { photoId: string; agentIndex: number; text: string }) => void,
+      ) => () => void;
+      onJobToolUse: (
+        cb: (data: { photoId: string; agentIndex: number; name: string }) => void,
+      ) => () => void;
+      onJobError: (cb: (data: { photoId: string; error: string }) => void) => () => void;
+      onAllDone: (
+        cb: (summary: { total: number; done: number; failed: number; cancelled: number }) => void,
+      ) => () => void;
+    };
   };
 }
