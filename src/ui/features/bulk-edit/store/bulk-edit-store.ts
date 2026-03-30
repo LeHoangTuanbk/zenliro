@@ -60,6 +60,7 @@ type BulkEditStore = {
   minimize: () => void;
   restore: () => void;
   close: () => void;
+  newBulkEdit: () => void;
 
   // Actions — From IPC events
   updateJobStatus: (photoId: string, status: JobStatus, agentIndex: number | null) => void;
@@ -178,6 +179,18 @@ export const useBulkEditStore = create<BulkEditStore>((set) => ({
       isActive: false,
       isPanelOpen: false,
       isMinimized: false,
+      phase: 'setup',
+      selectedPhotoIds: [],
+      jobs: [],
+      prompt: '',
+      summary: null,
+      startedAt: null,
+      completedAt: null,
+      expandedJobId: null,
+    }),
+
+  newBulkEdit: () =>
+    set({
       phase: 'setup',
       selectedPhotoIds: [],
       jobs: [],
