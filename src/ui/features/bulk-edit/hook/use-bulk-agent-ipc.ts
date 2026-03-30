@@ -19,6 +19,7 @@ import {
   analyzeLocalContrast,
 } from '@features/agent/lib/analysis-utils';
 import { createRendererLogger } from '@shared/lib/logger';
+import type { Mask } from '@features/develop/mask/store/types';
 
 const log = createRendererLogger('bulk-agent-ipc');
 
@@ -135,7 +136,7 @@ export function useBulkAgentIpc() {
           log.error(`Failed to load photo binary: ${catalogPhoto.filePath}`);
           return null;
         }
-        const blob = new Blob([binary.bytes], { type: binary.mimeType });
+        const blob = new Blob([binary.bytes as BlobPart], { type: binary.mimeType });
         const imageUrl = URL.createObjectURL(blob);
 
         const ctx = await bulkContextManager.create(photoId, imageUrl);
@@ -159,7 +160,8 @@ export function useBulkAgentIpc() {
     function handleBulkRequest(channel: string, req: AgentRequest): boolean {
       if (!isBulkRequest(req.payload)) return false;
 
-      const photoId = req.payload.__bulkPhotoId;
+      const bulkPayload = req.payload;
+      const photoId = bulkPayload.__bulkPhotoId;
 
       // Async handler
       (async () => {
@@ -172,7 +174,7 @@ export function useBulkAgentIpc() {
         switch (channel) {
           // ── Read tools ──────────────────────────────────────────
           case AGENT_CHANNELS.GET_SCREENSHOT: {
-            const p = stripBulkId<{ quality?: number }>(req.payload);
+            const p = stripBulkId<{ quality?: number }>(bulkPayload);
             const quality = p.quality ?? 0.6;
             const dataUrl = ctx.getExportDataUrl('image/jpeg', quality);
             const base64 = dataUrl?.replace(/^data:image\/jpeg;base64,/, '') ?? '';
@@ -209,7 +211,7 @@ export function useBulkAgentIpc() {
           }
 
           case AGENT_CHANNELS.SAMPLE_COLORS: {
-            const p = stripBulkId<{ points: Array<{ x: number; y: number }> }>(req.payload);
+            const p = stripBulkId<{ points: Array<{ x: number; y: number }> }>(bulkPayload);
             if (!p.points?.length) {
               respond(req.requestId, null);
               break;
@@ -300,7 +302,7 @@ export function useBulkAgentIpc() {
           }
 
           case AGENT_CHANNELS.ANALYZE_SATURATION_MAP: {
-            const p = stripBulkId<{ gridSize?: number }>(req.payload);
+            const p = stripBulkId<{ gridSize?: number }>(bulkPayload);
             const pixels = ctx.getRenderedPixels();
             if (!pixels) {
               respond(req.requestId, null);
@@ -335,7 +337,7 @@ export function useBulkAgentIpc() {
 
           case AGENT_CHANNELS.GET_REGION_SCREENSHOT: {
             const p = stripBulkId<{ x: number; y: number; w: number; h: number; quality?: number }>(
-              req.payload,
+              bulkPayload,
             );
             const pixels = ctx.getRenderedPixels();
             if (!pixels) {
@@ -379,7 +381,7 @@ export function useBulkAgentIpc() {
 
           // ── Write tools ──────────────────────────────────────────
           case AGENT_CHANNELS.SET_ADJUSTMENTS: {
-            const params = stripBulkId<Record<string, number>>(req.payload);
+            const params = stripBulkId<Record<string, number>>(bulkPayload);
             const applied: Record<string, number> = {};
             for (const [key, value] of Object.entries(params)) {
               if (value !== undefined && key in ctx.adjustments) {
@@ -400,7 +402,7 @@ export function useBulkAgentIpc() {
           }
 
           case AGENT_CHANNELS.SET_COLOR_MIXER: {
-            const p = stripBulkId<{ mode: string; channel: string; value: number }>(req.payload);
+            const p = stripBulkId<{ mode: string; channel: string; value: number }>(bulkPayload);
             if (!ctx.colorMixer) {
               ctx.colorMixer = {
                 hue: [0, 0, 0, 0, 0, 0, 0, 0],
@@ -431,7 +433,7 @@ export function useBulkAgentIpc() {
 
           case AGENT_CHANNELS.SET_COLOR_GRADING: {
             const p = stripBulkId<{ range: string; hue: number; sat: number; lum: number }>(
-              req.payload,
+              bulkPayload,
             );
             const range = p.range as 'shadows' | 'midtones' | 'highlights';
             if (range in ctx.colorGrading) {
@@ -443,7 +445,7 @@ export function useBulkAgentIpc() {
           }
 
           case AGENT_CHANNELS.SET_EFFECTS: {
-            const p = stripBulkId<Record<string, number>>(req.payload);
+            const p = stripBulkId<Record<string, number>>(bulkPayload);
             for (const [key, value] of Object.entries(p)) {
               if (key in ctx.effects) {
                 (ctx.effects as Record<string, number>)[key] = value;
@@ -497,7 +499,7 @@ export function useBulkAgentIpc() {
 
           // Masking
           case AGENT_CHANNELS.ADD_MASK: {
-            const p = stripBulkId<Record<string, unknown>>(req.payload);
+            const p = stripBulkId<Record<string, unknown>>(bulkPayload);
             const maskId = `mask-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
             const adjustments = {
               exposure: 0,
@@ -553,7 +555,7 @@ export function useBulkAgentIpc() {
           }
 
           case AGENT_CHANNELS.SET_MASK_ADJUSTMENT: {
-            const p = stripBulkId<{ maskId: string; [key: string]: unknown }>(req.payload);
+            const p = stripBulkId<{ maskId: string; [key: string]: unknown }>(bulkPayload);
             const mask = ctx.masks.find((m) => m.id === p.maskId);
             if (mask) {
               for (const [key, value] of Object.entries(p)) {
@@ -568,7 +570,7 @@ export function useBulkAgentIpc() {
           }
 
           case AGENT_CHANNELS.REMOVE_MASK: {
-            const p = stripBulkId<{ maskId: string }>(req.payload);
+            const p = stripBulkId<{ maskId: string }>(bulkPayload);
             ctx.masks = ctx.masks.filter((m) => m.id !== p.maskId);
             ctx.renderCurrent();
             respond(req.requestId, { ok: true });
@@ -576,7 +578,7 @@ export function useBulkAgentIpc() {
           }
 
           case AGENT_CHANNELS.GET_BEFORE_AFTER: {
-            const p2 = stripBulkId<{ quality?: number }>(req.payload);
+            const p2 = stripBulkId<{ quality?: number }>(bulkPayload);
             const imgEl = ctx.getImageElement();
             if (!imgEl) {
               respond(req.requestId, null);
@@ -632,7 +634,7 @@ export function useBulkAgentIpc() {
           AGENT_CHANNELS.SET_MASK_ADJUSTMENT,
           AGENT_CHANNELS.REMOVE_MASK,
         ];
-        if (WRITE_CHANNELS.includes(channel)) {
+        if ((WRITE_CHANNELS as string[]).includes(channel)) {
           const edits = ctx.captureEdits();
           const store = useCatalogStore.getState();
           store.savePhotoEdits(photoId, edits);
