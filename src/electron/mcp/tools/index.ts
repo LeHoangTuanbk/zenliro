@@ -25,6 +25,14 @@ import { registerSetMaskAdjustment } from './set-mask-adjustment.js';
 import { registerRemoveMask } from './remove-mask.js';
 import { registerSetCrop } from './set-crop.js';
 import { registerResetCrop } from './reset-crop.js';
+import { registerGetRegionScreenshot } from './get-region-screenshot.js';
+import { registerAnalyzeExposure } from './analyze-exposure.js';
+import { registerAnalyzeColorHarmony } from './analyze-color-harmony.js';
+import { registerCheckSkinTones } from './check-skin-tones.js';
+import { registerAnalyzeSaturationMap } from './analyze-saturation-map.js';
+import { registerDetectClippingMap } from './detect-clipping-map.js';
+import { registerGetBeforeAfter } from './get-before-after.js';
+import { registerAnalyzeLocalContrast } from './analyze-local-contrast.js';
 
 export function registerAllTools(server: McpServer) {
   // Read tools
@@ -57,4 +65,13 @@ export function registerAllTools(server: McpServer) {
   // Crop, Rotate & Flip
   registerSetCrop(server);
   registerResetCrop(server);
+  // Advanced analysis
+  registerGetRegionScreenshot(server);
+  registerAnalyzeExposure(server);
+  registerAnalyzeColorHarmony(server);
+  registerCheckSkinTones(server);
+  registerAnalyzeSaturationMap(server);
+  registerDetectClippingMap(server);
+  registerGetBeforeAfter(server);
+  registerAnalyzeLocalContrast(server);
 }

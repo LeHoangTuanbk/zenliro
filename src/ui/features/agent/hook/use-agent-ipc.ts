@@ -21,6 +21,14 @@ import { useAgentStore } from '../store/agent-store';
 import type { HealMode } from '@features/develop/heal/store/types';
 import type { PhotoExif } from '@features/histogram/lib/read-exif';
 import { detectBlemishesWithFace } from '../lib/face-blemish-detector';
+import {
+  analyzeExposure,
+  analyzeColorHarmony,
+  checkSkinTones,
+  analyzeSaturationMap,
+  detectClippingMap,
+  analyzeLocalContrast,
+} from '../lib/analysis-utils';
 
 /** Summarize histogram into compact stats for AI analysis */
 function summarizeHistogram(r: Uint32Array, g: Uint32Array, b: Uint32Array) {
@@ -890,6 +898,131 @@ export function useAgentIpc(
         });
         useAgentStore.getState().showActionToast('Crop reset');
         respond(req.requestId, { ok: true });
+      },
+
+      // ── Advanced analysis tools ─────────────────────────────────────
+      [AGENT_CHANNELS.GET_REGION_SCREENSHOT]: (req) => {
+        const payload = req.payload as
+          | {
+              x: number;
+              y: number;
+              w: number;
+              h: number;
+              quality?: number;
+            }
+          | undefined;
+        if (!payload) return respond(req.requestId, null);
+        useAgentStore.getState().setScanning(true);
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        const { data, width, height } = pixels;
+        const rx = Math.max(0, Math.floor(payload.x * width));
+        const ry = Math.max(0, Math.floor(payload.y * height));
+        const rw = Math.min(width - rx, Math.floor(payload.w * width));
+        const rh = Math.min(height - ry, Math.floor(payload.h * height));
+        if (rw <= 0 || rh <= 0) return respond(req.requestId, null);
+        // Crop pixels into sub-rect
+        const cropped = new Uint8ClampedArray(rw * rh * 4);
+        for (let y = 0; y < rh; y++) {
+          const srcOffset = ((ry + y) * width + rx) * 4;
+          const dstOffset = y * rw * 4;
+          cropped.set(data.subarray(srcOffset, srcOffset + rw * 4), dstOffset);
+        }
+        // Draw to offscreen canvas and export
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 1200;
+        const scale = Math.min(1, MAX_DIM / Math.max(rw, rh));
+        canvas.width = Math.round(rw * scale);
+        canvas.height = Math.round(rh * scale);
+        const ctx = canvas.getContext('2d')!;
+        const imgData = new ImageData(cropped, rw, rh);
+        if (scale < 1) {
+          const tmp = document.createElement('canvas');
+          tmp.width = rw;
+          tmp.height = rh;
+          tmp.getContext('2d')!.putImageData(imgData, 0, 0);
+          ctx.drawImage(tmp, 0, 0, canvas.width, canvas.height);
+        } else {
+          ctx.putImageData(imgData, 0, 0);
+        }
+        const quality = payload.quality ?? 0.8;
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const base64 = dataUrl.replace(/^data:image\/jpeg;base64,/, '');
+        respond(req.requestId, base64);
+      },
+
+      [AGENT_CHANNELS.ANALYZE_EXPOSURE]: (req) => {
+        useAgentStore.getState().setScanning(true);
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(req.requestId, analyzeExposure(pixels.data, pixels.width, pixels.height));
+      },
+
+      [AGENT_CHANNELS.ANALYZE_COLOR_HARMONY]: (req) => {
+        useAgentStore.getState().setScanning(true);
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(req.requestId, analyzeColorHarmony(pixels.data, pixels.width, pixels.height));
+      },
+
+      [AGENT_CHANNELS.CHECK_SKIN_TONES]: (req) => {
+        useAgentStore.getState().setScanning(true);
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(req.requestId, checkSkinTones(pixels.data, pixels.width, pixels.height));
+      },
+
+      [AGENT_CHANNELS.ANALYZE_SATURATION_MAP]: (req) => {
+        const payload = req.payload as { gridSize?: number } | undefined;
+        useAgentStore.getState().setScanning(true);
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(
+          req.requestId,
+          analyzeSaturationMap(pixels.data, pixels.width, pixels.height, payload?.gridSize),
+        );
+      },
+
+      [AGENT_CHANNELS.DETECT_CLIPPING_MAP]: (req) => {
+        useAgentStore.getState().setScanning(true);
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(req.requestId, detectClippingMap(pixels.data, pixels.width, pixels.height));
+      },
+
+      [AGENT_CHANNELS.GET_BEFORE_AFTER]: async (req) => {
+        const payload = req.payload as { quality?: number } | undefined;
+        const quality = payload?.quality ?? 0.7;
+        if (!originalImageUrl) return respond(req.requestId, null);
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          await new Promise<void>((resolve, reject) => {
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('Failed to load original image'));
+            img.src = originalImageUrl;
+          });
+          const MAX_DIM = 1600;
+          const scale = Math.min(1, MAX_DIM / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          const base64 = dataUrl.replace(/^data:image\/jpeg;base64,/, '');
+          respond(req.requestId, base64);
+        } catch (err) {
+          createRendererLogger('agent/before-after').error('Failed to capture original', err);
+          respond(req.requestId, null);
+        }
+      },
+
+      [AGENT_CHANNELS.ANALYZE_LOCAL_CONTRAST]: (req) => {
+        useAgentStore.getState().setScanning(true);
+        const pixels = canvasRef.current?.getRenderedPixels();
+        if (!pixels) return respond(req.requestId, null);
+        respond(req.requestId, analyzeLocalContrast(pixels.data, pixels.width, pixels.height));
       },
     };
 
