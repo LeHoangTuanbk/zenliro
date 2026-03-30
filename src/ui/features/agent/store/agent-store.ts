@@ -347,7 +347,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     set({
       chatId: session.id,
       chatTitle: session.title,
-      messages: session.messages,
+      messages: session.messages as AgentMessage[],
       currentItems: [],
       currentThinking: '',
       showChatHistory: false,
