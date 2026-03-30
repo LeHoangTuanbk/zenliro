@@ -1,9 +1,12 @@
 import { BrowserWindow, ipcMain, app } from 'electron';
+import { execFile } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { ClaudeCodeManager } from './claude-code-manager.js';
 import { CodexManager } from './codex-manager.js';
 import { loadAllModels } from './load-models.js';
+import { getShellEnv } from './shell-env.js';
+import { CLAUDE_CLI } from './const.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
 import { createLogger } from '../logger/index.js';
 
@@ -13,7 +16,11 @@ type AgentProvider = 'claude' | 'codex';
 
 type ManagerLike = {
   isRunning(): boolean;
-  sendMessage(text: string, onEvent: (e: ParsedStreamEvent) => void, options?: { model?: string }): void;
+  sendMessage(
+    text: string,
+    onEvent: (e: ParsedStreamEvent) => void,
+    options?: { model?: string },
+  ): void;
   stop(): void;
   setSessionId(id: string): void;
 };
@@ -67,27 +74,30 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
     }
   });
 
-  ipcMain.handle('agent:send-message', async (
-    _event, text: string, options?: { model?: string; provider?: AgentProvider },
-  ) => {
-    const provider = options?.provider ?? 'claude';
+  ipcMain.handle(
+    'agent:send-message',
+    async (_event, text: string, options?: { model?: string; provider?: AgentProvider }) => {
+      const provider = options?.provider ?? 'claude';
 
-    // Provider changed → must create new manager (new session)
-    if (provider !== currentProvider) {
-      manager?.stop();
-      manager = createManager(provider);
-      currentProvider = provider;
-      log.info(`Agent provider switched to: ${provider}`);
-    }
+      // Provider changed → must create new manager (new session)
+      if (provider !== currentProvider) {
+        manager?.stop();
+        manager = createManager(provider);
+        currentProvider = provider;
+        log.info(`Agent provider switched to: ${provider}`);
+      }
 
-    if (!manager) {
-      manager = createManager(provider);
-      currentProvider = provider;
-    }
+      if (!manager) {
+        manager = createManager(provider);
+        currentProvider = provider;
+      }
 
-    log.info(`Agent message sent (provider: ${provider}, model: ${options?.model ?? 'default'}, length: ${text.length})`);
-    manager.sendMessage(text, handleStreamEvent, options);
-  });
+      log.info(
+        `Agent message sent (provider: ${provider}, model: ${options?.model ?? 'default'}, length: ${text.length})`,
+      );
+      manager.sendMessage(text, handleStreamEvent, options);
+    },
+  );
 
   ipcMain.handle('agent:stop-session', async () => {
     manager?.stop();
@@ -108,6 +118,43 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
     manager?.stop();
     manager = null;
   });
+
+  ipcMain.handle(
+    'agent:generate-title',
+    async (_event, userMessage: string, assistantMessage: string) => {
+      const fallback = userMessage.replace(/\n/g, ' ').trim().slice(0, 50);
+      try {
+        const prompt = `Generate a very short title (max 6 words, no quotes, no markdown) for this photo editing conversation:\nUser: ${userMessage.slice(0, 200)}\nAssistant: ${assistantMessage.slice(0, 200)}`;
+        log.info('Generating chat title via Haiku...');
+        return new Promise<string>((resolve) => {
+          execFile(
+            CLAUDE_CLI,
+            ['--print', '--model', 'haiku', prompt],
+            { env: getShellEnv(), timeout: 30_000 },
+            (err, stdout, stderr) => {
+              if (err) {
+                log.warn('Title generation failed:', err.message);
+                if (stderr) log.warn('stderr:', stderr);
+                resolve(fallback);
+                return;
+              }
+              const title = stdout.trim().slice(0, 60);
+              if (!title) {
+                log.warn('Title generation returned empty');
+                resolve(fallback);
+                return;
+              }
+              log.info(`Generated title: "${title}"`);
+              resolve(title);
+            },
+          );
+        });
+      } catch (err) {
+        log.error('Title generation threw:', err);
+        return fallback;
+      }
+    },
+  );
 
   ipcMain.handle('agent:save-reference-image', async (_event, dataUrl: string) => {
     try {

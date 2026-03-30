@@ -111,6 +111,23 @@ type Catalog = {
   lastOpenedAt: number;
 };
 
+type ChatSession = {
+  id: string;
+  title: string;
+  messages: Array<{
+    id: string;
+    role: 'user' | 'assistant';
+    text: string;
+    items?: Array<
+      | { type: 'text'; text: string }
+      | { type: 'tool'; toolCall: { id: string; name: string; params: unknown; status: string } }
+    >;
+    thinking?: string;
+    timestamp: number;
+  }>;
+  updatedAt: number;
+};
+
 interface Window {
   electron: {
     getPathForFile: (file: File) => string;
@@ -126,6 +143,12 @@ interface Window {
       load: (photoId: string) => Promise<unknown>;
       save: (photoId: string, data: unknown) => Promise<boolean>;
       delete: (photoId: string) => Promise<boolean>;
+    };
+    chatHistory: {
+      list: () => Promise<Array<{ id: string; title: string; updatedAt: number }>>;
+      load: (chatId: string) => Promise<ChatSession | null>;
+      save: (data: ChatSession) => Promise<boolean>;
+      delete: (chatId: string) => Promise<boolean>;
     };
     photo: {
       loadFromPath: (filePath: string) => Promise<LoadedPhotoBinary | null>;
@@ -165,6 +188,7 @@ interface Window {
       stopSession: () => Promise<void>;
       getStatus: () => Promise<{ running: boolean }>;
       saveReferenceImage: (dataUrl: string) => Promise<string | null>;
+      generateTitle: (userMessage: string, assistantMessage: string) => Promise<string>;
       loadModels: () => Promise<
         Array<{ id: string; label: string; description: string; provider: string }>
       >;
