@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import type { AgentMessage as AgentMessageType, StreamItem } from '../store/agent-store';
+import { useAgentStore } from '../store/agent-store';
 import { AgentMessage } from './agent-message';
 import { AgentInput } from './agent-input';
 import { StreamItems } from './stream-items';
+import { ChatHistoryDialog } from './chat-history-dialog';
 
 const SUGGESTIONS = [
   'Make this photo warmer and more cinematic',
@@ -36,6 +38,9 @@ export function AgentPanelView({
 }: AgentPanelViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const hasContent = messages.length > 0 || currentItems.length > 0;
+  const showChatHistory = useAgentStore((s) => s.showChatHistory);
+  const setShowChatHistory = useAgentStore((s) => s.setShowChatHistory);
+  const chatTitle = useAgentStore((s) => s.chatTitle);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -58,9 +63,35 @@ export function AgentPanelView({
       }}
       onKeyDown={(e) => e.stopPropagation()}
     >
+      {/* Chat history overlay */}
+      {showChatHistory && <ChatHistoryDialog />}
+
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 shrink-0">
-        <span className="text-[12px] font-semibold text-[#e0e0e0] tracking-wide">Agent</span>
+        <div className="flex items-center gap-1.5 min-w-0">
+          <button
+            onClick={() => setShowChatHistory(!showChatHistory)}
+            className="text-[#666] hover:text-[#999] transition-colors cursor-pointer shrink-0"
+            title="Chat history"
+          >
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+              <path
+                d="M6.5 1.5a5 5 0 100 10 5 5 0 000-10zM6.5 3.5v3l2 1.5"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          {chatTitle ? (
+            <span className="text-[11px] text-[#888] truncate max-w-[140px]" title={chatTitle}>
+              {chatTitle}
+            </span>
+          ) : (
+            <span className="text-[12px] font-semibold text-[#e0e0e0] tracking-wide">Agent</span>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           {hasContent && (
             <button

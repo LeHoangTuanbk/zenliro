@@ -35,6 +35,12 @@ electron.contextBridge.exposeInMainWorld('electron', {
       electron.ipcRenderer.invoke('history:save', photoId, data),
     delete: (photoId: string) => electron.ipcRenderer.invoke('history:delete', photoId),
   },
+  chatHistory: {
+    list: () => electron.ipcRenderer.invoke('chat-history:list'),
+    load: (chatId: string) => electron.ipcRenderer.invoke('chat-history:load', chatId),
+    save: (data: unknown) => electron.ipcRenderer.invoke('chat-history:save', data),
+    delete: (chatId: string) => electron.ipcRenderer.invoke('chat-history:delete', chatId),
+  },
   photo: {
     loadFromPath: (filePath: string) => electron.ipcRenderer.invoke('photo:loadFromPath', filePath),
     saveThumbnail: (photoId: string, thumbnailDataUrl: string) =>
@@ -92,6 +98,8 @@ electron.contextBridge.exposeInMainWorld('electron', {
     getStatus: () => electron.ipcRenderer.invoke('agent:get-status'),
     saveReferenceImage: (dataUrl: string) =>
       electron.ipcRenderer.invoke('agent:save-reference-image', dataUrl),
+    generateTitle: (userMessage: string, assistantMessage: string) =>
+      electron.ipcRenderer.invoke('agent:generate-title', userMessage, assistantMessage),
     loadModels: () => electron.ipcRenderer.invoke('agent:load-models'),
 
     onToolRequest: (

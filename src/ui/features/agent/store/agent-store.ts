@@ -10,9 +10,7 @@ export type AgentToolCall = {
 };
 
 // Each stream item is either text or a tool call — rendered inline
-export type StreamItem =
-  | { type: 'text'; text: string }
-  | { type: 'tool'; toolCall: AgentToolCall };
+export type StreamItem = { type: 'text'; text: string } | { type: 'tool'; toolCall: AgentToolCall };
 
 export type AgentMessage = {
   id: string;
@@ -41,6 +39,12 @@ export const DEFAULT_MODELS: AgentModel[] = [
 
 export type AgentModelId = string;
 
+type ChatHistoryEntry = {
+  id: string;
+  title: string;
+  updatedAt: number;
+};
+
 type AgentStore = {
   isOpen: boolean;
   isMaximized: boolean;
@@ -56,6 +60,11 @@ type AgentStore = {
   modelId: AgentModelId;
   provider: AgentProvider;
   fastMode: boolean;
+  // Chat session
+  chatId: string | null;
+  chatTitle: string;
+  chatHistoryList: ChatHistoryEntry[];
+  showChatHistory: boolean;
 
   toggle: () => void;
   setOpen: (open: boolean) => void;
@@ -74,10 +83,55 @@ type AgentStore = {
   clearMessages: () => void;
   showActionToast: (text: string) => void;
   hideActionToast: () => void;
+
+  // Chat history
+  newChat: () => void;
+  saveCurrentChat: () => void;
+  loadChat: (chatId: string) => Promise<void>;
+  deleteChat: (chatId: string) => Promise<void>;
+  loadChatHistoryList: () => Promise<void>;
+  setShowChatHistory: (v: boolean) => void;
+  setChatTitle: (title: string) => void;
 };
 
 let msgCounter = 0;
 const nextId = () => `msg-${++msgCounter}`;
+
+function generateChatId() {
+  return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function placeholderTitle(text: string): string {
+  const cleaned = text.replace(/\n/g, ' ').trim();
+  return cleaned.length > 50 ? cleaned.slice(0, 50) + '...' : cleaned;
+}
+
+async function generateAITitle(userMsg: string, assistantMsg: string): Promise<string> {
+  try {
+    const title = await window.electron?.agent?.generateTitle(userMsg, assistantMsg);
+    return title || placeholderTitle(userMsg);
+  } catch {
+    return placeholderTitle(userMsg);
+  }
+}
+
+const SAVE_DEBOUNCE_MS = 1500;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function debouncedSaveChat(store: () => AgentStore) {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    const s = store();
+    if (!s.chatId || s.messages.length === 0) return;
+    window.electron?.chatHistory?.save({
+      id: s.chatId,
+      title: s.chatTitle,
+      messages: s.messages,
+      updatedAt: Date.now(),
+    });
+  }, SAVE_DEBOUNCE_MS);
+}
 
 const STORAGE_KEY = 'zenliro-agent-model';
 
@@ -88,14 +142,18 @@ function loadSavedModel(): { modelId: string; provider: AgentProvider } {
       const saved = JSON.parse(raw);
       if (saved.modelId && saved.provider) return saved;
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return { modelId: 'opus', provider: 'claude' };
 }
 
 function saveModel(modelId: string, provider: AgentProvider) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ modelId, provider }));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 const savedModel = loadSavedModel();
@@ -114,6 +172,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   modelId: savedModel.modelId,
   provider: savedModel.provider,
   fastMode: true,
+  chatId: null,
+  chatTitle: '',
+  chatHistoryList: [],
+  showChatHistory: false,
 
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),
   setOpen: (isOpen) => set({ isOpen }),
@@ -128,12 +190,16 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   toggleFastMode: () => set((s) => ({ fastMode: !s.fastMode })),
 
   addUserMessage: (text) =>
-    set((s) => ({
-      messages: [
-        ...s.messages,
-        { id: nextId(), role: 'user', text, timestamp: Date.now() },
-      ],
-    })),
+    set((s) => {
+      const isFirst = s.messages.length === 0;
+      const chatId = s.chatId ?? generateChatId();
+      const chatTitle = isFirst ? placeholderTitle(text) : s.chatTitle;
+      return {
+        chatId,
+        chatTitle,
+        messages: [...s.messages, { id: nextId(), role: 'user', text, timestamp: Date.now() }],
+      };
+    }),
 
   appendStreamText: (chunk) =>
     set((s) => {
@@ -189,9 +255,45 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       currentItems: [],
       currentThinking: '',
     });
+
+    // Generate AI title after first assistant response
+    const updated = get();
+    const userMsgs = updated.messages.filter((m) => m.role === 'user');
+    const assistantMsgs = updated.messages.filter((m) => m.role === 'assistant');
+    if (userMsgs.length === 1 && assistantMsgs.length === 1) {
+      generateAITitle(userMsgs[0].text, assistantMsgs[0].text).then((title) => {
+        const current = get();
+        // Only update if still on the same chat
+        if (current.chatId === updated.chatId) {
+          set({ chatTitle: title });
+          debouncedSaveChat(get);
+        }
+      });
+    }
+
+    // Auto-save after assistant finishes
+    debouncedSaveChat(get);
   },
 
-  clearMessages: () => set({ messages: [], currentItems: [], currentThinking: '' }),
+  clearMessages: () => {
+    // Save current chat before clearing
+    const s = get();
+    if (s.chatId && s.messages.length > 0) {
+      window.electron?.chatHistory?.save({
+        id: s.chatId,
+        title: s.chatTitle,
+        messages: s.messages,
+        updatedAt: Date.now(),
+      });
+    }
+    set({
+      messages: [],
+      currentItems: [],
+      currentThinking: '',
+      chatId: null,
+      chatTitle: '',
+    });
+  },
 
   showActionToast: (text) => {
     set({ actionToast: text });
@@ -201,4 +303,81 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   hideActionToast: () => set({ actionToast: null }),
+
+  // Chat history
+  newChat: () => {
+    const s = get();
+    if (s.chatId && s.messages.length > 0) {
+      window.electron?.chatHistory?.save({
+        id: s.chatId,
+        title: s.chatTitle,
+        messages: s.messages,
+        updatedAt: Date.now(),
+      });
+    }
+    set({
+      messages: [],
+      currentItems: [],
+      currentThinking: '',
+      chatId: null,
+      chatTitle: '',
+      showChatHistory: false,
+    });
+  },
+
+  saveCurrentChat: () => {
+    const s = get();
+    if (!s.chatId || s.messages.length === 0) return;
+    window.electron?.chatHistory?.save({
+      id: s.chatId,
+      title: s.chatTitle,
+      messages: s.messages,
+      updatedAt: Date.now(),
+    });
+  },
+
+  loadChat: async (chatId) => {
+    const data = await window.electron?.chatHistory?.load(chatId);
+    if (!data) return;
+    const session = data as ChatSession;
+    msgCounter = session.messages.length;
+    set({
+      chatId: session.id,
+      chatTitle: session.title,
+      messages: session.messages,
+      currentItems: [],
+      currentThinking: '',
+      showChatHistory: false,
+    });
+  },
+
+  deleteChat: async (chatId) => {
+    await window.electron?.chatHistory?.delete(chatId);
+    const s = get();
+    set({
+      chatHistoryList: s.chatHistoryList.filter((c) => c.id !== chatId),
+    });
+    // If we deleted the active chat, reset
+    if (s.chatId === chatId) {
+      set({
+        messages: [],
+        currentItems: [],
+        currentThinking: '',
+        chatId: null,
+        chatTitle: '',
+      });
+    }
+  },
+
+  loadChatHistoryList: async () => {
+    const list = await window.electron?.chatHistory?.list();
+    if (list) set({ chatHistoryList: list });
+  },
+
+  setShowChatHistory: (showChatHistory) => {
+    set({ showChatHistory });
+    if (showChatHistory) get().loadChatHistoryList();
+  },
+
+  setChatTitle: (chatTitle) => set({ chatTitle }),
 }));
