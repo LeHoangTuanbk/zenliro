@@ -57,9 +57,12 @@ export function PhotoJobRow({ job, isExpanded, onToggle, onOpenDevelop }: PhotoJ
 
   return (
     <div className="rounded-[2px]">
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggle}
         onDoubleClick={() => isDone && onOpenDevelop?.(job.photoId)}
+        onKeyDown={(e) => e.key === 'Enter' && onToggle()}
         className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-[#2a2a2a] cursor-pointer transition-colors rounded-[2px]"
         title={isDone ? 'Double-click to open in Develop' : undefined}
       >
@@ -110,7 +113,7 @@ export function PhotoJobRow({ job, isExpanded, onToggle, onOpenDevelop }: PhotoJ
         <span className="text-[10px] text-br-dim w-14 text-right shrink-0">
           {isProcessing ? `${elapsed}...` : job.completedAt ? elapsed : '—'}
         </span>
-      </button>
+      </div>
 
       {/* Expanded: live view (processing) */}
       {isExpanded && isProcessing && (

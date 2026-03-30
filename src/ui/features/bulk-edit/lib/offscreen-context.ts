@@ -185,7 +185,6 @@ export class OffscreenEditContext {
 
   /** Get current edits as PhotoEdits for saving to catalog */
   captureEdits(): PhotoEdits {
-    const tc = this.toneCurve;
     const cm = this.colorMixer;
     const cg = this.colorGrading;
     const e = this.effects;

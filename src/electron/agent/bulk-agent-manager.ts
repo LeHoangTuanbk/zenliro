@@ -1,5 +1,5 @@
 import { ClaudeCodeManager } from './claude-code-manager.js';
-import { SYSTEM_PROMPT } from './system-prompt.js';
+import { buildBulkEditPrompt } from './system-prompt.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
 import { createLogger } from '../logger/index.js';
 
@@ -109,14 +109,7 @@ export class BulkAgentManager {
     const agent = this.agents[agentIndex];
     if (!agent) return;
 
-    // Build prompt with photo context
-    const prompt = `You are editing photo with ID "${photoId}". ${this.options?.prompt ?? ''}
-
-IMPORTANT: This is a bulk editing job. Apply the requested style/edits to this specific photo.
-- First analyze the photo (get_screenshot, get_histogram, analyze_exposure)
-- Then apply edits based on your analysis and the user's request
-- Be efficient — apply all adjustments in one pass when possible
-- Do NOT ask follow-up questions. Just do your best edit.`;
+    const prompt = buildBulkEditPrompt(photoId, this.options?.prompt ?? '');
 
     agent.sendMessage(
       prompt,

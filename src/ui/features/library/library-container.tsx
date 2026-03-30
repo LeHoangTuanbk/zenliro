@@ -256,6 +256,7 @@ export function LibraryContainer({
       reorderLibrary,
       reorderInsideCollection,
       saveToDisk,
+      photos,
     ],
   );
 

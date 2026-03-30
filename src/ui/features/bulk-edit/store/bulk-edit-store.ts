@@ -69,7 +69,7 @@ type BulkEditStore = {
   setExpandedJob: (photoId: string | null) => void;
 };
 
-export const useBulkEditStore = create<BulkEditStore>((set, get) => ({
+export const useBulkEditStore = create<BulkEditStore>((set) => ({
   isActive: false,
   isPanelOpen: false,
   isMinimized: false,
