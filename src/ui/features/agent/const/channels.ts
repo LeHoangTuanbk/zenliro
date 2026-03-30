@@ -28,6 +28,15 @@ export const AGENT_CHANNELS = {
   // Crop, Rotate & Flip
   SET_CROP: 'agent:set-crop',
   RESET_CROP: 'agent:reset-crop',
+  // Advanced analysis
+  GET_REGION_SCREENSHOT: 'agent:get-region-screenshot',
+  ANALYZE_EXPOSURE: 'agent:analyze-exposure',
+  ANALYZE_COLOR_HARMONY: 'agent:analyze-color-harmony',
+  CHECK_SKIN_TONES: 'agent:check-skin-tones',
+  ANALYZE_SATURATION_MAP: 'agent:analyze-saturation-map',
+  DETECT_CLIPPING_MAP: 'agent:detect-clipping-map',
+  GET_BEFORE_AFTER: 'agent:get-before-after',
+  ANALYZE_LOCAL_CONTRAST: 'agent:analyze-local-contrast',
 } as const;
 
 export const AGENT_RESPONSE_PREFIX = 'agent:response:';
