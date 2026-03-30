@@ -108,9 +108,12 @@ function placeholderTitle(text: string): string {
 
 async function generateAITitle(userMsg: string, assistantMsg: string): Promise<string> {
   try {
+    console.log('[agent-store] Requesting AI title generation...');
     const title = await window.electron?.agent?.generateTitle(userMsg, assistantMsg);
+    console.log('[agent-store] AI title result:', title);
     return title || placeholderTitle(userMsg);
-  } catch {
+  } catch (err) {
+    console.warn('[agent-store] AI title generation failed:', err);
     return placeholderTitle(userMsg);
   }
 }

@@ -122,24 +122,36 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
   ipcMain.handle(
     'agent:generate-title',
     async (_event, userMessage: string, assistantMessage: string) => {
+      const fallback = userMessage.replace(/\n/g, ' ').trim().slice(0, 50);
       try {
-        const prompt = `Generate a very short title (max 6 words, no quotes) for this photo editing chat:\nUser: ${userMessage.slice(0, 200)}\nAssistant: ${assistantMessage.slice(0, 200)}`;
+        const prompt = `Generate a very short title (max 6 words, no quotes, no markdown) for this photo editing conversation:\nUser: ${userMessage.slice(0, 200)}\nAssistant: ${assistantMessage.slice(0, 200)}`;
+        log.info('Generating chat title via Haiku...');
         return new Promise<string>((resolve) => {
           execFile(
             CLAUDE_CLI,
-            ['--print', '--model', 'haiku', '--max-turns', '1', prompt],
-            { env: getShellEnv(), timeout: 10_000 },
-            (err, stdout) => {
-              if (err || !stdout.trim()) {
-                resolve(userMessage.slice(0, 50));
+            ['--print', '--model', 'haiku', prompt],
+            { env: getShellEnv(), timeout: 30_000 },
+            (err, stdout, stderr) => {
+              if (err) {
+                log.warn('Title generation failed:', err.message);
+                if (stderr) log.warn('stderr:', stderr);
+                resolve(fallback);
                 return;
               }
-              resolve(stdout.trim().slice(0, 60));
+              const title = stdout.trim().slice(0, 60);
+              if (!title) {
+                log.warn('Title generation returned empty');
+                resolve(fallback);
+                return;
+              }
+              log.info(`Generated title: "${title}"`);
+              resolve(title);
             },
           );
         });
-      } catch {
-        return userMessage.slice(0, 50);
+      } catch (err) {
+        log.error('Title generation threw:', err);
+        return fallback;
       }
     },
   );
