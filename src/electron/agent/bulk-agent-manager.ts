@@ -1,9 +1,27 @@
 import { ClaudeCodeManager } from './claude-code-manager.js';
+import { CodexManager } from './codex-manager.js';
 import { buildBulkEditPrompt } from './system-prompt.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
 import { createLogger } from '../logger/index.js';
 
 const log = createLogger('main/bulk-agent');
+
+type AgentProvider = 'claude' | 'codex';
+
+type ManagerLike = {
+  sendMessage(
+    text: string,
+    onEvent: (event: ParsedStreamEvent) => void,
+    options?: { model?: string; env?: Record<string, string> },
+  ): void;
+  stop(): void;
+  isRunning(): boolean;
+  setSessionId(id: string): void;
+};
+
+function createManager(provider: AgentProvider): ManagerLike {
+  return provider === 'codex' ? new CodexManager() : new ClaudeCodeManager();
+}
 
 export type PhotoJobStatus = 'queued' | 'processing' | 'done' | 'error' | 'cancelled';
 
@@ -19,6 +37,7 @@ export type PhotoJob = {
 export type BulkJobOptions = {
   prompt: string;
   model?: string;
+  provider?: AgentProvider;
   parallelCount: number;
 };
 
@@ -36,7 +55,7 @@ export type BulkJobEvent =
 export type BulkJobCallback = (event: BulkJobEvent) => void;
 
 export class BulkAgentManager {
-  private agents: ClaudeCodeManager[] = [];
+  private agents: ManagerLike[] = [];
   private queue: string[] = [];
   private jobs = new Map<string, PhotoJob>();
   private activeJobs = new Map<number, string>(); // agentIndex → photoId
@@ -73,12 +92,15 @@ export class BulkAgentManager {
       });
     }
 
-    // Create N agent instances
+    // Create N agent instances using the correct provider
     const count = Math.min(options.parallelCount, photoIds.length, 5);
-    log.info(`Starting bulk edit: ${photoIds.length} photos, ${count} agents`);
+    const provider = options.provider ?? 'claude';
+    log.info(
+      `Starting bulk edit: ${photoIds.length} photos, ${count} agents, provider: ${provider}`,
+    );
 
     for (let i = 0; i < count; i++) {
-      const agent = new ClaudeCodeManager();
+      const agent = createManager(provider);
       this.agents.push(agent);
       this.processNext(i);
     }
@@ -196,7 +218,8 @@ export class BulkAgentManager {
         if (agent) {
           agent.stop();
           // Replace with a fresh agent so the slot can process next photo
-          const newAgent = new ClaudeCodeManager();
+          const provider = this.options?.provider ?? 'claude';
+          const newAgent = createManager(provider);
           this.agents[agentIndex] = newAgent;
         }
         const job = this.jobs.get(photoId);

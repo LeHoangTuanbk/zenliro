@@ -145,7 +145,7 @@ electron.contextBridge.exposeInMainWorld('electron', {
   bulkEdit: {
     start: (
       photoIds: string[],
-      options: { prompt: string; model?: string; parallelCount: number },
+      options: { prompt: string; model?: string; provider?: string; parallelCount: number },
     ) => electron.ipcRenderer.invoke('bulk-edit:start', photoIds, options),
     stop: () => electron.ipcRenderer.invoke('bulk-edit:stop'),
     stopJob: (photoId: string) => electron.ipcRenderer.invoke('bulk-edit:stop-job', photoId),
