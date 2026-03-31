@@ -9,6 +9,7 @@ import { useInfiniteScroll } from './hook/use-infinite-scroll';
 import { useLibraryFilter } from './hook/use-library-filter';
 import { useDragReorder } from './hook/use-drag-reorder';
 import { useCatalogStore } from '@/pages/work-space/store/catalog-store';
+import { useBulkEditStore } from '@features/bulk-edit';
 import { DEFAULT_FILTER } from './const/filter';
 import type { LibraryFilter } from './const/filter';
 import type { HistogramData } from '@features/histogram/lib/compute-histogram';
@@ -193,6 +194,20 @@ export function LibraryContainer({
         return;
       }
 
+      // Photo dropped onto bulk edit drop zone
+      if (overId === 'bulk-edit-drop' && !activeId.startsWith('collection:')) {
+        const photo = photos.find((p) => p.id === activeId);
+        if (photo) {
+          useBulkEditStore.getState().addPhoto({
+            id: activeId,
+            fileName: photo.fileName,
+            thumbnailUrl: photo.thumbnailDataUrl ?? '',
+          });
+        }
+        handleDragCancel();
+        return;
+      }
+
       const isActiveCollection = activeId.startsWith('collection:');
       const isOverCollection = overId.startsWith('collection:');
 
@@ -241,8 +256,25 @@ export function LibraryContainer({
       reorderLibrary,
       reorderInsideCollection,
       saveToDisk,
+      photos,
     ],
   );
+
+  const handleBulkAiEdit = useCallback(() => {
+    const ids = Array.from(selectedIds);
+    const photoMeta = ids.map((id) => {
+      const photo = photos.find((p) => p.id === id);
+      const catalogPhoto = catalogPhotos.find((p) => p.id === id);
+      return {
+        id,
+        fileName: photo?.fileName ?? catalogPhoto?.fileName ?? id,
+        thumbnailUrl: photo?.thumbnailDataUrl ?? '',
+      };
+    });
+    useBulkEditStore.getState().openSetup(ids, photoMeta);
+  }, [selectedIds, photos, catalogPhotos]);
+
+  useShortcut([{ id: 'library.bulk-edit', handler: handleBulkAiEdit }]);
 
   const deleteTarget = photos.find((p) => p.id === deleteTargetId);
 
@@ -261,13 +293,31 @@ export function LibraryContainer({
 
   const onPhotoClick = useCallback(
     (id: string, e: React.MouseEvent) => {
+      // When bulk edit panel is open in setup phase, clicking adds/removes photo
+      const bulkState = useBulkEditStore.getState();
+      if (bulkState.isPanelOpen && bulkState.phase === 'setup') {
+        if (bulkState.selectedPhotoIds.includes(id)) {
+          bulkState.removePhoto(id);
+        } else {
+          const photo = photos.find((p) => p.id === id);
+          if (photo) {
+            bulkState.addPhoto({
+              id,
+              fileName: photo.fileName,
+              thumbnailUrl: photo.thumbnailDataUrl ?? '',
+            });
+          }
+        }
+        return;
+      }
+
       handlePhotoClick(id, e, photoIds);
       // Also set the primary selection (for info panel) on normal click
       if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
         onSelect(id);
       }
     },
-    [handlePhotoClick, photoIds, onSelect],
+    [handlePhotoClick, photoIds, onSelect, photos],
   );
 
   return (
@@ -311,6 +361,7 @@ export function LibraryContainer({
         onEditingDone={() => {
           setEditingCollectionId(null);
         }}
+        onBulkAiEdit={handleBulkAiEdit}
       />
       {selected && (
         <aside className="w-[260px] bg-[#222] border-l border-black flex flex-col shrink-0 overflow-y-auto">

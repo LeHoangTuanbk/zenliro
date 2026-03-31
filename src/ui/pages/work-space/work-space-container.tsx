@@ -16,6 +16,8 @@ import { useCatalogStore } from './store/catalog-store';
 import { useMaskStore } from '@/features/develop/mask';
 import type { Mask } from '@/features/develop/mask';
 import { useAgentIpc } from '@/features/agent/hook/use-agent-ipc';
+import { useBulkEditIpc } from '@/features/bulk-edit';
+import { useBulkAgentIpc } from '@/features/bulk-edit/hook/use-bulk-agent-ipc';
 import { useScopeSync } from '@shared/lib/shortcuts';
 import { useWorkspaceShortcuts } from './hook/use-workspace-shortcuts';
 import { useMenuIpc } from './hook/use-menu-ipc';
@@ -86,6 +88,8 @@ export function WorkSpaceContainer() {
   usePhotoEdits(selectedId);
   useHistoryTracking(selectedId);
   useAgentIpc(canvasRef, selectedId, selected, exifData, selectedResource.imageUrl);
+  useBulkEditIpc();
+  useBulkAgentIpc();
   useScopeSync(activeView, activeTool);
 
   const handleRatingChange = useCallback(

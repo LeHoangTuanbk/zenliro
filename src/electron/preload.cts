@@ -141,4 +141,58 @@ electron.contextBridge.exposeInMainWorld('electron', {
       return () => electron.ipcRenderer.removeListener('agent:stream-error', handler);
     },
   },
+
+  bulkEdit: {
+    start: (
+      photoIds: string[],
+      options: { prompt: string; model?: string; parallelCount: number },
+    ) => electron.ipcRenderer.invoke('bulk-edit:start', photoIds, options),
+    stop: () => electron.ipcRenderer.invoke('bulk-edit:stop'),
+    stopJob: (photoId: string) => electron.ipcRenderer.invoke('bulk-edit:stop-job', photoId),
+    getStatus: () => electron.ipcRenderer.invoke('bulk-edit:get-status'),
+
+    onJobStatus: (
+      cb: (data: { photoId: string; status: string; agentIndex: number | null }) => void,
+    ) => {
+      const handler = (
+        _e: unknown,
+        data: { photoId: string; status: string; agentIndex: number | null },
+      ) => cb(data);
+      electron.ipcRenderer.on('bulk-edit:job-status', handler);
+      return () => electron.ipcRenderer.removeListener('bulk-edit:job-status', handler);
+    },
+    onJobThinking: (cb: (data: { photoId: string; agentIndex: number; text: string }) => void) => {
+      const handler = (_e: unknown, data: { photoId: string; agentIndex: number; text: string }) =>
+        cb(data);
+      electron.ipcRenderer.on('bulk-edit:job-thinking', handler);
+      return () => electron.ipcRenderer.removeListener('bulk-edit:job-thinking', handler);
+    },
+    onJobText: (cb: (data: { photoId: string; agentIndex: number; text: string }) => void) => {
+      const handler = (_e: unknown, data: { photoId: string; agentIndex: number; text: string }) =>
+        cb(data);
+      electron.ipcRenderer.on('bulk-edit:job-text', handler);
+      return () => electron.ipcRenderer.removeListener('bulk-edit:job-text', handler);
+    },
+    onJobToolUse: (cb: (data: { photoId: string; agentIndex: number; name: string }) => void) => {
+      const handler = (_e: unknown, data: { photoId: string; agentIndex: number; name: string }) =>
+        cb(data);
+      electron.ipcRenderer.on('bulk-edit:job-tool-use', handler);
+      return () => electron.ipcRenderer.removeListener('bulk-edit:job-tool-use', handler);
+    },
+    onJobError: (cb: (data: { photoId: string; error: string }) => void) => {
+      const handler = (_e: unknown, data: { photoId: string; error: string }) => cb(data);
+      electron.ipcRenderer.on('bulk-edit:job-error', handler);
+      return () => electron.ipcRenderer.removeListener('bulk-edit:job-error', handler);
+    },
+    onAllDone: (
+      cb: (summary: { total: number; done: number; failed: number; cancelled: number }) => void,
+    ) => {
+      const handler = (
+        _e: unknown,
+        summary: { total: number; done: number; failed: number; cancelled: number },
+      ) => cb(summary);
+      electron.ipcRenderer.on('bulk-edit:all-done', handler);
+      return () => electron.ipcRenderer.removeListener('bulk-edit:all-done', handler);
+    },
+  },
 });

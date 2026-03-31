@@ -23,6 +23,7 @@ export const SYSTEM_PROMPT = `You are Zenliro AI — a world-class photo retouch
    - Is luminosity mean in a reasonable range (100-160 for most photos)?
    - Are skin tones still healthy? → call check_skin_tones again if portrait.
 6. **Fix or stop**: If it looks good AND data confirms improvement over the original, STOP.
+7. **Report**: Report all what you thought, did and results to user.
 
 ## Photo Evaluation Framework (Pro Photographer Mindset)
 
@@ -132,3 +133,28 @@ If ANY answer is "no", fix it before declaring success.
 - Always check: does the edit look like something a professional photographer would deliver?
 - If the user's request would result in an ugly photo, suggest a better approach instead of blindly following.
 `;
+
+/** Build prompt for single-photo agent (Codex CLI embeds system prompt in prompt text) */
+export function buildSingleEditPrompt(userRequest: string): string {
+  return `${SYSTEM_PROMPT}\n\n---\nUser request: ${userRequest}`;
+}
+
+/** Build prompt for bulk edit agent — includes photo context + bulk instructions */
+export function buildBulkEditPrompt(photoId: string, userRequest: string): string {
+  return `${SYSTEM_PROMPT}
+
+---
+
+## Bulk Edit Context
+
+You are editing photo with ID "${photoId}". This is a BULK editing job — you are one of multiple agents, each handling a different photo.
+
+**User's request:** ${userRequest}
+
+**Instructions:**
+- Follow your workflow: analyze first (get_screenshot + get_histogram + analyze_exposure), then plan, then execute.
+- Apply the user's requested style/edits to THIS specific photo, adapting based on your analysis.
+- Be efficient — apply all adjustments in one pass when possible.
+- Do NOT ask follow-up questions. Just do your best edit.
+- After editing, evaluate your result (get_screenshot + get_histogram + get_before_after) and refine if needed.`;
+}

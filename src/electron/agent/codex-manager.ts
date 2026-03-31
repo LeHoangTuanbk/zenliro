@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'child_process';
-import { SYSTEM_PROMPT } from './system-prompt.js';
+import { buildSingleEditPrompt } from './system-prompt.js';
 import { StreamLineBuffer } from './stream-parser.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
 import { getShellEnv } from './shell-env.js';
@@ -65,9 +65,13 @@ function parseCodexLine(line: string): ParsedStreamEvent | null {
         let params = {};
         try {
           params = item.arguments
-            ? (typeof item.arguments === 'string' ? JSON.parse(item.arguments) : item.arguments)
+            ? typeof item.arguments === 'string'
+              ? JSON.parse(item.arguments)
+              : item.arguments
             : {};
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
         return {
           type: 'tool_use',
           id: item.id ?? '',
@@ -110,12 +114,7 @@ export class CodexManager {
     this.onEvent = onEvent;
     this.lineBuffer = new StreamLineBuffer();
 
-    const args = [
-      'exec',
-      '--json',
-      '-s', 'danger-full-access',
-      '--skip-git-repo-check',
-    ];
+    const args = ['exec', '--json', '-s', 'danger-full-access', '--skip-git-repo-check'];
 
     if (options?.model && options.model !== 'codex-default') {
       args.push('-m', options.model);
@@ -127,7 +126,7 @@ export class CodexManager {
     } else {
       // First message — prepend system prompt to the prompt argument
       // Codex CLI ignores -c instructions=..., so we embed it in the prompt
-      args.push(`${SYSTEM_PROMPT}\n\n---\nUser request: ${text}`);
+      args.push(buildSingleEditPrompt(text));
     }
 
     this.process = spawn('codex', args, {

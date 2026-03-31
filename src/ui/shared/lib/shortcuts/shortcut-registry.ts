@@ -217,6 +217,15 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     label: 'Open in Develop',
     category: 'Navigation',
   },
+  {
+    id: 'library.bulk-edit',
+    key: Key.B,
+    modifiers: { meta: true },
+    scope: ShortcutScope.Library,
+    label: 'AI Bulk Edit',
+    category: 'Library',
+    skipInputGuard: true,
+  },
 
   // ── Develop ──
   {

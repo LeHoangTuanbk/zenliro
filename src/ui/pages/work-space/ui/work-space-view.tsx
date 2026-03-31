@@ -29,6 +29,7 @@ import { AgentPanelContainer } from '@/features/agent/agent-panel-container';
 import { AgentToggleButton } from '@/features/agent/ui/agent-toggle-button';
 import { ScanOverlay } from '@/features/agent/ui/scan-overlay';
 import { AgentActionToast } from '@/features/agent/ui/agent-action-toast';
+import { BulkEditBadge } from '@/features/bulk-edit/ui/bulk-edit-badge';
 import type { ImportProgress } from '../hook/use-photos';
 import type { DragEvent } from 'react';
 import { useMemo } from 'react';
@@ -340,6 +341,9 @@ export function WorkSpaceView({
           onClose={() => onShowExportChange(false)}
         />
       )}
+
+      {/* ── Bulk edit floating badge ─────────────────────────────────────────── */}
+      <BulkEditBadge />
     </div>
   );
 }

@@ -1027,7 +1027,12 @@ export function useAgentIpc(
     };
 
     const cleanups = Object.entries(handlers).map(([channel, handler]) =>
-      api.onToolRequest(channel, handler),
+      api.onToolRequest(channel, (req: AgentRequest) => {
+        // Skip bulk edit requests — handled by useBulkAgentIpc
+        const payload = req.payload as Record<string, unknown> | undefined;
+        if (payload && '__bulkPhotoId' in payload) return;
+        handler(req);
+      }),
     );
 
     return () => cleanups.forEach((cleanup) => cleanup());
