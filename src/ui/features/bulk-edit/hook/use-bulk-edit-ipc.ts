@@ -117,9 +117,9 @@ function buildFullDiff(snapshot: EditSnapshot): { label: string; details: string
   }
 
   // Color Mixer
-  const dch = defaultChannelValues();
+  type ChKeys = keyof ReturnType<typeof defaultChannelValues>;
   for (const mode of ['hue', 'saturation', 'luminance'] as const) {
-    for (const ch of Object.keys(snapshot.colorMixer[mode]) as (keyof typeof dch)[]) {
+    for (const ch of Object.keys(snapshot.colorMixer[mode]) as ChKeys[]) {
       const val = snapshot.colorMixer[mode][ch];
       if (val !== 0) {
         const modeShort = mode === 'saturation' ? 'sat' : mode === 'luminance' ? 'lum' : 'hue';
