@@ -1,9 +1,21 @@
 import { useCallback, useMemo, useState } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  closestCenter,
+  pointerWithin,
+  useSensor,
+  useSensors,
+  useDroppable,
+} from '@dnd-kit/core';
+import type { CollisionDetection } from '@dnd-kit/core';
 import { useShortcut } from '@shared/lib/shortcuts';
-import { LibraryView } from './ui/library-view';
+import { LibraryView, DragOverlayCard, CollectionDragOverlay } from './ui/library-view';
 import { DeleteConfirmDialog } from './ui/delete-confirm-dialog';
 import { MoveToDialog } from './ui/move-to-dialog';
 import { LibraryInfoPanel } from '@features/histogram/ui/library-info-panel';
+import { BulkEditPanel } from '@features/bulk-edit/ui/bulk-edit-panel';
 import { useLibrary } from './hook/use-library';
 import { useInfiniteScroll } from './hook/use-infinite-scroll';
 import { useLibraryFilter } from './hook/use-library-filter';
@@ -15,6 +27,38 @@ import type { LibraryFilter } from './const/filter';
 import type { HistogramData } from '@features/histogram/lib/compute-histogram';
 import type { PhotoExif } from '@features/histogram/lib/read-exif';
 import type { ImportProgress } from '@/pages/work-space/hook/use-photos';
+
+const ACTIVATION_CONSTRAINT = { distance: 8 };
+
+/** Prioritize bulk-edit-drop zone when pointer is over it, otherwise use closestCenter */
+const bulkEditAwareCollision: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  const bulkHit = pointerCollisions.find((c) => c.id === 'bulk-edit-drop');
+  if (bulkHit) return [bulkHit];
+  return closestCenter(args);
+};
+
+function BulkEditDropWrapper({ onOpenDevelop }: { onOpenDevelop?: (id: string) => void }) {
+  const isPanelOpen = useBulkEditStore((s) => s.isPanelOpen);
+  const phase = useBulkEditStore((s) => s.phase);
+  const { setNodeRef, isOver } = useDroppable({ id: 'bulk-edit-drop' });
+
+  if (!isPanelOpen) return null;
+
+  return (
+    <div
+      ref={phase === 'setup' ? setNodeRef : undefined}
+      className={`shrink-0 transition-colors ${isOver && phase === 'setup' ? 'ring-1 ring-inset ring-[#c4a0ff]/50' : ''}`}
+    >
+      {isOver && phase === 'setup' && (
+        <div className="h-6 flex items-center justify-center bg-[#c4a0ff]/10 border-t border-dashed border-[#c4a0ff]">
+          <span className="text-[10px] text-[#c4a0ff]">Drop to add to bulk edit</span>
+        </div>
+      )}
+      <BulkEditPanel onOpenDevelop={onOpenDevelop} />
+    </div>
+  );
+}
 
 type LibraryContainerProps = {
   photos: ImportedPhoto[];
@@ -102,6 +146,10 @@ export function LibraryContainer({
     handleDragStart,
     handleDragCancel,
   } = useDragReorder(filteredPhotos, onReorder);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: ACTIVATION_CONSTRAINT }),
+  );
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -211,7 +259,6 @@ export function LibraryContainer({
       const isActiveCollection = activeId.startsWith('collection:');
       const isOverCollection = overId.startsWith('collection:');
 
-      // Collection dropped onto another collection → move into it
       if (isActiveCollection && isOverCollection) {
         const srcId = activeId.replace('collection:', '');
         const dstId = overId.replace('collection:', '');
@@ -221,7 +268,6 @@ export function LibraryContainer({
         return;
       }
 
-      // Photo dropped onto collection → move to that collection
       if (!isActiveCollection && isOverCollection) {
         const collectionId = overId.replace('collection:', '');
         const photoIdsToMove =
@@ -232,7 +278,6 @@ export function LibraryContainer({
         return;
       }
 
-      // Inside a collection: reorder photos within that collection
       if (activeCollectionId && !isActiveCollection && !isOverCollection) {
         reorderInsideCollection(activeCollectionId, activeId, overId);
         saveToDisk();
@@ -240,7 +285,6 @@ export function LibraryContainer({
         return;
       }
 
-      // Root level: reorder anything (collections, photos, mixed)
       if (!activeCollectionId) {
         reorderLibrary(activeId, overId);
         saveToDisk();
@@ -293,7 +337,6 @@ export function LibraryContainer({
 
   const onPhotoClick = useCallback(
     (id: string, e: React.MouseEvent) => {
-      // When bulk edit panel is open in setup phase, clicking adds/removes photo
       const bulkState = useBulkEditStore.getState();
       if (bulkState.isPanelOpen && bulkState.phase === 'setup') {
         if (bulkState.selectedPhotoIds.includes(id)) {
@@ -312,7 +355,6 @@ export function LibraryContainer({
       }
 
       handlePhotoClick(id, e, photoIds);
-      // Also set the primary selection (for info panel) on normal click
       if (!e.metaKey && !e.ctrlKey && !e.shiftKey) {
         onSelect(id);
       }
@@ -321,55 +363,73 @@ export function LibraryContainer({
   );
 
   return (
-    <div className="flex flex-1 overflow-hidden">
-      <LibraryView
-        photos={filteredPhotos}
-        catalogPhotos={catalogPhotos}
-        collections={collections}
-        libraryOrder={libraryOrder}
-        activeCollectionId={activeCollectionId}
-        importProgress={importProgress}
-        selectedId={selectedId}
-        selectedIds={selectedIds}
-        isMetaHeld={isMetaHeld}
-        filter={filter}
-        allTags={allTags}
-        visibleCount={visibleCount}
-        totalCount={collectionFilteredPhotos.length}
-        filteredCount={filteredPhotos.length}
-        activePhoto={activePhoto}
-        activeDragId={activeDragId}
-        setSentinel={setSentinel}
-        onPhotoClick={onPhotoClick}
-        onImport={onImport}
-        onOpenDevelop={onOpenDevelop}
-        onDelete={openDeleteDialog}
-        onBulkDelete={openBulkDelete}
-        onClearSelection={clearSelection}
-        onFilterChange={setFilter}
-        onRatingChange={onRatingChange}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEndWithCollections}
-        onDragCancel={handleDragCancel}
-        onCollectionClick={handleCollectionClick}
-        onCollectionCreate={handleCollectionCreate}
-        onCollectionRename={handleCollectionRename}
-        onCollectionDelete={setDeleteCollectionTarget}
-        onMovePhoto={handleOpenMove}
-        onMoveCollection={setMoveCollectionId}
-        editingCollectionId={editingCollectionId}
-        onEditingDone={() => {
-          setEditingCollectionId(null);
-        }}
-        onBulkAiEdit={handleBulkAiEdit}
-      />
-      {selected && (
-        <aside className="w-[260px] bg-[#222] border-l border-black flex flex-col shrink-0 overflow-y-auto">
-          <LibraryInfoPanel photo={selected} histogramData={histogramData} exif={exifData} />
-        </aside>
-      )}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={bulkEditAwareCollision}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEndWithCollections}
+      onDragCancel={handleDragCancel}
+    >
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Top row: grid + info panel */}
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          <LibraryView
+            photos={filteredPhotos}
+            catalogPhotos={catalogPhotos}
+            collections={collections}
+            libraryOrder={libraryOrder}
+            activeCollectionId={activeCollectionId}
+            importProgress={importProgress}
+            selectedId={selectedId}
+            selectedIds={selectedIds}
+            isMetaHeld={isMetaHeld}
+            filter={filter}
+            allTags={allTags}
+            visibleCount={visibleCount}
+            totalCount={collectionFilteredPhotos.length}
+            filteredCount={filteredPhotos.length}
+            setSentinel={setSentinel}
+            onPhotoClick={onPhotoClick}
+            onImport={onImport}
+            onOpenDevelop={onOpenDevelop}
+            onDelete={openDeleteDialog}
+            onBulkDelete={openBulkDelete}
+            onClearSelection={clearSelection}
+            onFilterChange={setFilter}
+            onRatingChange={onRatingChange}
+            onCollectionClick={handleCollectionClick}
+            onCollectionCreate={handleCollectionCreate}
+            onCollectionRename={handleCollectionRename}
+            onCollectionDelete={setDeleteCollectionTarget}
+            onMovePhoto={handleOpenMove}
+            onMoveCollection={setMoveCollectionId}
+            editingCollectionId={editingCollectionId}
+            onEditingDone={() => setEditingCollectionId(null)}
+            onBulkAiEdit={handleBulkAiEdit}
+          />
+          {selected && (
+            <aside className="w-[260px] bg-[#222] border-l border-black flex flex-col shrink-0 overflow-y-auto">
+              <LibraryInfoPanel photo={selected} histogramData={histogramData} exif={exifData} />
+            </aside>
+          )}
+        </div>
 
-      {/* Single delete dialog */}
+        {/* Bulk edit panel — full width at bottom */}
+        <BulkEditDropWrapper onOpenDevelop={onOpenDevelop} />
+      </div>
+
+      {/* DragOverlay — no drop animation (prevents snap-back on bulk edit drop) */}
+      <DragOverlay dropAnimation={null}>
+        {activePhoto ? (
+          <DragOverlayCard photo={activePhoto} />
+        ) : activeDragId?.startsWith('collection:') ? (
+          <CollectionDragOverlay
+            collection={collections.find((c) => `collection:${c.id}` === activeDragId) ?? null}
+          />
+        ) : null}
+      </DragOverlay>
+
+      {/* Dialogs */}
       {deleteTarget && (
         <DeleteConfirmDialog
           count={1}
@@ -379,8 +439,6 @@ export function LibraryContainer({
           onCancel={closeDeleteDialog}
         />
       )}
-
-      {/* Bulk delete dialog */}
       {showBulkDelete && selectedIds.size > 0 && (
         <DeleteConfirmDialog
           count={selectedIds.size}
@@ -389,8 +447,6 @@ export function LibraryContainer({
           onCancel={closeBulkDelete}
         />
       )}
-
-      {/* Collection delete dialog */}
       {deleteCollectionTarget && (
         <DeleteConfirmDialog
           count={1}
@@ -401,8 +457,6 @@ export function LibraryContainer({
           collectionMode
         />
       )}
-
-      {/* Move photo dialog */}
       {movePhotoIds && (
         <MoveToDialog
           open={!!movePhotoIds}
@@ -413,8 +467,6 @@ export function LibraryContainer({
           onCancel={() => setMovePhotoIds(null)}
         />
       )}
-
-      {/* Move collection dialog */}
       {moveCollectionId && (
         <MoveToDialog
           open={!!moveCollectionId}
@@ -426,6 +478,6 @@ export function LibraryContainer({
           onCancel={() => setMoveCollectionId(null)}
         />
       )}
-    </div>
+    </DndContext>
   );
 }

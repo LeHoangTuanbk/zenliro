@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { bulkContextManager } from '../lib/offscreen-context';
 import type { BulkPhase, JobStatus } from '../const/channels';
 
 export type JobLogEntry = {
@@ -60,6 +61,7 @@ type BulkEditStore = {
   minimize: () => void;
   restore: () => void;
   close: () => void;
+  newBulkEdit: () => void;
 
   // Actions — From IPC events
   updateJobStatus: (photoId: string, status: JobStatus, agentIndex: number | null) => void;
@@ -147,7 +149,8 @@ export const useBulkEditStore = create<BulkEditStore>((set) => ({
       };
     }),
 
-  removePhoto: (photoId) =>
+  removePhoto: (photoId) => {
+    bulkContextManager.dispose(photoId);
     set((s) => {
       const selectedPhotoIds = s.selectedPhotoIds.filter((id) => id !== photoId);
       const jobs = s.jobs.filter((j) => j.photoId !== photoId);
@@ -156,7 +159,8 @@ export const useBulkEditStore = create<BulkEditStore>((set) => ({
       }
       const parallelCount = Math.min(s.parallelCount, selectedPhotoIds.length);
       return { selectedPhotoIds, jobs, parallelCount };
-    }),
+    });
+  },
 
   startProcessing: () =>
     set({
@@ -173,7 +177,8 @@ export const useBulkEditStore = create<BulkEditStore>((set) => ({
   minimize: () => set({ isMinimized: true, isPanelOpen: false }),
   restore: () => set({ isMinimized: false, isPanelOpen: true }),
 
-  close: () =>
+  close: () => {
+    bulkContextManager.disposeAll();
     set({
       isActive: false,
       isPanelOpen: false,
@@ -186,7 +191,22 @@ export const useBulkEditStore = create<BulkEditStore>((set) => ({
       startedAt: null,
       completedAt: null,
       expandedJobId: null,
-    }),
+    });
+  },
+
+  newBulkEdit: () => {
+    bulkContextManager.disposeAll();
+    set({
+      phase: 'setup',
+      selectedPhotoIds: [],
+      jobs: [],
+      prompt: '',
+      summary: null,
+      startedAt: null,
+      completedAt: null,
+      expandedJobId: null,
+    });
+  },
 
   updateJobStatus: (photoId, status, agentIndex) =>
     set((s) => {

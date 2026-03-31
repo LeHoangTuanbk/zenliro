@@ -83,7 +83,12 @@ export function registerBulkAgentIpc(mainWindow: BrowserWindow) {
     async (
       _event,
       photoIds: string[],
-      options: { prompt: string; model?: string; parallelCount: number },
+      options: {
+        prompt: string;
+        model?: string;
+        provider?: 'claude' | 'codex';
+        parallelCount: number;
+      },
     ) => {
       if (manager?.isRunning()) {
         manager.stop();

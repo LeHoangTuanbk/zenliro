@@ -211,7 +211,7 @@ interface Window {
     bulkEdit: {
       start: (
         photoIds: string[],
-        options: { prompt: string; model?: string; parallelCount: number },
+        options: { prompt: string; model?: string; provider?: string; parallelCount: number },
       ) => Promise<{ ok: boolean }>;
       stop: () => Promise<{ ok: boolean }>;
       stopJob: (photoId: string) => Promise<{ ok: boolean }>;

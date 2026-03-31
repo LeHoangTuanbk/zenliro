@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Square, Minimize2, X, CheckCircle2 } from 'lucide-react';
+import { Square, Minimize2, X, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useBulkEditStore } from '../store/bulk-edit-store';
 import { PhotoJobRow } from './photo-job-row';
 
@@ -61,13 +61,22 @@ export function BulkEditMonitor({ onOpenDevelop }: BulkEditMonitorProps) {
             </button>
           )}
           {isComplete && (
-            <button
-              onClick={close}
-              className="p-1 text-br-dim hover:text-white cursor-pointer transition-colors"
-              title="Close"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <>
+              <button
+                onClick={useBulkEditStore.getState().newBulkEdit}
+                className="flex items-center gap-1 px-2 py-1 text-[10px] text-[#c4a0ff] hover:bg-[#c4a0ff]/10 rounded-[2px] cursor-pointer transition-colors"
+              >
+                <RotateCcw className="w-3 h-3" />
+                New Bulk Edit
+              </button>
+              <button
+                onClick={close}
+                className="p-1 text-br-dim hover:text-white cursor-pointer transition-colors"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </>
           )}
           <button
             onClick={minimize}

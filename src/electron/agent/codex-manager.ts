@@ -105,7 +105,11 @@ export class CodexManager {
     return this.process !== null && !this.process.killed;
   }
 
-  sendMessage(text: string, onEvent: StreamCallback, options?: { model?: string }): void {
+  sendMessage(
+    text: string,
+    onEvent: StreamCallback,
+    options?: { model?: string; env?: Record<string, string> },
+  ): void {
     if (this.isRunning()) {
       this.process?.kill('SIGTERM');
       this.process = null;
@@ -131,7 +135,7 @@ export class CodexManager {
 
     this.process = spawn('codex', args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: getShellEnv(),
+      env: { ...getShellEnv(), ...options?.env },
     });
 
     this.process.stdout?.on('data', (data: Buffer) => {
