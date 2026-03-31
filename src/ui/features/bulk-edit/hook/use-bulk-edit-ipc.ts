@@ -174,6 +174,16 @@ export function useBulkEditIpc() {
 
     const cleanups = [
       api.onJobStatus((data) => {
+        // Reset dedupe set when a new batch starts (first 'processing' event)
+        if (data.status === 'processing' && pushedHistoryFor.size > 0) {
+          const currentJobs = store().jobs;
+          const allQueued = currentJobs.every(
+            (j) =>
+              j.status === 'queued' || (j.status === 'processing' && j.photoId === data.photoId),
+          );
+          if (allQueued) pushedHistoryFor.clear();
+        }
+
         store().updateJobStatus(data.photoId, data.status as JobStatus, data.agentIndex);
 
         // When a job completes, push history entry from offscreen context
