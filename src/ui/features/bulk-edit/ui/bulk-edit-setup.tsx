@@ -182,6 +182,7 @@ export function BulkEditSetup() {
           >
             <Sparkles className="w-3.5 h-3.5" />
             Start Bulk Edit
+            <ShortcutHint shortcutId="bulk-edit.start" className="text-[#c4a0ff]/50" />
           </button>
         </div>
       </div>

@@ -226,6 +226,15 @@ export const SHORTCUT_REGISTRY: ShortcutEntry[] = [
     category: 'Library',
     skipInputGuard: true,
   },
+  {
+    id: 'bulk-edit.start',
+    key: Key.Enter,
+    modifiers: { meta: true },
+    scope: ShortcutScope.Library,
+    label: 'Start Bulk Edit',
+    category: 'Library',
+    displayOnly: true,
+  },
 
   // ── Develop ──
   {
