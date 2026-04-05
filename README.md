@@ -13,6 +13,7 @@ Zenliro is a desktop photo processing and color grading tool built for photograp
 
 - Main workspace: ![main workspace](docs/releases/assets/main-workspace.png)
 - Compare mode: ![compare mode](docs/releases/assets/compare-mode.png)
+- AI bulk Edit ![AI bulk edit](docs/releases/assets/bulk-edit-2.png)
 
 ---
 
@@ -29,6 +30,7 @@ Zenliro is a desktop photo processing and color grading tool built for photograp
 - **Keyboard shortcuts** - Intuitive keyboard shortcuts designed for efficient workflow.
 - **Photo Library** - Manage photos intuitively as folders with drag-and-drop support.
 - **AI Agent** — Agent analyzes your photo, plans adjustments, and edits in real-time. Watch it work like a photographer at the controls. Can copy the style of a reference image or craft the best possible output autonomously.
+- **Bulk Edit with AI** - Assign a batch of photos to the AI Agent for processing. The Agent will automatically edit them and notify you when it's done.
 - **Non-destructive** — Full undo/redo history. Original file is never touched.
 - **Style Presets** — 20+ curated looks for different moods and genres.
 - **WebGL Rendering** — Custom-written shaders for real-time color processing entirely on the GPU.
