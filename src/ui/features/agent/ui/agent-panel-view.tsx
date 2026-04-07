@@ -37,13 +37,21 @@ export function AgentPanelView({
   onClear,
 }: AgentPanelViewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
   const hasContent = messages.length > 0 || currentItems.length > 0;
   const showChatHistory = useAgentStore((s) => s.showChatHistory);
   const setShowChatHistory = useAgentStore((s) => s.setShowChatHistory);
   const chatTitle = useAgentStore((s) => s.chatTitle);
 
+  const handleScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const threshold = 40;
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+  };
+
   useEffect(() => {
-    if (scrollRef.current) {
+    if (scrollRef.current && isNearBottomRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, currentItems]);
@@ -128,7 +136,7 @@ export function AgentPanelView({
       </div>
 
       {/* Content */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3">
+      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3">
         {!hasContent ? (
           <div className="flex flex-col items-center justify-center h-full pb-4">
             <p className="text-[12px] text-[#888] mb-5">Ask me to edit your photo...</p>
