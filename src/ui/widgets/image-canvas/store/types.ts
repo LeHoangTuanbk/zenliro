@@ -1,5 +1,5 @@
 import type { CropState } from '@/features/develop/crop';
-import type { HealMode, HealSpot } from '@/features/develop/heal';
+import type { HealMode, HealSpot, ToolOverlayMode } from '@/features/develop/heal';
 import type { Mask } from '@/features/develop/mask';
 import type { ExternalZoomPan } from './use-zoom-pan';
 
@@ -27,7 +27,9 @@ export type HealInteractionProps = {
   activeMode: HealMode;
   feather: number;
   opacity: number;
+  toolOverlay: ToolOverlayMode;
   onSpotAdded: (spot: HealSpot) => void;
+  onStrokeAdded: (spots: HealSpot[]) => void;
   onMoveSpotDst: (id: string, normX: number, normY: number) => void;
   onMoveSpotSrc: (id: string, normX: number, normY: number) => void;
   onSelectSpot: (id: string | null) => void;

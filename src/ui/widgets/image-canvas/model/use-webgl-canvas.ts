@@ -578,8 +578,13 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   }, [masks, renderToCanvas]);
 
   // ── Heal: add spot with auto-source ─────────────────────────────────────
+  // During a stroke, the first spot runs auto-source; subsequent spots in the
+  // same stroke reuse the same (src - dst) offset so the source "trails" the
+  // brush like Lightroom Classic.
+  const strokeOffsetRef = useRef<{ strokeId: string; offX: number; offY: number } | null>(null);
+
   const handleOverlayAddSpot = useCallback(
-    (normX: number, normY: number) => {
+    (normX: number, normY: number, strokeId?: string) => {
       if (!healInteractionProps) return;
       const src = originalImgRef.current;
       const imgData = imageDataRef.current;
@@ -588,22 +593,45 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       const { width: w, height: h } = src;
       const storedBrushRadius = brushSizePx / (canvasDims.w * zoomRef.current);
       const radiusPx = Math.max(1, Math.round(storedBrushRadius * w));
-      const srcPx = HealEngine.autoFindSource(
-        imgData.data,
-        Math.round(normX * w),
-        Math.round(normY * h),
-        radiusPx,
-        w,
-        h,
-      );
+
+      let srcNormX: number;
+      let srcNormY: number;
+      const prior = strokeOffsetRef.current;
+      if (strokeId && prior && prior.strokeId === strokeId) {
+        srcNormX = normX + prior.offX;
+        srcNormY = normY + prior.offY;
+      } else {
+        const srcPx = HealEngine.autoFindSource(
+          imgData.data,
+          Math.round(normX * w),
+          Math.round(normY * h),
+          radiusPx,
+          w,
+          h,
+        );
+        srcNormX = srcPx.x / w;
+        srcNormY = srcPx.y / h;
+        if (strokeId) {
+          strokeOffsetRef.current = {
+            strokeId,
+            offX: srcNormX - normX,
+            offY: srcNormY - normY,
+          };
+        }
+      }
+
+      srcNormX = Math.max(0, Math.min(1, srcNormX));
+      srcNormY = Math.max(0, Math.min(1, srcNormY));
+
       onSpotAdded({
         id: crypto.randomUUID(),
         mode: activeMode,
         dst: { x: normX, y: normY },
-        src: { x: srcPx.x / w, y: srcPx.y / h },
+        src: { x: srcNormX, y: srcNormY },
         radius: storedBrushRadius,
         feather,
         opacity,
+        strokeId,
       });
     },
     [healInteractionProps, canvasDims.w, zoomRef],

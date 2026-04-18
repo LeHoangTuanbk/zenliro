@@ -9,7 +9,7 @@ export function useHealInteraction(activeTool: ActiveTool, selectedId: string | 
   const healStore = useHealStore();
   const healSpots = useHealStore((s) => (selectedId && s.spotsByPhoto[selectedId]) || EMPTY_SPOTS);
   const previewOriginal = useHealStore((s) => s.previewOriginal);
-  const { selectedSpotId, brushSizePx, activeMode, feather, opacity } = healStore;
+  const { selectedSpotId, brushSizePx, activeMode, feather, opacity, toolOverlay } = healStore;
 
   const healInteractionProps = useMemo(() => {
     if (activeTool !== ActiveTool.Heal || !selectedId) return undefined;
@@ -21,7 +21,9 @@ export function useHealInteraction(activeTool: ActiveTool, selectedId: string | 
       activeMode,
       feather,
       opacity,
+      toolOverlay,
       onSpotAdded: (s: HealSpot) => healStore.addSpot(pid, s),
+      onStrokeAdded: (spots: HealSpot[]) => healStore.addSpots(pid, spots),
       onMoveSpotDst: (id: string, nx: number, ny: number) =>
         healStore.updateSpot(pid, id, { dst: { x: nx, y: ny } }),
       onMoveSpotSrc: (id: string, nx: number, ny: number) =>
@@ -40,6 +42,7 @@ export function useHealInteraction(activeTool: ActiveTool, selectedId: string | 
     activeMode,
     feather,
     opacity,
+    toolOverlay,
   ]);
 
   return { healInteractionProps, healSpots, previewOriginal };

@@ -3,7 +3,11 @@ import { HealOverlay } from '@/features/develop/heal';
 import { CropOverlay } from '@/features/develop/crop';
 import { MaskOverlay } from '@/features/develop/mask/ui/mask-overlay';
 import { Spinner } from '@/shared/ui/base';
-import type { CropInteractionProps, HealInteractionProps, MaskInteractionProps } from '../store/types';
+import type {
+  CropInteractionProps,
+  HealInteractionProps,
+  MaskInteractionProps,
+} from '../store/types';
 
 type Props = {
   containerRef: RefObject<HTMLDivElement | null>;
@@ -23,7 +27,7 @@ type Props = {
   maskInteractionProps?: MaskInteractionProps;
   cropInteractionProps?: CropInteractionProps;
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
-  onAddSpot: (normX: number, normY: number) => void;
+  onAddSpot: (normX: number, normY: number, strokeId?: string) => void;
 };
 
 export function ImageCanvasView({
@@ -100,6 +104,7 @@ export function ImageCanvasView({
             brushSizePx={healInteractionProps!.brushSizePx}
             zoom={zoom}
             activeMode={healInteractionProps!.activeMode}
+            toolOverlay={healInteractionProps!.toolOverlay}
             onAddSpot={onAddSpot}
             onMoveSpotDst={healInteractionProps!.onMoveSpotDst}
             onMoveSpotSrc={healInteractionProps!.onMoveSpotSrc}
@@ -119,7 +124,14 @@ export function ImageCanvasView({
 
       {!hasSelection && !showLoading && (
         <div className="flex flex-col items-center gap-3 text-br-dim select-none">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <svg
+            width="48"
+            height="48"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
             <rect x="3" y="3" width="18" height="18" rx="2" />
             <circle cx="8.5" cy="8.5" r="1.5" />
             <polyline points="21 15 16 10 5 21" />

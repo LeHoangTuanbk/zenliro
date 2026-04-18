@@ -1,21 +1,24 @@
 import { create } from 'zustand';
-import type { HealSpot, HealMode } from './types';
+import type { HealSpot, HealMode, ToolOverlayMode } from './types';
 
-interface HealState {
+type HealState = {
   spotsByPhoto: Record<string, HealSpot[]>;
   activeMode: HealMode;
-  brushSizePx: number;      // brush radius in screen pixels (5–200)
-  feather: number;          // 0–100
-  opacity: number;          // 0–100
+  brushSizePx: number; // brush radius in screen pixels (5–200)
+  feather: number; // 0–100
+  opacity: number; // 0–100
   selectedSpotId: string | null;
   previewOriginal: boolean; // show before (no spots) when true
-}
+  toolOverlay: ToolOverlayMode;
+};
 
 interface HealActions {
   getSpots(photoId: string): HealSpot[];
   addSpot(photoId: string, spot: HealSpot): void;
+  addSpots(photoId: string, spots: HealSpot[]): void;
   updateSpot(photoId: string, id: string, patch: Partial<HealSpot>): void;
   removeSpot(photoId: string, id: string): void;
+  removeStroke(photoId: string, strokeId: string): void;
   clearAll(photoId: string): void;
   removePhoto(photoId: string): void;
   setActiveMode(mode: HealMode): void;
@@ -24,6 +27,7 @@ interface HealActions {
   setOpacity(o: number): void;
   setSelectedSpotId(id: string | null): void;
   setPreviewOriginal(v: boolean): void;
+  setToolOverlay(mode: ToolOverlayMode): void;
 }
 
 export const useHealStore = create<HealState & HealActions>((set, get) => ({
@@ -34,6 +38,7 @@ export const useHealStore = create<HealState & HealActions>((set, get) => ({
   opacity: 100,
   selectedSpotId: null,
   previewOriginal: false,
+  toolOverlay: 'auto',
 
   getSpots: (photoId) => get().spotsByPhoto[photoId] ?? [],
 
@@ -42,6 +47,14 @@ export const useHealStore = create<HealState & HealActions>((set, get) => ({
       spotsByPhoto: {
         ...s.spotsByPhoto,
         [photoId]: [...(s.spotsByPhoto[photoId] ?? []), spot],
+      },
+    })),
+
+  addSpots: (photoId, spots) =>
+    set((s) => ({
+      spotsByPhoto: {
+        ...s.spotsByPhoto,
+        [photoId]: [...(s.spotsByPhoto[photoId] ?? []), ...spots],
       },
     })),
 
@@ -64,6 +77,17 @@ export const useHealStore = create<HealState & HealActions>((set, get) => ({
       selectedSpotId: s.selectedSpotId === id ? null : s.selectedSpotId,
     })),
 
+  removeStroke: (photoId, strokeId) =>
+    set((s) => {
+      const next = (s.spotsByPhoto[photoId] ?? []).filter((sp) => sp.strokeId !== strokeId);
+      const stillThere =
+        s.selectedSpotId && next.some((sp) => sp.id === s.selectedSpotId) ? s.selectedSpotId : null;
+      return {
+        spotsByPhoto: { ...s.spotsByPhoto, [photoId]: next },
+        selectedSpotId: stillThere,
+      };
+    }),
+
   clearAll: (photoId) =>
     set((s) => ({
       spotsByPhoto: { ...s.spotsByPhoto, [photoId]: [] },
@@ -82,4 +106,5 @@ export const useHealStore = create<HealState & HealActions>((set, get) => ({
   setOpacity: (opacity) => set({ opacity }),
   setSelectedSpotId: (selectedSpotId) => set({ selectedSpotId }),
   setPreviewOriginal: (previewOriginal) => set({ previewOriginal }),
+  setToolOverlay: (toolOverlay) => set({ toolOverlay }),
 }));

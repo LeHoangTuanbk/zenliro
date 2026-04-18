@@ -1,5 +1,7 @@
 export type HealMode = 'heal' | 'clone' | 'fill';
 
+export type ToolOverlayMode = 'auto' | 'always' | 'selected' | 'never';
+
 export interface HealSpot {
   id: string;
   mode: HealMode;
@@ -8,4 +10,5 @@ export interface HealSpot {
   radius: number; // normalized radius (relative to image width)
   feather: number; // 0–100
   opacity: number; // 0–100
+  strokeId?: string; // spots belonging to the same drag-stroke share this id
 }

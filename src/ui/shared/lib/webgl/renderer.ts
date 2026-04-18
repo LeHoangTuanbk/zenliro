@@ -484,7 +484,8 @@ export class WebGLRenderer {
   private runHealPass(): WebGLTexture | null {
     if (this.spotsData.length === 0) return null;
     const gl = this.gl;
-    const MAX = 32;
+    // Keep in sync with MAX_SPOTS in heal.frag.glsl.
+    const MAX = 64;
 
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.healFBO);
     gl.viewport(0, 0, this.imgW, this.imgH);
@@ -494,7 +495,7 @@ export class WebGLRenderer {
     gl.bindTexture(gl.TEXTURE_2D, this.imageTex);
     gl.uniform1i(gl.getUniformLocation(this.healProg, 'u_image'), 0);
 
-    const count = this.spotsData.length;
+    const count = Math.min(this.spotsData.length, MAX);
     gl.uniform1i(gl.getUniformLocation(this.healProg, 'u_spotCount'), count);
     gl.uniform1f(gl.getUniformLocation(this.healProg, 'u_hOverW'), this.imgH / this.imgW);
 
