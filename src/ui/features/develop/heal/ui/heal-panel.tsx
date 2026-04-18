@@ -191,7 +191,7 @@ export function HealPanel({ photoId }: HealPanelProps) {
           <div className="text-[10px] text-[#505050] uppercase tracking-[0.6px] mb-1.5">
             Spots ({spots.length})
           </div>
-          <div className="flex flex-col gap-0.5 max-h-[180px] overflow-y-auto">
+          <div className="flex flex-col gap-0.5">
             {spots.map((spot, i) => (
               <div
                 key={spot.id}
