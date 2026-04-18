@@ -3,11 +3,8 @@ import { useShortcut } from '@shared/lib/shortcuts';
 import type { HealMode, HealSpot, ToolOverlayMode } from '../store/types';
 
 interface DragState {
-  type: 'idle' | 'dragging-dst' | 'dragging-src' | 'painting';
+  type: 'idle' | 'dragging-dst' | 'dragging-src';
   spotId?: string;
-  strokeId?: string;
-  lastEmitCx?: number;
-  lastEmitCy?: number;
 }
 
 export interface HealOverlayProps {
@@ -32,7 +29,6 @@ export interface HealOverlayProps {
 // findHit so the clickable area stays constant on screen at any zoom level.
 const DOT_HIT_SCREEN_PX = 20; // around the center dot
 const RING_HIT_SCREEN_PX = 10; // around the circle ring (the line renders ~2px)
-const STROKE_STEP_FACTOR = 0.5; // emit next stroke spot after moving half a brush radius
 
 export function HealOverlay({
   canvasWidth,
@@ -255,18 +251,12 @@ export function HealOverlay({
       };
       isDraggingRef.current = false;
     } else {
-      // Empty canvas: start a brush stroke. Emit the first spot immediately so
-      // a plain click still creates a single spot.
-      const strokeId = crypto.randomUUID();
+      // Empty canvas: create a single spot at the click point. Drag that
+      // follows doesn't spawn a stroke — one click, one spot.
       const norm = toNorm(pos.x, pos.y);
       onSelectSpot(null);
-      onAddSpot(norm.x, norm.y, strokeId);
-      dragRef.current = {
-        type: 'painting',
-        strokeId,
-        lastEmitCx: pos.x,
-        lastEmitCy: pos.y,
-      };
+      onAddSpot(norm.x, norm.y);
+      dragRef.current = { type: 'idle' };
       isDraggingRef.current = false;
     }
   };
@@ -284,29 +274,6 @@ export function HealOverlay({
       isDraggingRef.current = true;
       const norm = toNorm(pos.x, pos.y);
       onMoveSpotSrc(drag.spotId, norm.x, norm.y);
-    } else if (drag.type === 'painting' && drag.strokeId) {
-      isDraggingRef.current = true;
-      const stepPx = Math.max(4, (brushSizePx * STROKE_STEP_FACTOR) / zoom);
-      const startX = drag.lastEmitCx ?? pos.x;
-      const startY = drag.lastEmitCy ?? pos.y;
-      const dx = pos.x - startX;
-      const dy = pos.y - startY;
-      const dist = Math.hypot(dx, dy);
-      if (dist >= stepPx) {
-        // Interpolate: for long single-frame drags (fast cursor) emit every step
-        // along the segment so the stroke has no gaps.
-        const steps = Math.floor(dist / stepPx);
-        for (let i = 1; i <= steps; i++) {
-          const t = (i * stepPx) / dist;
-          const ex = startX + dx * t;
-          const ey = startY + dy * t;
-          const norm = toNorm(ex, ey);
-          onAddSpot(norm.x, norm.y, drag.strokeId);
-        }
-        const consumed = (steps * stepPx) / dist;
-        drag.lastEmitCx = startX + dx * consumed;
-        drag.lastEmitCy = startY + dy * consumed;
-      }
     }
   };
 

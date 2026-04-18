@@ -30,17 +30,25 @@ void main() {
 
     vec2  d    = v_texCoord - dst;
     float dist = length(vec2(d.x, d.y * u_hOverW));
-    if (dist > radius) continue;
 
     float alpha;
     if (mode == 2) {
+      // Fill: gaussian falloff tightly inside the circle.
+      if (dist > radius) continue;
       float nd = dist / radius;
       alpha = exp(-3.5 * nd * nd) * opacity;
     } else {
+      // Heal/clone: extend the falloff past the visible radius so the edge
+      // blends into the surrounding pixels instead of cutting off in a hard
+      // circle. Use smootherstep (quintic) for zero 2nd-derivative endpoints,
+      // which perceptually looks softer than cubic smoothstep.
+      float outerR = radius * (1.0 + 0.25 * feather);
+      if (dist > outerR) continue;
       float hardR = radius * (1.0 - feather);
-      float zone  = max(radius - hardR, 0.001);
+      float zone  = max(outerR - hardR, 0.001);
       float t     = clamp((dist - hardR) / zone, 0.0, 1.0);
-      alpha = (1.0 - t * t * (3.0 - 2.0 * t)) * opacity;
+      float s     = t * t * t * (t * (t * 6.0 - 15.0) + 10.0);
+      alpha = (1.0 - s) * opacity;
     }
     if (alpha <= 0.001) continue;
 
@@ -51,7 +59,8 @@ void main() {
       vec2 srcUV = clamp(src + d, vec2(0.0), vec2(1.0));
       srcColor = texture(u_image, srcUV).rgb;
       if (mode == 0) {
-        float hw = (1.0 - dist / radius) * 0.6 + 0.4;
+        // Keep hw bounded since dist can now exceed radius in the feather tail.
+        float hw = (1.0 - min(dist / radius, 1.0)) * 0.6 + 0.4;
         srcColor = clamp(srcColor + u_colorData[i].rgb * hw, 0.0, 1.0);
       }
     }
