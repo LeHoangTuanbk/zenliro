@@ -3,7 +3,7 @@
 ![Downloads](https://img.shields.io/github/downloads/LeHoangTuanbk/zenliro/total)
 ![GitHub Stars](https://img.shields.io/github/stars/LeHoangTuanbk/zenliro)
 
-[Tiếng Việt](./README.vi.md) | [日本語](./README.ja.md)
+[Tiếng Việt](./README.vi.md) | [日本語](./README.ja.md) | [中文](./README.zh.md) | [한국어](./README.ko.md) | [Русский](./README.ru.md)
 
 > **Enhance, not alter.** A Lightroom Classic-inspired photo development app powered by AI Agent.
 

@@ -3,6 +3,8 @@
 ![Downloads](https://img.shields.io/github/downloads/LeHoangTuanbk/zenliro/total)
 ![GitHub Stars](https://img.shields.io/github/stars/LeHoangTuanbk/zenliro)
 
+[English](./README.md) | [日本語](./README.ja.md) | [中文](./README.zh.md) | [한국어](./README.ko.md) | [Русский](./README.ru.md)
+
 > **Enhance, not alter.** Ứng dụng xử lý ảnh lấy cảm hứng từ Lightroom Classic, được hỗ trợ bởi AI Agent.
 
 Zenliro là công cụ xử lý ảnh và color grading trên desktop, dành cho các nhiếp ảnh gia quan tâm đến mood, tone và sự chân thực. Không phải trình chỉnh sửa phá hủy — không xóa vật thể, không inpainting. Chỉ có ánh sáng, màu sắc và cảm xúc.

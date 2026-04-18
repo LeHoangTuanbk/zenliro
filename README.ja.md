@@ -3,6 +3,8 @@
 ![Downloads](https://img.shields.io/github/downloads/LeHoangTuanbk/zenliro/total)
 ![GitHub Stars](https://img.shields.io/github/stars/LeHoangTuanbk/zenliro)
 
+[English](./README.md) | [Tiếng Việt](./README.vi.md) | [中文](./README.zh.md) | [한국어](./README.ko.md) | [Русский](./README.ru.md)
+
 > **Enhance, not alter.** Lightroom Classicにインスパイアされた、AIエージェント搭載の写真現像アプリ。
 
 Zenliroは、ムード、トーン、オーセンティシティを大切にするフォトグラファーのためのデスクトップ写真処理・カラーグレーディングツールです。破壊的な編集ではありません — オブジェクト除去もインペインティングもなし。光、色、そして雰囲気だけ。
