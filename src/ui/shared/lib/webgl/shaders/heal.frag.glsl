@@ -1,7 +1,7 @@
 #version 300 es
 precision highp float;
 
-#define MAX_SPOTS 32
+#define MAX_SPOTS 64
 
 uniform sampler2D u_image;
 uniform int u_spotCount;

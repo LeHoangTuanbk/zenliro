@@ -1,6 +1,37 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useHealStore } from '../store/heal-store';
+import type { HealSpot, ToolOverlayMode } from '../store/types';
 import { useShortcut } from '@shared/lib/shortcuts';
+
+const TOOL_OVERLAY_OPTIONS: { value: ToolOverlayMode; label: string }[] = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'always', label: 'Always' },
+  { value: 'selected', label: 'Selected' },
+  { value: 'never', label: 'Never' },
+];
+
+type SpotGroup = {
+  key: string; // strokeId or the single spot's id
+  firstSpot: HealSpot;
+  spots: HealSpot[]; // all spots sharing this stroke
+  index: number; // 1-based position in the visible list
+};
+
+function groupSpots(spots: HealSpot[]): SpotGroup[] {
+  const groups = new Map<string, SpotGroup>();
+  let idx = 0;
+  for (const spot of spots) {
+    const key = spot.strokeId ?? spot.id;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.spots.push(spot);
+    } else {
+      idx += 1;
+      groups.set(key, { key, firstSpot: spot, spots: [spot], index: idx });
+    }
+  }
+  return [...groups.values()];
+}
 
 interface HealPanelProps {
   photoId: string | null;
@@ -84,8 +115,12 @@ export function HealPanel({ photoId }: HealPanelProps) {
     opacity,
     selectedSpotId,
     previewOriginal,
+    toolOverlay,
     getSpots,
+    updateSpot,
+    updateStroke,
     removeSpot,
+    removeStroke,
     clearAll,
     setActiveMode,
     setBrushSizePx,
@@ -93,10 +128,37 @@ export function HealPanel({ photoId }: HealPanelProps) {
     setOpacity,
     setSelectedSpotId,
     setPreviewOriginal,
+    setToolOverlay,
   } = useHealStore();
 
   const spots = photoId ? getSpots(photoId) : [];
   const hasPhoto = !!photoId;
+  const groups = useMemo(() => groupSpots(spots), [spots]);
+
+  // LR Classic: when a spot is selected the sliders reflect and drive that
+  // spot (or its whole stroke). With nothing selected they set defaults for
+  // the next spot.
+  const selectedSpot = selectedSpotId ? spots.find((s) => s.id === selectedSpotId) : undefined;
+  const displayedFeather = selectedSpot?.feather ?? feather;
+  const displayedOpacity = selectedSpot?.opacity ?? opacity;
+
+  const applyPatch = (patch: Partial<HealSpot>) => {
+    if (!photoId || !selectedSpot) return;
+    if (selectedSpot.strokeId) {
+      updateStroke(photoId, selectedSpot.strokeId, patch);
+    } else {
+      updateSpot(photoId, selectedSpot.id, patch);
+    }
+  };
+
+  const handleFeatherChange = (v: number) => {
+    if (selectedSpot) applyPatch({ feather: v });
+    else setFeather(v);
+  };
+  const handleOpacityChange = (v: number) => {
+    if (selectedSpot) applyPatch({ opacity: v });
+    else setOpacity(v);
+  };
 
   const handleTogglePreview = useCallback(
     () => setPreviewOriginal(!previewOriginal),
@@ -130,8 +192,9 @@ export function HealPanel({ photoId }: HealPanelProps) {
             <button
               className="border border-[#3a3a3a] text-[#929292] rounded-[2px] px-2 py-0.5 text-[10px] bg-transparent cursor-pointer hover:text-[#f2f2f2] hover:border-[#555] transition-colors"
               onClick={() => clearAll(photoId!)}
+              title="Remove every spot"
             >
-              Clear All
+              Reset
             </button>
           )}
         </div>
@@ -167,8 +230,20 @@ export function HealPanel({ photoId }: HealPanelProps) {
           step={1}
           onChange={setBrushSizePx}
         />
-        <Slider label="Feather" value={feather} min={0} max={100} onChange={setFeather} />
-        <Slider label="Opacity" value={opacity} min={0} max={100} onChange={setOpacity} />
+        <Slider
+          label="Feather"
+          value={displayedFeather}
+          min={0}
+          max={100}
+          onChange={handleFeatherChange}
+        />
+        <Slider
+          label="Opacity"
+          value={displayedOpacity}
+          min={0}
+          max={100}
+          onChange={handleOpacityChange}
+        />
       </div>
 
       {/* Tips */}
@@ -185,48 +260,78 @@ export function HealPanel({ photoId }: HealPanelProps) {
         </div>
       )}
 
-      {/* Spot list */}
-      {spots.length > 0 && (
-        <div className="px-3 py-2">
+      {/* Spot list — grouped by stroke */}
+      {groups.length > 0 && (
+        <div className="px-3 py-2 border-b border-[#3a3a3a]">
           <div className="text-[10px] text-[#505050] uppercase tracking-[0.6px] mb-1.5">
-            Spots ({spots.length})
+            Spots ({groups.length})
           </div>
-          <div className="flex flex-col gap-0.5 max-h-[180px] overflow-y-auto">
-            {spots.map((spot, i) => (
-              <div
-                key={spot.id}
-                className={`flex items-center justify-between px-2 py-1.5 rounded-[2px] cursor-pointer select-none ${
-                  spot.id === selectedSpotId ? 'bg-[#2a3d52]' : 'hover:bg-[#2a2a2a]'
-                }`}
-                onClick={() => setSelectedSpotId(spot.id === selectedSpotId ? null : spot.id)}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-[9px] font-semibold uppercase px-1 rounded-[2px] ${
-                      spot.mode === 'heal'
-                        ? 'bg-[#3d6fa5] text-[#9dc8f5]'
-                        : spot.mode === 'fill'
-                          ? 'bg-[#3a3a1a] text-[#c8c86b]'
-                          : 'bg-[#4a3a1a] text-[#c8a86b]'
-                    }`}
-                  >
-                    {spot.mode === 'heal' ? 'H' : spot.mode === 'fill' ? 'F' : 'C'}
-                  </span>
-                  <span className="text-[10px] text-[#929292]">Spot {i + 1}</span>
-                </div>
-                <button
-                  className="text-[#505050] hover:text-[#ff6b6b] text-[14px] leading-none px-1 cursor-pointer transition-colors"
-                  title="Delete spot"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (photoId) removeSpot(photoId, spot.id);
-                  }}
+          <div className="flex flex-col gap-0.5">
+            {groups.map((g) => {
+              const selected = g.spots.some((sp) => sp.id === selectedSpotId);
+              const mode = g.firstSpot.mode;
+              const badge = mode === 'heal' ? 'H' : mode === 'fill' ? 'F' : 'C';
+              const badgeCls =
+                mode === 'heal'
+                  ? 'bg-[#3d6fa5] text-[#9dc8f5]'
+                  : mode === 'fill'
+                    ? 'bg-[#3a3a1a] text-[#c8c86b]'
+                    : 'bg-[#4a3a1a] text-[#c8a86b]';
+              const label =
+                g.spots.length > 1 ? `Stroke ${g.index} (${g.spots.length})` : `Spot ${g.index}`;
+              return (
+                <div
+                  key={g.key}
+                  className={`flex items-center justify-between px-2 py-1.5 rounded-[2px] cursor-pointer select-none ${
+                    selected ? 'bg-[#2a3d52]' : 'hover:bg-[#2a2a2a]'
+                  }`}
+                  onClick={() => setSelectedSpotId(selected ? null : g.firstSpot.id)}
                 >
-                  ×
-                </button>
-              </div>
-            ))}
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[9px] font-semibold uppercase px-1 rounded-[2px] ${badgeCls}`}
+                    >
+                      {badge}
+                    </span>
+                    <span className="text-[10px] text-[#929292]">{label}</span>
+                  </div>
+                  <button
+                    className="text-[#505050] hover:text-[#ff6b6b] text-[14px] leading-none px-1 cursor-pointer transition-colors"
+                    title={g.spots.length > 1 ? 'Delete stroke' : 'Delete spot'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!photoId) return;
+                      if (g.spots.length > 1 && g.firstSpot.strokeId) {
+                        removeStroke(photoId, g.firstSpot.strokeId);
+                      } else {
+                        removeSpot(photoId, g.firstSpot.id);
+                      }
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              );
+            })}
           </div>
+        </div>
+      )}
+
+      {/* Tool Overlay — LR Classic bottom dropdown */}
+      {hasPhoto && (
+        <div className="flex items-center justify-between px-3 py-2">
+          <span className="text-[10px] text-[#929292]">Tool Overlay</span>
+          <select
+            value={toolOverlay}
+            onChange={(e) => setToolOverlay(e.target.value as ToolOverlayMode)}
+            className="bg-[#1a1a1a] border border-[#3a3a3a] text-[10px] text-[#f2f2f2] rounded-[2px] px-1.5 py-0.5 cursor-pointer outline-none hover:border-[#555]"
+          >
+            {TOOL_OVERLAY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
       )}
     </div>
