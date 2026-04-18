@@ -17,6 +17,7 @@ interface HealActions {
   addSpot(photoId: string, spot: HealSpot): void;
   addSpots(photoId: string, spots: HealSpot[]): void;
   updateSpot(photoId: string, id: string, patch: Partial<HealSpot>): void;
+  updateStroke(photoId: string, strokeId: string, patch: Partial<HealSpot>): void;
   removeSpot(photoId: string, id: string): void;
   removeStroke(photoId: string, strokeId: string): void;
   clearAll(photoId: string): void;
@@ -64,6 +65,16 @@ export const useHealStore = create<HealState & HealActions>((set, get) => ({
         ...s.spotsByPhoto,
         [photoId]: (s.spotsByPhoto[photoId] ?? []).map((sp) =>
           sp.id === id ? { ...sp, ...patch } : sp,
+        ),
+      },
+    })),
+
+  updateStroke: (photoId, strokeId, patch) =>
+    set((s) => ({
+      spotsByPhoto: {
+        ...s.spotsByPhoto,
+        [photoId]: (s.spotsByPhoto[photoId] ?? []).map((sp) =>
+          sp.strokeId === strokeId ? { ...sp, ...patch } : sp,
         ),
       },
     })),

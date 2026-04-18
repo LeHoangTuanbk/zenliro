@@ -79,6 +79,10 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     >
   >(new Map());
   const gpuSpotsRef = useRef<SpotGPUData[]>([]);
+  // Cache precomputed colorData per spot so rapid stroke additions don't
+  // recompute border-mean sampling for every already-existing spot. Keyed by a
+  // stable signature of spot geometry + mode.
+  const spotColorDataCacheRef = useRef<Map<string, SpotGPUData['colorData']>>(new Map());
   const uploadedStrokesRef = useRef<Map<string, number>>(new Map()); // maskId → count uploaded
   const prevSlotMaskIdsRef = useRef<(string | null)[]>([null, null, null, null]);
   const [canvasDims, setCanvasDims] = useState({ w: 0, h: 0 });
@@ -178,15 +182,22 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     getRenderedPixels: () => rendererRef.current?.readCurrentPixels() ?? null,
   }));
 
+  // Coalesce rapid render requests (e.g. a stroke emitting many spots per
+  // frame) into one GL draw per animation frame.
+  const pendingRenderRafRef = useRef<number | null>(null);
   const renderToCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    const renderer = rendererRef.current;
-    if (!canvas || !renderer || !originalImgRef.current) return;
-    try {
-      renderer.render(canvas, useAdjustmentsStore.getState().adjustments);
-    } catch (err) {
-      log.error('Render error', err);
-    }
+    if (pendingRenderRafRef.current !== null) return;
+    pendingRenderRafRef.current = requestAnimationFrame(() => {
+      pendingRenderRafRef.current = null;
+      const canvas = canvasRef.current;
+      const renderer = rendererRef.current;
+      if (!canvas || !renderer || !originalImgRef.current) return;
+      try {
+        renderer.render(canvas, useAdjustmentsStore.getState().adjustments);
+      } catch (err) {
+        log.error('Render error', err);
+      }
+    });
   }, []);
 
   function computeAndUploadSpots(spots: HealSpot[]) {
@@ -195,15 +206,34 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     const src = originalImgRef.current;
     if (!renderer || !imgData || !src) return;
     const { width: w, height: h } = src;
-    const gpuData: SpotGPUData[] = spots.map((spot) => ({
-      dst: spot.dst,
-      src: spot.src,
-      radius: spot.radius,
-      feather: spot.feather / 100,
-      opacity: spot.opacity / 100,
-      mode: (spot.mode === 'heal' ? 0 : spot.mode === 'clone' ? 1 : 2) as 0 | 1 | 2,
-      colorData: HealEngine.precomputeColorData(imgData.data, spot, w, h),
-    }));
+    const cache = spotColorDataCacheRef.current;
+    // Signature must invalidate when anything affecting colorData changes.
+    const signatureOf = (s: HealSpot) =>
+      `${s.id}|${s.mode}|${s.radius.toFixed(6)}|${s.dst.x.toFixed(6)}|${s.dst.y.toFixed(6)}|${s.src.x.toFixed(6)}|${s.src.y.toFixed(6)}`;
+    const liveKeys = new Set<string>();
+    const gpuData: SpotGPUData[] = spots.map((spot) => {
+      const key = signatureOf(spot);
+      liveKeys.add(key);
+      let colorData = cache.get(key);
+      if (!colorData) {
+        colorData = HealEngine.precomputeColorData(imgData.data, spot, w, h);
+        cache.set(key, colorData);
+      }
+      return {
+        dst: spot.dst,
+        src: spot.src,
+        radius: spot.radius,
+        feather: spot.feather / 100,
+        opacity: spot.opacity / 100,
+        mode: (spot.mode === 'heal' ? 0 : spot.mode === 'clone' ? 1 : 2) as 0 | 1 | 2,
+        colorData,
+      };
+    });
+    // Evict stale entries (e.g. spots that were deleted or moved — their old
+    // signature is no longer requested).
+    if (cache.size > liveKeys.size * 2) {
+      for (const k of cache.keys()) if (!liveKeys.has(k)) cache.delete(k);
+    }
     gpuSpotsRef.current = gpuData;
     renderer.setHealSpots(gpuData);
   }

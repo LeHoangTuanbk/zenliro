@@ -117,6 +117,8 @@ export function HealPanel({ photoId }: HealPanelProps) {
     previewOriginal,
     toolOverlay,
     getSpots,
+    updateSpot,
+    updateStroke,
     removeSpot,
     removeStroke,
     clearAll,
@@ -132,6 +134,31 @@ export function HealPanel({ photoId }: HealPanelProps) {
   const spots = photoId ? getSpots(photoId) : [];
   const hasPhoto = !!photoId;
   const groups = useMemo(() => groupSpots(spots), [spots]);
+
+  // LR Classic: when a spot is selected the sliders reflect and drive that
+  // spot (or its whole stroke). With nothing selected they set defaults for
+  // the next spot.
+  const selectedSpot = selectedSpotId ? spots.find((s) => s.id === selectedSpotId) : undefined;
+  const displayedFeather = selectedSpot?.feather ?? feather;
+  const displayedOpacity = selectedSpot?.opacity ?? opacity;
+
+  const applyPatch = (patch: Partial<HealSpot>) => {
+    if (!photoId || !selectedSpot) return;
+    if (selectedSpot.strokeId) {
+      updateStroke(photoId, selectedSpot.strokeId, patch);
+    } else {
+      updateSpot(photoId, selectedSpot.id, patch);
+    }
+  };
+
+  const handleFeatherChange = (v: number) => {
+    if (selectedSpot) applyPatch({ feather: v });
+    else setFeather(v);
+  };
+  const handleOpacityChange = (v: number) => {
+    if (selectedSpot) applyPatch({ opacity: v });
+    else setOpacity(v);
+  };
 
   const handleTogglePreview = useCallback(
     () => setPreviewOriginal(!previewOriginal),
@@ -203,8 +230,20 @@ export function HealPanel({ photoId }: HealPanelProps) {
           step={1}
           onChange={setBrushSizePx}
         />
-        <Slider label="Feather" value={feather} min={0} max={100} onChange={setFeather} />
-        <Slider label="Opacity" value={opacity} min={0} max={100} onChange={setOpacity} />
+        <Slider
+          label="Feather"
+          value={displayedFeather}
+          min={0}
+          max={100}
+          onChange={handleFeatherChange}
+        />
+        <Slider
+          label="Opacity"
+          value={displayedOpacity}
+          min={0}
+          max={100}
+          onChange={handleOpacityChange}
+        />
       </div>
 
       {/* Tips */}

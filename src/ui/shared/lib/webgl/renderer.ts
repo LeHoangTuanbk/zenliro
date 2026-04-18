@@ -217,7 +217,8 @@ export class WebGLRenderer {
   }
 
   setHealSpots(spots: SpotGPUData[]): void {
-    this.spotsData = spots.slice(0, 32);
+    // Keep in sync with MAX_SPOTS in heal.frag.glsl / runHealPass.
+    this.spotsData = spots.slice(0, 64);
   }
 
   setMasks(masks: MaskGPUData[]): void {
