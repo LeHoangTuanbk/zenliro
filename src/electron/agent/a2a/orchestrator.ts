@@ -133,13 +133,18 @@ export class EditorReviewerOrchestrator {
       if (this.cancelled) break;
 
       const claimedApproved = this.isApproved(reviewerRes.finalText);
-      const verifiedApproved = claimedApproved && reviewerToolCalls >= MIN_REVIEWER_TOOL_CALLS;
+      // On the final iteration we relax the minimum — a claimed APPROVAL is
+      // almost always better than forcing REVISE into max-iterations-end,
+      // which ships whatever the Editor did last.
+      const isFinalIteration = iteration >= MAX_ITERATIONS;
+      const requiredToolCalls = isFinalIteration ? 2 : MIN_REVIEWER_TOOL_CALLS;
+      const verifiedApproved = claimedApproved && reviewerToolCalls >= requiredToolCalls;
 
       // If Reviewer said APPROVED without inspecting enough, rewrite the
       // forwarded message to make the rejection explicit so the Editor knows.
       const reviewerTextForLog =
         claimedApproved && !verifiedApproved
-          ? `REVISE. Score: 0/10.\n\n[orchestrator] Reviewer tried to approve without enough inspection (${reviewerToolCalls} tool call${reviewerToolCalls === 1 ? '' : 's'}, need >= ${MIN_REVIEWER_TOOL_CALLS}). Forcing revision. Their original note:\n\n${reviewerRes.finalText}`
+          ? `REVISE. Score: 0/10.\n\n[orchestrator] Reviewer tried to approve without enough inspection (${reviewerToolCalls} tool call${reviewerToolCalls === 1 ? '' : 's'}, need >= ${requiredToolCalls}). Forcing revision. Their original note:\n\n${reviewerRes.finalText}`
           : reviewerRes.finalText || '(no text output)';
 
       const reviewerMsg = textMessage('agent', reviewerTextForLog);
@@ -235,7 +240,13 @@ function buildEditorPrompt(
 }
 
 function buildReviewerPrompt(userPrompt: string, iteration: number, editorText: string): string {
-  return `USER REQUEST (original):\n${userPrompt}\n\nEDITOR'S LATEST MESSAGE (iteration ${iteration}):\n${editorText}\n\nInspect the photo via the read-only MCP tools. Run the NATURALNESS GATE first: if the image looks fake (magenta/purple snow or clouds, neon foliage, plastic skin, dead-black shadows, halo glows, unnatural skies), that is an auto-REVISE regardless of score. Then run the rest of the checklist and score 0-10. Only APPROVE if score >= 9, no naturalness red flags, no >1% clipping, and the result matches the user's intent. Otherwise REVISE with 2-4 concrete parameter changes. Start line 1 with "APPROVED. Score: N/10." or "REVISE. Score: N/10." exactly.`;
+  const bar =
+    iteration === 1
+      ? 'Iteration 1 bar: score >= 9 AND natural AND on-brief. Default REVISE.'
+      : iteration === 2
+        ? 'Iteration 2 bar: score >= 7 AND natural AND on-brief. Stop nitpicking small preferences — approve if it is decent and natural.'
+        : `Iteration ${iteration} (LAST) bar: score >= 6 AND natural AND roughly on-brief. Max-iterations ships whatever the Editor did last, which is worse than approving a decent result now.`;
+  return `USER REQUEST (original):\n${userPrompt}\n\nEDITOR'S LATEST MESSAGE (iteration ${iteration}):\n${editorText}\n\nInspect the photo via the read-only MCP tools. Run the NATURALNESS GATE first: magenta/purple snow or clouds, neon foliage, plastic skin, dead-black shadows, halo glows, unnatural skies → auto-REVISE regardless of score.\n\n${bar}\n\nIf revising, give AT MOST 3 concrete changes. Prefer REDUCING existing values toward 0 over adding new adjustments (a cast is almost always fixed by pulling back the value that caused it, not by counter-edits). Start line 1 with "APPROVED. Score: N/10." or "REVISE. Score: N/10." exactly.`;
 }
 
 let currentOrchestrator: EditorReviewerOrchestrator | null = null;
