@@ -10,7 +10,7 @@
 import { CLAUDE_CLI } from '../const.js';
 import type { AgentRole } from './roles.js';
 
-export type CliSpec = { cmd: string; args: string[] };
+export type CliSpec = { cmd: string; args: string[]; stdin?: string };
 
 export function buildClaudeSpec(
   role: AgentRole,
@@ -41,12 +41,17 @@ export function buildCodexSpec(
   sessionId: string | null,
   model?: string,
 ): CliSpec {
+  // Pass the prompt via stdin using the `-` marker. Our system prompts are
+  // big (> 15KB with MULTI-AGENT overlays); passing a giant string as argv
+  // is fragile (ARG_MAX, shell escaping quirks). Codex CLI's `exec` accepts
+  // `-` to read instructions from stdin — cleaner and unbounded in size.
   const args = ['exec', '--json', '-s', 'danger-full-access', '--skip-git-repo-check'];
   if (model && model !== 'codex-default') args.push('-m', model);
   if (sessionId) {
-    args.push('resume', '--last', prompt);
-  } else {
-    args.push(`${role.systemPrompt}\n\n---\n\n${prompt}`);
+    // Resume subcommand also reads from stdin when given `-`.
+    args.push('resume', '--last', '-');
+    return { cmd: 'codex', args, stdin: prompt };
   }
-  return { cmd: 'codex', args };
+  args.push('-');
+  return { cmd: 'codex', args, stdin: `${role.systemPrompt}\n\n---\n\n${prompt}` };
 }

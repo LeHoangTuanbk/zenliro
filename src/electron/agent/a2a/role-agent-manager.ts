@@ -67,7 +67,14 @@ export class RoleAgentManager {
     return new Promise<RunResult>((resolve) => {
       this.process = spawn(spec.cmd, spec.args, { stdio: ['pipe', 'pipe', 'pipe'], env });
 
+      // Collect stderr so we can include it in the error message if the CLI
+      // dies without producing any parseable events — otherwise the UI hangs
+      // on "thinking…" with no hint of what went wrong.
+      let stderrBuf = '';
+      let sawEvent = false;
+
       const handleEvent = (parsed: ParsedStreamEvent) => {
+        sawEvent = true;
         if (parsed.type === 'text') this.accumulatedText += parsed.text;
         if (parsed.type === 'session_id' && parsed.sessionId) this.sessionId = parsed.sessionId;
         onEvent(parsed);
@@ -81,6 +88,7 @@ export class RoleAgentManager {
       });
       this.process.stderr?.on('data', (data: Buffer) => {
         const text = data.toString();
+        stderrBuf += text;
         if (text.trim()) log.warn(`[${this.role.id}/${this.provider}] stderr:`, text);
       });
 
@@ -88,6 +96,12 @@ export class RoleAgentManager {
         for (const line of this.lineBuffer.flush()) {
           const parsed = parser(line);
           if (parsed) handleEvent(parsed);
+        }
+        if ((code !== 0 && !sawEvent) || (!sawEvent && this.accumulatedText === '')) {
+          const tail = stderrBuf.trim().split('\n').slice(-5).join('\n') || '(no stderr)';
+          const msg = `${this.provider} CLI exited with code ${code ?? 'null'} without producing any output. stderr tail:\n${tail}`;
+          log.error(`[${this.role.id}/${this.provider}] ${msg}`);
+          onEvent({ type: 'error', error: msg });
         }
         onEvent({ type: 'done' });
         this.process = null;
@@ -107,6 +121,15 @@ export class RoleAgentManager {
           exitCode: null,
         });
       });
+
+      // Always close stdin. If the spec wrote a prompt via stdin, end() flushes
+      // it; otherwise, closing prevents Codex CLI from hanging on "Reading
+      // additional input from stdin..." waiting for EOF on a piped fd.
+      if (spec.stdin !== undefined) {
+        this.process.stdin?.end(spec.stdin);
+      } else {
+        this.process.stdin?.end();
+      }
     });
   }
 

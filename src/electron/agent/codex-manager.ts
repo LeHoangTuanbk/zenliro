@@ -138,6 +138,12 @@ export class CodexManager {
       env: { ...getShellEnv(), ...options?.env },
     });
 
+    // Codex CLI, when stdin is piped, tries to read from it and treats any
+    // bytes as an appended `<stdin>` block — blocking until EOF. We pass the
+    // whole prompt via argv, so close stdin immediately. Without this, the
+    // process sits on "Reading additional input from stdin..." forever.
+    this.process.stdin?.end();
+
     this.process.stdout?.on('data', (data: Buffer) => {
       const lines = this.lineBuffer.feed(data.toString());
       for (const line of lines) {

@@ -98,15 +98,32 @@ export class EditorReviewerOrchestrator {
         iteration,
       });
       const editorPrompt = buildEditorPrompt(userPrompt, iteration, editorFeedback);
+      let editorFatal: string | null = null;
       const editorRes = await this.editor.run(
         editorPrompt,
-        (ev) => opts.onAgentStream('editor', ev),
+        (ev) => {
+          if (ev.type === 'error') editorFatal = ev.error;
+          opts.onAgentStream('editor', ev);
+        },
         {
           model: opts.model,
           env: opts.env,
         },
       );
       if (this.cancelled) break;
+
+      // If the Editor CLI died without output, surface it as a session error —
+      // otherwise the popup would hang showing "Editor thinking…" forever.
+      if (editorFatal && !editorRes.finalText) {
+        opts.onEvent({
+          type: 'session-ended',
+          sessionId: this.room.sessionId,
+          reason: 'error',
+          detail: `Editor agent failed: ${editorFatal}`,
+        });
+        this.cleanup();
+        return;
+      }
 
       const editorMsg = textMessage('agent', editorRes.finalText || '(no text output)');
       this.postMessage('editor', 'reviewer', editorMsg, opts);
@@ -122,11 +139,13 @@ export class EditorReviewerOrchestrator {
         iteration,
       });
       let reviewerToolCalls = 0;
+      let reviewerFatal: string | null = null;
       const reviewerPrompt = buildReviewerPrompt(userPrompt, iteration, editorRes.finalText);
       const reviewerRes = await this.reviewer.run(
         reviewerPrompt,
         (ev) => {
           if (ev.type === 'tool_use') reviewerToolCalls += 1;
+          if (ev.type === 'error') reviewerFatal = ev.error;
           opts.onAgentStream('reviewer', ev);
         },
         {
@@ -135,6 +154,17 @@ export class EditorReviewerOrchestrator {
         },
       );
       if (this.cancelled) break;
+
+      if (reviewerFatal && !reviewerRes.finalText) {
+        opts.onEvent({
+          type: 'session-ended',
+          sessionId: this.room.sessionId,
+          reason: 'error',
+          detail: `Reviewer agent failed: ${reviewerFatal}`,
+        });
+        this.cleanup();
+        return;
+      }
 
       const verdict = parseReviewerVerdict(reviewerRes.finalText);
       const claimedApproved = isApproved(verdict);
