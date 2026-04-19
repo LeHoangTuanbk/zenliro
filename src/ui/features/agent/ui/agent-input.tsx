@@ -14,7 +14,8 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
   const [showModelMenu, setShowModelMenu] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
   const [showAgentCount, setShowAgentCount] = useState(false);
-  const [agentCount, setAgentCount] = useState(1);
+  const agentCount = useAgentStore((s) => s.agentCount);
+  const setAgentCount = useAgentStore((s) => s.setAgentCount);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomBarRef = useRef<HTMLDivElement>(null);
 
@@ -268,30 +269,44 @@ export function AgentInput({ isStreaming, onSend, onStop }: AgentInputProps) {
               </button>
 
               {showAgentCount && (
-                <div className="absolute bottom-full left-0 mb-1 w-[160px] bg-[#2a2a2a] border border-[#444] rounded-[6px] shadow-xl overflow-hidden z-50">
+                <div className="absolute bottom-full left-0 mb-1 w-[200px] bg-[#2a2a2a] border border-[#444] rounded-[6px] shadow-xl overflow-hidden z-50">
                   <div className="px-3 py-1.5 text-[9px] text-[#666] uppercase tracking-wider border-b border-[#333]">
-                    Parallel Agents
+                    Team preset
                   </div>
-                  {[1, 2, 3, 4, 5, 6].map((n) => (
+                  {[
+                    { n: 1, label: 'Solo', desc: 'Single editor', enabled: true },
+                    {
+                      n: 2,
+                      label: 'Editor + Reviewer',
+                      desc: 'Reviewer checks quality',
+                      enabled: true,
+                    },
+                    { n: 3, label: 'Art Studio', desc: '3 agents — soon', enabled: false },
+                    { n: 5, label: 'Full Panel', desc: '5 agents — soon', enabled: false },
+                  ].map(({ n, label, desc, enabled }) => (
                     <button
                       key={n}
                       onClick={() => {
-                        if (n === 1) {
+                        if (enabled) {
                           setAgentCount(n);
                           setShowAgentCount(false);
                         }
                       }}
-                      disabled={n > 1}
-                      title={n > 1 ? 'Coming soon' : undefined}
-                      className={`w-full text-left px-3 py-1 text-[11px] transition-colors ${
+                      disabled={!enabled}
+                      title={enabled ? desc : 'Coming soon'}
+                      className={`w-full text-left px-3 py-1.5 text-[11px] transition-colors ${
                         n === agentCount
                           ? 'text-white bg-[#333]'
-                          : n > 1
+                          : !enabled
                             ? 'text-[#444] cursor-not-allowed'
                             : 'text-[#aaa] hover:bg-[#333] hover:text-white'
                       }`}
                     >
-                      {n}x
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{n}x</span>
+                        <span>{label}</span>
+                      </div>
+                      <div className="text-[9px] text-[#666] mt-0.5">{desc}</div>
                     </button>
                   ))}
                 </div>
