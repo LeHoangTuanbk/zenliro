@@ -92,8 +92,10 @@ electron.contextBridge.exposeInMainWorld('electron', {
 
   agent: {
     startSession: () => electron.ipcRenderer.invoke('agent:start-session'),
-    sendMessage: (text: string, options?: { model?: string; provider?: string }) =>
-      electron.ipcRenderer.invoke('agent:send-message', text, options),
+    sendMessage: (
+      text: string,
+      options?: { model?: string; provider?: string; agentCount?: number },
+    ) => electron.ipcRenderer.invoke('agent:send-message', text, options),
     stopSession: () => electron.ipcRenderer.invoke('agent:stop-session'),
     getStatus: () => electron.ipcRenderer.invoke('agent:get-status'),
     saveReferenceImage: (dataUrl: string) =>
@@ -139,6 +141,18 @@ electron.contextBridge.exposeInMainWorld('electron', {
       const handler = (_e: unknown, error: string) => cb(error);
       electron.ipcRenderer.on('agent:stream-error', handler);
       return () => electron.ipcRenderer.removeListener('agent:stream-error', handler);
+    },
+
+    // Multi-agent (Editor + Reviewer) event streams. See src/electron/agent/a2a/.
+    onA2AEvent: (cb: (event: unknown) => void) => {
+      const handler = (_e: unknown, ev: unknown) => cb(ev);
+      electron.ipcRenderer.on('agent:a2a-event', handler);
+      return () => electron.ipcRenderer.removeListener('agent:a2a-event', handler);
+    },
+    onA2AStream: (cb: (data: { agentId: string; event: unknown }) => void) => {
+      const handler = (_e: unknown, data: { agentId: string; event: unknown }) => cb(data);
+      electron.ipcRenderer.on('agent:a2a-stream', handler);
+      return () => electron.ipcRenderer.removeListener('agent:a2a-stream', handler);
     },
   },
 

@@ -184,7 +184,10 @@ interface Window {
 
     agent: {
       startSession: () => Promise<void>;
-      sendMessage: (text: string, options?: { model?: string; provider?: string }) => Promise<void>;
+      sendMessage: (
+        text: string,
+        options?: { model?: string; provider?: string; agentCount?: number },
+      ) => Promise<void>;
       stopSession: () => Promise<void>;
       getStatus: () => Promise<{ running: boolean }>;
       saveReferenceImage: (dataUrl: string) => Promise<string | null>;
@@ -206,6 +209,9 @@ interface Window {
       onStreamThinking: (cb: (text: string) => void) => () => void;
       onStreamDone: (cb: () => void) => () => void;
       onStreamError: (cb: (error: string) => void) => () => void;
+
+      onA2AEvent: (cb: (event: unknown) => void) => () => void;
+      onA2AStream: (cb: (data: { agentId: string; event: unknown }) => void) => () => void;
     };
 
     bulkEdit: {

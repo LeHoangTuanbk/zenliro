@@ -2,10 +2,13 @@ import { useCallback } from 'react';
 import { useAgentStore } from './store/agent-store';
 import { useReferenceStore } from './store/reference-store';
 import { useAgentStream } from './hook/use-agent-stream';
+import { useA2AStream } from './hook/use-a2a-stream';
 import { AgentPanelView } from './ui/agent-panel-view';
+import { AgentConversationPanel } from './ui/agent-conversation-panel';
 
 export function AgentPanelContainer() {
   useAgentStream();
+  useA2AStream();
 
   const isOpen = useAgentStore((s) => s.isOpen);
   const isMaximized = useAgentStore((s) => s.isMaximized);
@@ -33,8 +36,17 @@ export function AgentPanelContainer() {
         // Clear after sending — reference is per-message, not persistent
         useReferenceStore.getState().clear();
       }
-      const { provider } = useAgentStore.getState();
-      await window.electron?.agent?.sendMessage(message, { model: modelId, provider });
+      const { provider, agentCount, clearA2A, setConversationOpen } = useAgentStore.getState();
+      if (agentCount >= 2) {
+        // Open a fresh conversation for the multi-agent session.
+        clearA2A();
+        setConversationOpen(true);
+      }
+      await window.electron?.agent?.sendMessage(message, {
+        model: modelId,
+        provider,
+        agentCount,
+      });
     },
     [addUserMessage],
   );
@@ -52,16 +64,19 @@ export function AgentPanelContainer() {
   if (!isOpen) return null;
 
   return (
-    <AgentPanelView
-      isMaximized={isMaximized}
-      isStreaming={isStreaming}
-      messages={messages}
-      currentItems={currentItems}
-      onSend={handleSend}
-      onStop={handleStop}
-      onToggle={toggle}
-      onMaximize={handleMaximize}
-      onClear={clearMessages}
-    />
+    <>
+      <AgentPanelView
+        isMaximized={isMaximized}
+        isStreaming={isStreaming}
+        messages={messages}
+        currentItems={currentItems}
+        onSend={handleSend}
+        onStop={handleStop}
+        onToggle={toggle}
+        onMaximize={handleMaximize}
+        onClear={clearMessages}
+      />
+      <AgentConversationPanel />
+    </>
   );
 }

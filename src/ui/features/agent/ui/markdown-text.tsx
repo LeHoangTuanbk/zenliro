@@ -14,7 +14,18 @@ const components: Components = {
   p: ({ children }) => <p className="whitespace-pre-wrap break-words">{children}</p>,
   strong: ({ children }) => <strong className="font-semibold text-[#e0e0e0]">{children}</strong>,
   em: ({ children }) => <em className="italic text-[#ccc]">{children}</em>,
-  code: ({ children }) => <code className="text-[#b0b0b0]">{children}</code>,
+  // Inline code wraps within narrow bubbles so it can't overflow the parent.
+  code: ({ children }) => (
+    <code className="text-[#b0b0b0] break-words" style={{ overflowWrap: 'anywhere' }}>
+      {children}
+    </code>
+  ),
+  // Fenced code blocks: horizontal scroll instead of blowing past the bubble.
+  pre: ({ children }) => (
+    <pre className="my-1 rounded bg-[#1a1a1a] px-2 py-1.5 overflow-x-auto max-w-full text-[#b0b0b0] text-[10px] leading-snug">
+      {children}
+    </pre>
+  ),
   ul: ({ children }) => <ul className="space-y-0.5 pl-1">{children}</ul>,
   li: ({ children }) => (
     <li className="flex gap-1.5">
@@ -43,7 +54,9 @@ const components: Components = {
 export function MarkdownText({ text }: MarkdownTextProps) {
   return (
     <div className="text-[11px] leading-relaxed text-[#ddd] space-y-1.5">
-      <Markdown remarkPlugins={[remarkGfm]} components={components}>{text}</Markdown>
+      <Markdown remarkPlugins={[remarkGfm]} components={components}>
+        {text}
+      </Markdown>
     </div>
   );
 }

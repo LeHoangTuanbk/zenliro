@@ -9,7 +9,7 @@ const log = createLogger('main/codex');
 
 export type StreamCallback = (event: ParsedStreamEvent) => void;
 
-function parseCodexLine(line: string): ParsedStreamEvent | null {
+export function parseCodexLine(line: string): ParsedStreamEvent | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
 
@@ -137,6 +137,12 @@ export class CodexManager {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: { ...getShellEnv(), ...options?.env },
     });
+
+    // Codex CLI, when stdin is piped, tries to read from it and treats any
+    // bytes as an appended `<stdin>` block — blocking until EOF. We pass the
+    // whole prompt via argv, so close stdin immediately. Without this, the
+    // process sits on "Reading additional input from stdin..." forever.
+    this.process.stdin?.end();
 
     this.process.stdout?.on('data', (data: Buffer) => {
       const lines = this.lineBuffer.feed(data.toString());

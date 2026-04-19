@@ -21,6 +21,19 @@ export type AgentMessage = {
   timestamp: number;
 };
 
+// Agent-to-agent protocol — used by the Editor + Reviewer mode.
+export type A2AActor = 'user' | 'editor' | 'reviewer';
+export type A2AMessageType = 'request' | 'result' | 'verdict' | 'revision' | 'status';
+export type A2AMessage = {
+  id: string;
+  from: A2AActor;
+  to: A2AActor;
+  type: A2AMessageType;
+  content: string;
+  iteration: number;
+  timestamp: number;
+};
+
 export type AgentProvider = 'claude' | 'codex';
 
 export type AgentModel = {
@@ -65,6 +78,17 @@ type AgentStore = {
   chatTitle: string;
   chatHistoryList: ChatHistoryEntry[];
   showChatHistory: boolean;
+  // Parallel agents — 1 = single agent (current), 2 = editor+reviewer.
+  agentCount: number;
+  // Conversation popup (editor + reviewer mode).
+  a2aMessages: A2AMessage[];
+  isConversationOpen: boolean;
+  // Per-agent "working…" indicator: running flag + tool-call count + last tool
+  // name. `isRunning` flips true as soon as the orchestrator starts the agent's
+  // turn (before any tool call), so the popup shows a "thinking…" bubble even
+  // while the agent is still reading the prompt. Reset when that agent posts
+  // a final A2A message, or the session ends.
+  a2aActivity: Record<string, { isRunning: boolean; toolCount: number; lastTool: string | null }>;
 
   toggle: () => void;
   setOpen: (open: boolean) => void;
@@ -92,6 +116,16 @@ type AgentStore = {
   loadChatHistoryList: () => Promise<void>;
   setShowChatHistory: (v: boolean) => void;
   setChatTitle: (title: string) => void;
+
+  // Parallel + A2A
+  setAgentCount: (n: number) => void;
+  appendA2A: (m: A2AMessage) => void;
+  clearA2A: () => void;
+  setConversationOpen: (v: boolean) => void;
+  startActivity: (agentId: string) => void;
+  bumpActivity: (agentId: string, toolName: string) => void;
+  resetActivity: (agentId: string) => void;
+  clearAllActivity: () => void;
 };
 
 let msgCounter = 0;
@@ -179,6 +213,10 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   chatTitle: '',
   chatHistoryList: [],
   showChatHistory: false,
+  agentCount: 1,
+  a2aMessages: [],
+  isConversationOpen: false,
+  a2aActivity: {},
 
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),
   setOpen: (isOpen) => set({ isOpen }),
@@ -383,4 +421,38 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   setChatTitle: (chatTitle) => set({ chatTitle }),
+
+  setAgentCount: (agentCount) => set({ agentCount }),
+  appendA2A: (m) => set((s) => ({ a2aMessages: [...s.a2aMessages, m] })),
+  clearA2A: () => set({ a2aMessages: [], a2aActivity: {} }),
+  setConversationOpen: (isConversationOpen) => set({ isConversationOpen }),
+  startActivity: (agentId) =>
+    set((s) => ({
+      a2aActivity: {
+        ...s.a2aActivity,
+        [agentId]: {
+          isRunning: true,
+          toolCount: s.a2aActivity[agentId]?.toolCount ?? 0,
+          lastTool: s.a2aActivity[agentId]?.lastTool ?? null,
+        },
+      },
+    })),
+  bumpActivity: (agentId, toolName) =>
+    set((s) => ({
+      a2aActivity: {
+        ...s.a2aActivity,
+        [agentId]: {
+          isRunning: true,
+          toolCount: (s.a2aActivity[agentId]?.toolCount ?? 0) + 1,
+          lastTool: toolName,
+        },
+      },
+    })),
+  resetActivity: (agentId) =>
+    set((s) => {
+      if (!s.a2aActivity[agentId]) return s;
+      const { [agentId]: _, ...rest } = s.a2aActivity;
+      return { a2aActivity: rest };
+    }),
+  clearAllActivity: () => set({ a2aActivity: {} }),
 }));

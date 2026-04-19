@@ -9,6 +9,7 @@ import { getShellEnv } from './shell-env.js';
 import { CLAUDE_CLI } from './const.js';
 import type { ParsedStreamEvent } from './stream-parser.js';
 import { createLogger } from '../logger/index.js';
+import { startOrchestrator, cancelCurrentOrchestrator } from './a2a/orchestrator.js';
 
 const log = createLogger('main/agent');
 
@@ -76,8 +77,36 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
 
   ipcMain.handle(
     'agent:send-message',
-    async (_event, text: string, options?: { model?: string; provider?: AgentProvider }) => {
+    async (
+      _event,
+      text: string,
+      options?: { model?: string; provider?: AgentProvider; agentCount?: number },
+    ) => {
       const provider = options?.provider ?? 'claude';
+      const agentCount = options?.agentCount ?? 1;
+
+      // agentCount >= 2 routes to the editor+reviewer orchestrator. Both
+      // Claude and Codex providers are supported — the orchestrator picks
+      // the right CLI per role agent based on `provider`.
+      if (agentCount >= 2) {
+        log.info(
+          `Multi-agent session started (agentCount: ${agentCount}, provider: ${provider}, model: ${options?.model ?? 'default'})`,
+        );
+        startOrchestrator(text, {
+          provider,
+          model: options?.model,
+          onEvent: (ev) => send('agent:a2a-event', ev),
+          onAgentStream: (agentId, event) => {
+            // Wrap regular stream events with agentId so the UI can tag them
+            // to the right agent avatar in the conversation popup.
+            send('agent:a2a-stream', { agentId, event });
+            // Also forward via the standard single-agent channels so any
+            // existing chat UI still works for the editor's output.
+            if (agentId === 'editor') handleStreamEvent(event);
+          },
+        });
+        return;
+      }
 
       // Provider changed → must create new manager (new session)
       if (provider !== currentProvider) {
@@ -103,6 +132,7 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
     manager?.stop();
     manager = null;
     currentProvider = null;
+    cancelCurrentOrchestrator();
     log.info('Agent session stopped');
   });
 
