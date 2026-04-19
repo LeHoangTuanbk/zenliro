@@ -233,10 +233,11 @@ function buildEditorPrompt(
   iteration: number,
   reviewerFeedback: string,
 ): string {
+  const selfReviewReminder = `Before handing off, run your own self-review (get_screenshot + get_histogram + sample_colors on neutral surfaces if you touched color; check_skin_tones if people are in frame; Naturalness Gate). Fix anything you flag YOURSELF — do not pass broken work to the Reviewer. Only hand off when you honestly believe the result is approval-ready.`;
   if (iteration === 1) {
-    return `USER REQUEST:\n${userPrompt}\n\nThis is iteration 1. Analyze, plan, and apply your edits. After applying, briefly explain what you changed and why.`;
+    return `USER REQUEST:\n${userPrompt}\n\nThis is iteration 1. Analyze, plan, apply your edits, then SELF-REVIEW before handing off. ${selfReviewReminder}\n\nWhen done, summarize what you changed, what you self-checked, and the key numbers.`;
   }
-  return `USER REQUEST:\n${userPrompt}\n\nThis is iteration ${iteration}. The Reviewer responded:\n${reviewerFeedback}\n\nIncorporate their feedback and apply further adjustments. Explain what you changed.`;
+  return `USER REQUEST:\n${userPrompt}\n\nThis is iteration ${iteration}. The Reviewer responded:\n${reviewerFeedback}\n\nAddress the DOMINANT issue with the MINIMUM fix (prefer reducing an existing value toward 0 over adding new adjustments). Then SELF-REVIEW again. ${selfReviewReminder}\n\nIf self-review is clean and the Reviewer's remaining points are minor preferences, you may reply "No change this round; self-review passed, submitting as-is." Otherwise summarize the fix and your self-check results.`;
 }
 
 function buildReviewerPrompt(userPrompt: string, iteration: number, editorText: string): string {

@@ -16,14 +16,18 @@ export function AgentConversationPanel() {
   const isOpen = useAgentStore((s) => s.isConversationOpen);
   const setOpen = useAgentStore((s) => s.setConversationOpen);
   const messages = useAgentStore((s) => s.a2aMessages);
+  const activity = useAgentStore((s) => s.a2aActivity);
   const listRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<PanelMode>('centered');
   const { pos, startDrag, resetPos } = useConversationDrag(panelRef, mode === 'maximized');
 
+  // Auto-scroll to bottom whenever new messages arrive OR an activity indicator
+  // appears / changes (e.g. Reviewer starts running after Editor finishes) so
+  // the user always sees the latest state without manual scrolling.
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, activity]);
 
   useEffect(() => {
     if (!isOpen) return;
