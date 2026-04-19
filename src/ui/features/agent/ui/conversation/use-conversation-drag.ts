@@ -4,7 +4,10 @@ import type React from 'react';
 // Drag-and-drop state for the conversation panel header. Tracks the panel's
 // absolute position in px (null = use default anchored layout), and clamps the
 // position inside the viewport on window resize.
-export function useConversationDrag(panelRef: React.RefObject<HTMLDivElement>, disabled: boolean) {
+export function useConversationDrag(
+  panelRef: React.RefObject<HTMLDivElement | null>,
+  disabled: boolean,
+) {
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const dragState = useRef<{ offsetX: number; offsetY: number } | null>(null);
 
