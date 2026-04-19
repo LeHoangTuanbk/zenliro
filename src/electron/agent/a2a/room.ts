@@ -9,7 +9,7 @@
 
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
-import type { AgentCard, AgentId, Artifact, Message, RoomEnvelope } from './types';
+import type { AgentCard, AgentId, Artifact, Message, RoomEnvelope } from './types.js';
 
 export type RoomListener = (ev: RoomEnvelope) => void;
 export type ArtifactListener = (a: { fromAgent: AgentId; artifact: Artifact }) => void;

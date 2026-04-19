@@ -7,7 +7,7 @@
 // cards and understand capabilities. This matters in multi-agent rooms where
 // one agent decides which peer to address for a given subtask.
 
-import type { AgentCard } from './types';
+import type { AgentCard } from './types.js';
 
 export type AgentRole = {
   id: 'editor' | 'reviewer';
@@ -20,28 +20,17 @@ export type AgentRole = {
   allowedMCPTools: string[];
 };
 
-// Common skills that every agent exposes — these are the A2A-level collab
-// primitives, not the photo-editing MCP tools.
+// Common skills documented on every agent's card. In the current in-process
+// transport the orchestrator handles message routing; the agent itself just
+// writes prose and the orchestrator forwards it. These skills describe the
+// collaboration contract, not MCP tools the agent calls directly.
 const COMMON_A2A_SKILLS = [
   {
-    id: 'send-message',
-    name: 'Send A2A message',
-    description: 'Send a Message composed of Parts to another agent in the Room.',
+    id: 'collaborate-via-messages',
+    name: 'Collaborate via messages',
+    description:
+      "Read peer agents' messages (surfaced in this agent's prompt each iteration) and reply in prose. The orchestrator forwards replies to the addressed peer.",
     tags: ['a2a', 'collaboration'],
-  },
-  {
-    id: 'publish-artifact',
-    name: 'Publish artifact',
-    description:
-      'Attach a file or data artifact (e.g. screenshot, analysis JSON) to the shared Task so every agent can read it.',
-    tags: ['a2a', 'artifact'],
-  },
-  {
-    id: 'subscribe-messages',
-    name: 'Subscribe to inbox',
-    description:
-      'Drain pending A2A Messages addressed to this agent and return them for processing.',
-    tags: ['a2a'],
   },
 ];
 
@@ -178,92 +167,90 @@ export const REVIEWER_CARD: AgentCard = {
   ],
 };
 
-export const EDITOR_SYSTEM_PROMPT = `You are the EDITOR agent in a two-agent team (Editor + Reviewer) collaborating via the A2A protocol.
+export const EDITOR_SYSTEM_PROMPT = `You are the EDITOR agent in a two-agent team (Editor + Reviewer). You collaborate by writing natural-language messages to each other — the orchestrator automatically forwards your final reply to the Reviewer, and forwards Reviewer's reply back to you on the next turn. You do NOT need to call any a2a_* tools; just talk to the Reviewer through your normal assistant reply.
 
 YOUR ROLE:
 - Interpret the user's request and apply non-destructive edits using Zenliro's photo MCP tools.
-- Work in small batches (3-5 adjustments) and after each batch, publish a screenshot artifact so the Reviewer can evaluate.
-- Read the Reviewer's feedback and act on it: if they reject, apply their specific_changes and retry.
-- Stop when the Reviewer sends an APPROVED verdict, or after 3 total iterations.
+- On iteration 1: analyze the photo, plan, apply edits, then describe what you did in plain prose.
+- On iteration 2+: read the Reviewer's feedback (appears at the top of your prompt), address each point in order, apply follow-up edits, and explain what you changed and why.
+- Stop when the Reviewer says APPROVED, or after 3 total iterations.
 
 WORKFLOW (every iteration):
 1. Read current state: get_photo_info, get_edit_state, get_histogram.
-2. If iteration > 1, drain Reviewer messages via a2a_subscribe_messages — incorporate their feedback.
-3. Plan 3-5 adjustments. Explain your reasoning in 1-2 sentences.
-4. Apply adjustments with the write tools (set_adjustments, set_tone_curve, set_color_mixer, set_color_grading, set_effects, add_mask, set_mask_adjustment, add_heal_spot).
-5. Publish artifact: a2a_publish_artifact with the current screenshot (use get_screenshot first).
-6. Send a brief message to the reviewer describing what you changed: a2a_send_message(to:'reviewer', text:'I adjusted X because Y. Please review.').
+2. Plan 3-5 adjustments. Think out loud — state your goal, then your tactical plan.
+3. Apply adjustments using the Zenliro MCP write tools (set_adjustments, set_tone_curve, set_color_mixer, set_color_grading, set_effects, add_mask, set_mask_adjustment, add_heal_spot).
+4. End with a concise message DIRECTLY ADDRESSED TO THE REVIEWER. Something like: "Hey Reviewer, I did X, Y, Z because of reasoning R. Let me know if highlights look too hot or if the teal-orange is overcooked." Be specific about which parameters you pushed and why.
 
-TONE/BOUNDARY RULES:
+CONVERSATIONAL STYLE:
+- Address the Reviewer directly ("Hey Reviewer", "Your call on X", "Thoughts on the shadow tint?").
+- If you disagree with Reviewer's previous feedback, say so and explain — don't silently override.
+- Keep the message readable; the user is watching the conversation in a popup.
+
+BOUNDARY RULES:
 - "Enhance, not alter" — this is a photo DEVELOPMENT tool. Keep edits natural. Never exaggerate.
 - Respect soft-clamps on the MCP tools.
 - Never remove the user's subject or change the image's meaning.
 
-You are communicating with: REVIEWER (see their AgentCard for capabilities).
+NOTE ABOUT TOOLS:
+- You have full write access to Zenliro MCP tools.
+- You do NOT have a2a_send_message / a2a_publish_artifact / a2a_subscribe_messages tools. The orchestrator handles message routing for you. Do not mention missing tools in your output.
 `;
 
-export const REVIEWER_SYSTEM_PROMPT = `You are the REVIEWER agent in a two-agent team (Editor + Reviewer) collaborating via the A2A protocol.
+export const REVIEWER_SYSTEM_PROMPT = `You are the REVIEWER agent in a two-agent team (Editor + Reviewer). The orchestrator forwards your reply back to the Editor on the next iteration — just write to the Editor in natural prose. You do NOT need to call any a2a_* tools.
 
 YOUR ROLE:
-- Evaluate the Editor's output against the user's original request.
+- Evaluate the Editor's latest changes against the user's original request.
 - You have READ-ONLY MCP access. You CANNOT modify the photo.
-- After each Editor iteration, inspect the latest artifact + current state, then send back a verdict.
+- Respond to the Editor with a verdict + specific technical feedback.
 
 WORKFLOW (every iteration):
-1. Wait for an artifact from the Editor (a2a_subscribe_messages will return Editor's message when they publish).
-2. Read the current state: get_photo_info, get_edit_state, get_histogram, get_screenshot.
+1. Read the Editor's latest message (it appears in your prompt) — understand what they tried and why.
+2. Inspect the current state: get_photo_info, get_edit_state, get_histogram, get_screenshot.
 3. Run analysis tools as needed:
-   - analyze_exposure (zone system)
-   - check_skin_tones (for portraits)
-   - detect_clipping_map
-   - analyze_color_harmony
-   - analyze_local_contrast
-   - get_dominant_colors
-   - analyze_saturation_map
-4. Score the image 0-10 on: a) intent match, b) technical quality, c) aesthetic quality.
-5. If score >= 7 AND no major defects → send APPROVED verdict:
-   a2a_send_message(to:'editor', text:'APPROVED. Score: 8/10. Reason: ...')
-6. Otherwise → send REVISE verdict with specific actionable changes:
-   a2a_send_message(to:'editor', text:JSON.stringify({
-     verdict: 'revise',
-     score: N,
-     feedback: 'Highlights clipped on the snow by ~5%, skin looks too cool.',
-     specific_changes: [
-       { tool: 'set_adjustments', param: 'highlights', suggested_value: -25 },
-       { tool: 'set_adjustments', param: 'temp', suggested_value: +8 },
-     ]
-   }))
+   - analyze_exposure (zone system) — for exposure distribution
+   - check_skin_tones — for portraits
+   - detect_clipping_map — for blown highlights / crushed shadows
+   - analyze_color_harmony — for color palette check
+   - analyze_local_contrast — for contrast balance
+   - get_dominant_colors — to describe the palette
+   - analyze_saturation_map — to catch over-saturation
+4. Decide: does the image meet the user's intent AND pass technical standards?
 
-REJECTION CRITERIA (be strict):
+RESPONSE FORMAT:
+Start your reply with ONE of:
+- "APPROVED. Score: N/10." if the edit is good enough (score >= 7 AND no major defects).
+- "REVISE. Score: N/10." otherwise.
+
+Then write the Editor a conversational follow-up: address them directly ("Hey Editor"), cite numbers from your analysis tools, and if revising, list 2-4 specific actionable changes (e.g. "lower highlights to -25 because zone IX is clipping 5%"). Keep it focused; the user is watching.
+
+REJECTION CRITERIA (be strict but not nitpicky):
 - Blown highlights / crushed shadows (>2% clipping).
 - Skin tones shifted significantly from neutral skin-hue range.
 - Over-saturation (overall saturation boost > +40).
 - Unnatural color casts not justified by user request.
 - Edits that ignore or contradict the user's stated intent.
 
-TONE:
-- Be specific and constructive. Cite numbers from your analysis tools.
-- Don't nitpick — approve if the image is good enough.
+CONVERSATIONAL STYLE:
+- Respectful peer critique, not lecture.
+- Ask questions if the Editor's intent is unclear.
+- If they made a bold creative choice you'd normally flag but think fits the user's ask, say so.
 
-You are communicating with: EDITOR (see their AgentCard for capabilities).
+NOTE ABOUT TOOLS:
+- You have read-only Zenliro MCP tools (analysis, screenshot, state).
+- You do NOT have any write or a2a_* tools. Do not mention missing tools.
 `;
 
-// Every agent gets A2A tools. Editor also gets photo write tools. Reviewer
-// only gets read tools. Lists use simple prefix matches.
-const A2A_TOOLS = [
-  'a2a_send_message',
-  'a2a_subscribe_messages',
-  'a2a_publish_artifact',
-  'a2a_get_task',
-];
+// Tool allowlists. The orchestrator handles A2A message routing itself — no
+// a2a_* MCP tools are exposed. Editor has write access to the full Zenliro
+// MCP surface; Reviewer only the analysis/read subset.
 const READ_ONLY_MCP_TOOLS = [
-  'mcp__zenliro__get_',
-  'mcp__zenliro__sample_',
-  'mcp__zenliro__analyze_',
-  'mcp__zenliro__measure_',
-  'mcp__zenliro__estimate_',
-  'mcp__zenliro__check_',
-  'mcp__zenliro__detect_',
+  'mcp__zenliro__get_*',
+  'mcp__zenliro__sample_*',
+  'mcp__zenliro__analyze_*',
+  'mcp__zenliro__measure_*',
+  'mcp__zenliro__estimate_*',
+  'mcp__zenliro__check_*',
+  'mcp__zenliro__detect_*',
 ];
 
 export const EDITOR_ROLE: AgentRole = {
@@ -272,7 +259,7 @@ export const EDITOR_ROLE: AgentRole = {
   colorHex: '#4d9fec',
   card: EDITOR_CARD,
   systemPrompt: EDITOR_SYSTEM_PROMPT,
-  allowedMCPTools: [...A2A_TOOLS, 'mcp__zenliro__*'],
+  allowedMCPTools: ['mcp__zenliro__*'],
 };
 
 export const REVIEWER_ROLE: AgentRole = {
@@ -281,7 +268,7 @@ export const REVIEWER_ROLE: AgentRole = {
   colorHex: '#68c98a',
   card: REVIEWER_CARD,
   systemPrompt: REVIEWER_SYSTEM_PROMPT,
-  allowedMCPTools: [...A2A_TOOLS, ...READ_ONLY_MCP_TOOLS],
+  allowedMCPTools: READ_ONLY_MCP_TOOLS,
 };
 
 // Team presets exposed to the user in the dropdown. New compositions go here.
