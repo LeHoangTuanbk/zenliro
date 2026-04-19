@@ -21,6 +21,19 @@ export type AgentMessage = {
   timestamp: number;
 };
 
+// Agent-to-agent protocol — used by the Editor + Reviewer mode.
+export type A2AActor = 'user' | 'editor' | 'reviewer';
+export type A2AMessageType = 'request' | 'result' | 'verdict' | 'revision' | 'status';
+export type A2AMessage = {
+  id: string;
+  from: A2AActor;
+  to: A2AActor;
+  type: A2AMessageType;
+  content: string;
+  iteration: number;
+  timestamp: number;
+};
+
 export type AgentProvider = 'claude' | 'codex';
 
 export type AgentModel = {
@@ -65,6 +78,11 @@ type AgentStore = {
   chatTitle: string;
   chatHistoryList: ChatHistoryEntry[];
   showChatHistory: boolean;
+  // Parallel agents — 1 = single agent (current), 2 = editor+reviewer.
+  agentCount: number;
+  // Conversation popup (editor + reviewer mode).
+  a2aMessages: A2AMessage[];
+  isConversationOpen: boolean;
 
   toggle: () => void;
   setOpen: (open: boolean) => void;
@@ -92,6 +110,12 @@ type AgentStore = {
   loadChatHistoryList: () => Promise<void>;
   setShowChatHistory: (v: boolean) => void;
   setChatTitle: (title: string) => void;
+
+  // Parallel + A2A
+  setAgentCount: (n: number) => void;
+  appendA2A: (m: A2AMessage) => void;
+  clearA2A: () => void;
+  setConversationOpen: (v: boolean) => void;
 };
 
 let msgCounter = 0;
@@ -179,6 +203,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   chatTitle: '',
   chatHistoryList: [],
   showChatHistory: false,
+  agentCount: 1,
+  a2aMessages: [],
+  isConversationOpen: false,
 
   toggle: () => set((s) => ({ isOpen: !s.isOpen })),
   setOpen: (isOpen) => set({ isOpen }),
@@ -383,4 +410,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   setChatTitle: (chatTitle) => set({ chatTitle }),
+
+  setAgentCount: (agentCount) => set({ agentCount }),
+  appendA2A: (m) => set((s) => ({ a2aMessages: [...s.a2aMessages, m] })),
+  clearA2A: () => set({ a2aMessages: [] }),
+  setConversationOpen: (isConversationOpen) => set({ isConversationOpen }),
 }));
