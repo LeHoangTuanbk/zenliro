@@ -9,9 +9,10 @@ type Props = {
   canvasW: number;
   canvasH: number;
   onUpdate: (data: LinearMaskData) => void;
+  disableInteraction?: boolean;
 };
 
-export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate }: Props) {
+export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInteraction }: Props) {
   const [showHint, setShowHint] = useState(true);
   const dragRef = useRef<DragState | null>(null);
 
@@ -36,8 +37,10 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate }: Props) {
   const perpY = (gdx / glen) * 1.5;
 
   const perpLine = (nx: number, ny: number) => ({
-    x1: px(nx + perpX), y1: py(ny + perpY),
-    x2: px(nx - perpX), y2: py(ny - perpY),
+    x1: px(nx + perpX),
+    y1: py(ny + perpY),
+    x2: px(nx - perpX),
+    y2: py(ny - perpY),
   });
 
   const startLine = perpLine(data.x1, data.y1);
@@ -73,8 +76,10 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate }: Props) {
       } else if (d.mode === 'center') {
         onUpdate({
           ...d.orig,
-          x1: clamp01(d.orig.x1 + ddx), y1: clamp01(d.orig.y1 + ddy),
-          x2: clamp01(d.orig.x2 + ddx), y2: clamp01(d.orig.y2 + ddy),
+          x1: clamp01(d.orig.x1 + ddx),
+          y1: clamp01(d.orig.y1 + ddy),
+          x2: clamp01(d.orig.x2 + ddx),
+          y2: clamp01(d.orig.y2 + ddy),
         });
       }
     };
@@ -93,10 +98,16 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate }: Props) {
 
   return (
     <svg
-      className="absolute inset-0 pointer-events-auto overflow-visible"
-      width={canvasW} height={canvasH}
-      style={{ cursor: 'crosshair' }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) startDrag(e, 'create'); }}
+      className="absolute inset-0 overflow-visible"
+      width={canvasW}
+      height={canvasH}
+      style={{
+        cursor: disableInteraction ? undefined : 'crosshair',
+        pointerEvents: disableInteraction ? 'none' : 'auto',
+      }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) startDrag(e, 'create');
+      }}
     >
       <defs>
         <clipPath id="lmo-clip">
@@ -107,9 +118,18 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate }: Props) {
       <g clipPath="url(#lmo-clip)">
         {/* Perpendicular guide lines */}
         {[startLine, midLine, endLine].map((l, i) => (
-          <line key={i} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
-            stroke="white" strokeWidth={1} strokeDasharray="4 3"
-            strokeOpacity={i === 1 ? 0.5 : 0.75} pointerEvents="none" />
+          <line
+            key={i}
+            x1={l.x1}
+            y1={l.y1}
+            x2={l.x2}
+            y2={l.y2}
+            stroke="white"
+            strokeWidth={1}
+            strokeDasharray="4 3"
+            strokeOpacity={i === 1 ? 0.5 : 0.75}
+            pointerEvents="none"
+          />
         ))}
 
         {/* Center drag area (no click-through on center pin area) */}
@@ -121,15 +141,33 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate }: Props) {
         {/* Start pin (circle with cross) */}
         <g style={{ cursor: 'move' }} onMouseDown={(e) => startDrag(e, 'start')}>
           <circle cx={px(data.x1)} cy={py(data.y1)} r={PIN + 4} fill="transparent" />
-          <circle cx={px(data.x1)} cy={py(data.y1)} r={PIN} fill="white" stroke="black" strokeWidth={1.5} />
-          <path d={`M${px(data.x1) - 3},${py(data.y1)} h6 M${px(data.x1)},${py(data.y1) - 3} v6`}
-            stroke="black" strokeWidth={1.5} pointerEvents="none" />
+          <circle
+            cx={px(data.x1)}
+            cy={py(data.y1)}
+            r={PIN}
+            fill="white"
+            stroke="black"
+            strokeWidth={1.5}
+          />
+          <path
+            d={`M${px(data.x1) - 3},${py(data.y1)} h6 M${px(data.x1)},${py(data.y1) - 3} v6`}
+            stroke="black"
+            strokeWidth={1.5}
+            pointerEvents="none"
+          />
         </g>
 
         {/* End pin (circle with dot = full weight) */}
         <g style={{ cursor: 'move' }} onMouseDown={(e) => startDrag(e, 'end')}>
           <circle cx={px(data.x2)} cy={py(data.y2)} r={PIN + 4} fill="transparent" />
-          <circle cx={px(data.x2)} cy={py(data.y2)} r={PIN} fill="white" stroke="black" strokeWidth={1.5} />
+          <circle
+            cx={px(data.x2)}
+            cy={py(data.y2)}
+            r={PIN}
+            fill="white"
+            stroke="black"
+            strokeWidth={1.5}
+          />
           <circle cx={px(data.x2)} cy={py(data.y2)} r={3} fill="black" pointerEvents="none" />
         </g>
       </g>
@@ -137,10 +175,23 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate }: Props) {
       {/* Hint tooltip */}
       {showHint && (
         <g style={{ opacity: 1, transition: 'opacity 0.5s' }}>
-          <rect x={canvasW / 2 - 155} y={canvasH * 0.15 - 14} width={310} height={28} rx={4}
-            fill="rgba(0,0,0,0.65)" />
-          <text x={canvasW / 2} y={canvasH * 0.15 + 5} textAnchor="middle"
-            fill="white" fontSize={11} fontFamily="sans-serif" pointerEvents="none">
+          <rect
+            x={canvasW / 2 - 155}
+            y={canvasH * 0.15 - 14}
+            width={310}
+            height={28}
+            rx={4}
+            fill="rgba(0,0,0,0.65)"
+          />
+          <text
+            x={canvasW / 2}
+            y={canvasH * 0.15 + 5}
+            textAnchor="middle"
+            fill="white"
+            fontSize={11}
+            fontFamily="sans-serif"
+            pointerEvents="none"
+          >
             Drag image to set gradient · Drag pins to adjust
           </text>
         </g>

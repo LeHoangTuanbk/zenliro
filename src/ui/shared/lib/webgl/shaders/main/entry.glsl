@@ -86,12 +86,14 @@ void main() {
   color = applyColorGrading(color);
 
   // ── 11. LOCAL ADJUSTMENTS (MASKS) ──────────────────────────────────
+  float maskOverlayW = 0.0;
   for (int mi = 0; mi < MAX_MASKS; mi++) {
     if (mi >= u_maskCount || u_maskType[mi] == 0) continue;
     float mw = sampleMaskWeight(mi, imageUV);
     if (mw > 0.001) {
       vec3 localColor = applyLocalAdj(color, imageUV, v_texCoord, mi);
       color = mix(color, clamp(localColor, 0.0, 1.0), mw);
+      maskOverlayW = max(maskOverlayW, mw);
     }
   }
 
@@ -100,6 +102,11 @@ void main() {
 
   // ── 13. GRAIN ──────────────────────────────────────────────────────
   color = applyGrain(color, uv);
+
+  // ── Show Mask Overlay (LR Classic "O") ─────────────────────────────
+  if (u_showMaskOverlay > 0.5) {
+    color = mix(color, vec3(1.0, 0.25, 0.25), maskOverlayW * 0.55);
+  }
 
   fragColor = vec4(clamp(color, 0.0, 1.0), 1.0);
 }

@@ -92,6 +92,7 @@ export function ImageCanvasView({
             canvasW={canvasDims.w}
             canvasH={canvasDims.h}
             zoom={zoom}
+            disableInteraction={isSpaceDown}
           />
         )}
 

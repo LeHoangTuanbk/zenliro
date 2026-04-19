@@ -118,6 +118,7 @@ export class WebGLRenderer {
     // Mask uniforms init
     gl.uniform1i(gl.getUniformLocation(this.mainProg, 'u_maskCount'), 0);
     gl.uniform1iv(gl.getUniformLocation(this.mainProg, 'u_maskType'), new Int32Array(MAX_MASKS));
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_showMaskOverlay'), 0);
     // Bind paint brush texture samplers to TEXTURE4-7
     for (let i = 0; i < MAX_MASKS; i++) {
       gl.uniform1i(gl.getUniformLocation(this.mainProg, `u_maskTex${i}`), 4 + i);
@@ -219,6 +220,13 @@ export class WebGLRenderer {
   setHealSpots(spots: SpotGPUData[]): void {
     // Keep in sync with MAX_SPOTS in heal.frag.glsl / runHealPass.
     this.spotsData = spots.slice(0, 64);
+  }
+
+  setShowMaskOverlay(on: boolean): void {
+    const gl = this.gl;
+    if (!gl) return;
+    gl.useProgram(this.mainProg);
+    gl.uniform1f(gl.getUniformLocation(this.mainProg, 'u_showMaskOverlay'), on ? 1 : 0);
   }
 
   setMasks(masks: MaskGPUData[]): void {

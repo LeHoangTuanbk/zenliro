@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useMaskStore } from '../store/mask-store';
 import { MaskType } from '../store/types';
 import type { Mask } from '../store/types';
 import { MaskAdjPanel } from './mask-adj-panel';
+import { useShortcut } from '@shared/lib/shortcuts';
+import { ShortcutHint } from '@shared/ui/shortcut-hint';
 
 const EMPTY_MASKS: Mask[] = [];
 
@@ -12,14 +14,24 @@ type Props = {
 
 export function MaskPanel({ photoId }: Props) {
   const [showAddMenu, setShowAddMenu] = useState(false);
-  const masks = useMaskStore((s) => (photoId ? (s.masksByPhoto[photoId] ?? EMPTY_MASKS) : EMPTY_MASKS));
+  const masks = useMaskStore((s) =>
+    photoId ? (s.masksByPhoto[photoId] ?? EMPTY_MASKS) : EMPTY_MASKS,
+  );
   const selectedMaskId = useMaskStore((s) => s.selectedMaskId);
   const brushErase = useMaskStore((s) => s.brushErase);
+  const showMaskOverlay = useMaskStore((s) => s.showMaskOverlay);
   const addMask = useMaskStore((s) => s.addMask);
   const removeMask = useMaskStore((s) => s.removeMask);
   const selectMask = useMaskStore((s) => s.selectMask);
   const toggleMask = useMaskStore((s) => s.toggleMask);
   const setBrushErase = useMaskStore((s) => s.setBrushErase);
+  const setShowMaskOverlay = useMaskStore((s) => s.setShowMaskOverlay);
+
+  const toggleOverlay = useCallback(
+    () => setShowMaskOverlay(!showMaskOverlay),
+    [showMaskOverlay, setShowMaskOverlay],
+  );
+  useShortcut([{ id: 'mask.toggle-overlay', handler: toggleOverlay }]);
 
   if (!photoId) return null;
 
@@ -33,7 +45,17 @@ export function MaskPanel({ photoId }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-br-elevated">
         <span className="text-br-text font-medium">Masks</span>
-        <div className="relative">
+        <div className="flex items-center gap-2 relative">
+          <button
+            onClick={toggleOverlay}
+            title={showMaskOverlay ? 'Hide mask overlay' : 'Show mask overlay'}
+            className={`flex items-center text-[10px] transition-colors ${
+              showMaskOverlay ? 'text-br-accent' : 'text-br-muted hover:text-br-text'
+            }`}
+          >
+            <span>{showMaskOverlay ? 'Hide Overlay' : 'Show Overlay'}</span>
+            <ShortcutHint shortcutId="mask.toggle-overlay" />
+          </button>
           <button
             onClick={() => setShowAddMenu((v) => !v)}
             className="text-br-accent text-[10px] hover:text-br-text transition-colors"
@@ -75,24 +97,39 @@ export function MaskPanel({ photoId }: Props) {
             >
               {/* Enable toggle */}
               <button
-                onClick={(e) => { e.stopPropagation(); toggleMask(photoId, mask.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleMask(photoId, mask.id);
+                }}
                 className={`w-3 h-3 rounded-sm border shrink-0 flex items-center justify-center ${
                   mask.enabled ? 'bg-br-accent border-br-accent' : 'border-[#555]'
                 }`}
               >
                 {mask.enabled && (
-                  <svg width="8" height="6" viewBox="0 0 8 6" fill="none" stroke="white" strokeWidth="1.5">
+                  <svg
+                    width="8"
+                    height="6"
+                    viewBox="0 0 8 6"
+                    fill="none"
+                    stroke="white"
+                    strokeWidth="1.5"
+                  >
                     <polyline points="1,3 3,5 7,1" />
                   </svg>
                 )}
               </button>
 
-              <span className={`flex-1 text-[10px] truncate ${mask.enabled ? 'text-br-text' : 'text-br-dim'}`}>
+              <span
+                className={`flex-1 text-[10px] truncate ${mask.enabled ? 'text-br-text' : 'text-br-dim'}`}
+              >
                 {mask.name}
               </span>
 
               <button
-                onClick={(e) => { e.stopPropagation(); removeMask(photoId, mask.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeMask(photoId, mask.id);
+                }}
                 className="text-br-dim hover:text-red-400 transition-colors shrink-0"
               >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">

@@ -5,7 +5,7 @@ import { createRendererLogger } from '@shared/lib/logger';
 
 const log = createRendererLogger('canvas/webgl');
 import { useAdjustmentsStore } from '@/features/develop/edit';
-import { type Mask } from '@/features/develop/mask';
+import { type Mask, useMaskStore } from '@/features/develop/mask';
 import { type HealSpot, HealEngine } from '@/features/develop/heal';
 import { useToneCurveStore } from '@/features/develop/edit/tone-curve';
 import {
@@ -567,11 +567,17 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     });
     renderer.setMasks(gpuMasks);
 
-    // Incremental brush stroke rendering
+    // Brush stroke rendering — whenever the stroke count changes, clear the
+    // FBO and re-render the entire stroke list for that mask.
+    //
+    // Incremental upload was suspected to drop earlier strokes in some cases
+    // (user reported: painting a second stroke group over a first caused only
+    // the latest group to receive the mask's adjustments). Full re-render is
+    // correct by construction and stays fast — each stroke is just a handful
+    // of GL_POINTS draws.
     activeMasks.forEach((m, slotIndex) => {
       const prevId = prevSlotMaskIdsRef.current[slotIndex];
       if (prevId !== m.id) {
-        // Different mask in this slot — clear FBO and reset upload count
         renderer.clearBrushMask(slotIndex);
         if (prevId) uploadedStrokesRef.current.delete(prevId);
         prevSlotMaskIdsRef.current[slotIndex] = m.id;
@@ -579,19 +585,14 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       if (m.mask.type !== 'brush') return;
       const uploaded = uploadedStrokesRef.current.get(m.id) ?? 0;
       const strokes = m.mask.strokes;
-      if (strokes.length < uploaded) {
-        // Strokes removed (undo/reset) — clear and re-render all
-        renderer.clearBrushMask(slotIndex);
-        uploadedStrokesRef.current.set(m.id, 0);
-      }
-      const newCount = uploadedStrokesRef.current.get(m.id) ?? 0;
-      if (strokes.length > newCount) {
-        const paintStrokes = strokes.slice(newCount).filter((s) => !s.erase);
-        const eraseStrokes = strokes.slice(newCount).filter((s) => s.erase);
-        if (paintStrokes.length > 0) renderer.addBrushStrokes(slotIndex, paintStrokes, false);
-        if (eraseStrokes.length > 0) renderer.addBrushStrokes(slotIndex, eraseStrokes, true);
-        uploadedStrokesRef.current.set(m.id, strokes.length);
-      }
+      if (strokes.length === uploaded) return; // no change, skip
+
+      renderer.clearBrushMask(slotIndex);
+      const paintStrokes = strokes.filter((s) => !s.erase);
+      const eraseStrokes = strokes.filter((s) => s.erase);
+      if (paintStrokes.length > 0) renderer.addBrushStrokes(slotIndex, paintStrokes, false);
+      if (eraseStrokes.length > 0) renderer.addBrushStrokes(slotIndex, eraseStrokes, true);
+      uploadedStrokesRef.current.set(m.id, strokes.length);
     });
 
     // Clear FBOs for unused slots
@@ -606,6 +607,13 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
 
     renderToCanvas();
   }, [masks, renderToCanvas]);
+
+  // ── Show Mask Overlay (LR Classic "O") ────────────────────────────────
+  const showMaskOverlay = useMaskStore((s) => s.showMaskOverlay);
+  useEffect(() => {
+    rendererRef.current?.setShowMaskOverlay(showMaskOverlay);
+    renderToCanvas();
+  }, [showMaskOverlay, renderToCanvas]);
 
   // ── Heal: add spot with auto-source ─────────────────────────────────────
   // During a stroke, the first spot runs auto-source; subsequent spots in the

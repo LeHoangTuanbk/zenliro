@@ -3,7 +3,15 @@ import type { Mask, MaskAdjustments, BrushStroke, LinearMaskData, RadialMaskData
 import { DEFAULT_MASK_ADJUSTMENTS } from './types';
 
 const DEFAULT_LINEAR: LinearMaskData = { x1: 0.5, y1: 0.2, x2: 0.5, y2: 0.8, feather: 0.3 };
-const DEFAULT_RADIAL: RadialMaskData = { cx: 0.5, cy: 0.5, rx: 0.25, ry: 0.2, angle: 0, feather: 0.3, invert: false };
+const DEFAULT_RADIAL: RadialMaskData = {
+  cx: 0.5,
+  cy: 0.5,
+  rx: 0.25,
+  ry: 0.2,
+  angle: 0,
+  feather: 0.3,
+  invert: false,
+};
 
 let _uid = 0;
 const uid = () => `mask-${++_uid}-${Date.now()}`;
@@ -13,10 +21,14 @@ type MaskStore = {
   selectedMaskId: string | null;
 
   // Brush tool settings
-  brushSizePx: number;    // 5-200
-  brushFeather: number;   // 0-100
-  brushOpacity: number;   // 0-100
+  brushSizePx: number; // 5-200
+  brushFeather: number; // 0-100
+  brushOpacity: number; // 0-100
   brushErase: boolean;
+
+  // Tint all enabled masks red in the rendered image so the user can see
+  // where each mask applies. Toggled with "O" (Lightroom Classic shortcut).
+  showMaskOverlay: boolean;
 
   // Selectors
   getMasks: (photoId: string) => Mask[];
@@ -34,6 +46,7 @@ type MaskStore = {
   setBrushFeather: (v: number) => void;
   setBrushOpacity: (v: number) => void;
   setBrushErase: (v: boolean) => void;
+  setShowMaskOverlay: (v: boolean) => void;
 
   // Gradient
   setLinearData: (photoId: string, maskId: string, data: LinearMaskData) => void;
@@ -60,6 +73,7 @@ export const useMaskStore = create<MaskStore>((set, get) => ({
   brushFeather: 50,
   brushOpacity: 100,
   brushErase: false,
+  showMaskOverlay: true,
 
   getMasks: (photoId) => get().masksByPhoto[photoId] ?? [],
 
@@ -79,7 +93,13 @@ export const useMaskStore = create<MaskStore>((set, get) => ({
     else if (type === 'linear') mask = { type: 'linear', data: DEFAULT_LINEAR };
     else mask = { type: 'radial', data: DEFAULT_RADIAL };
 
-    const newMask: Mask = { id, name, enabled: true, mask, adjustments: { ...DEFAULT_MASK_ADJUSTMENTS } };
+    const newMask: Mask = {
+      id,
+      name,
+      enabled: true,
+      mask,
+      adjustments: { ...DEFAULT_MASK_ADJUSTMENTS },
+    };
     set((s) => ({
       masksByPhoto: {
         ...s.masksByPhoto,
@@ -95,7 +115,8 @@ export const useMaskStore = create<MaskStore>((set, get) => ({
       const masks = (s.masksByPhoto[photoId] ?? []).filter((m) => m.id !== maskId);
       return {
         masksByPhoto: { ...s.masksByPhoto, [photoId]: masks },
-        selectedMaskId: s.selectedMaskId === maskId ? (masks[masks.length - 1]?.id ?? null) : s.selectedMaskId,
+        selectedMaskId:
+          s.selectedMaskId === maskId ? (masks[masks.length - 1]?.id ?? null) : s.selectedMaskId,
       };
     }),
 
@@ -126,6 +147,7 @@ export const useMaskStore = create<MaskStore>((set, get) => ({
   setBrushFeather: (v) => set({ brushFeather: v }),
   setBrushOpacity: (v) => set({ brushOpacity: v }),
   setBrushErase: (v) => set({ brushErase: v }),
+  setShowMaskOverlay: (v) => set({ showMaskOverlay: v }),
 
   setLinearData: (photoId, maskId, data) =>
     set((s) => ({
