@@ -333,6 +333,7 @@ export const TEAM_PRESETS: TeamPreset[] = [
     roles: [EDITOR_ROLE, REVIEWER_ROLE],
     enabled: true,
   },
+  // TODO: Will implement this later.
   {
     id: 'art-studio',
     label: 'Art Studio (3 agents)',

@@ -85,10 +85,15 @@ export function registerAgentIpc(mainWindow: BrowserWindow) {
       const provider = options?.provider ?? 'claude';
       const agentCount = options?.agentCount ?? 1;
 
-      // agentCount >= 2 routes to the editor+reviewer orchestrator.
+      // agentCount >= 2 routes to the editor+reviewer orchestrator. Both
+      // Claude and Codex providers are supported — the orchestrator picks
+      // the right CLI per role agent based on `provider`.
       if (agentCount >= 2) {
-        log.info(`Multi-agent session started (agentCount: ${agentCount})`);
+        log.info(
+          `Multi-agent session started (agentCount: ${agentCount}, provider: ${provider}, model: ${options?.model ?? 'default'})`,
+        );
         startOrchestrator(text, {
+          provider,
           model: options?.model,
           onEvent: (ev) => send('agent:a2a-event', ev),
           onAgentStream: (agentId, event) => {

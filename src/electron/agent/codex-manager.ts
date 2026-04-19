@@ -9,7 +9,7 @@ const log = createLogger('main/codex');
 
 export type StreamCallback = (event: ParsedStreamEvent) => void;
 
-function parseCodexLine(line: string): ParsedStreamEvent | null {
+export function parseCodexLine(line: string): ParsedStreamEvent | null {
   const trimmed = line.trim();
   if (!trimmed) return null;
 

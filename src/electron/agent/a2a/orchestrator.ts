@@ -19,7 +19,7 @@
 import { createLogger } from '../../logger/index.js';
 import { AgentRoom } from './room.js';
 import { EDITOR_ROLE, REVIEWER_ROLE } from './roles.js';
-import { RoleAgentManager } from './role-agent-manager.js';
+import { RoleAgentManager, type AgentProvider } from './role-agent-manager.js';
 import type { AgentId, OrchestratorEvent, Message } from './types.js';
 import type { ParsedStreamEvent } from '../stream-parser.js';
 import { isApproved, parseReviewerVerdict, type ReviewerVerdict } from './verdict.js';
@@ -35,6 +35,7 @@ const MAX_ITERATIONS = 3;
 const MIN_REVIEWER_TOOL_CALLS = 5;
 
 export type OrchestratorOptions = {
+  provider?: AgentProvider;
   model?: string;
   env?: Record<string, string>;
   onEvent: (ev: OrchestratorEvent) => void;
@@ -43,9 +44,14 @@ export type OrchestratorOptions = {
 
 export class EditorReviewerOrchestrator {
   private room = new AgentRoom();
-  private editor = new RoleAgentManager(EDITOR_ROLE);
-  private reviewer = new RoleAgentManager(REVIEWER_ROLE);
+  private editor: RoleAgentManager;
+  private reviewer: RoleAgentManager;
   private cancelled = false;
+
+  constructor(provider: AgentProvider = 'claude') {
+    this.editor = new RoleAgentManager(EDITOR_ROLE, provider);
+    this.reviewer = new RoleAgentManager(REVIEWER_ROLE, provider);
+  }
 
   get sessionId() {
     return this.room.sessionId;
@@ -285,7 +291,7 @@ export function startOrchestrator(
   opts: OrchestratorOptions,
 ): EditorReviewerOrchestrator {
   if (currentOrchestrator) currentOrchestrator.cancel();
-  const orch = new EditorReviewerOrchestrator();
+  const orch = new EditorReviewerOrchestrator(opts.provider);
   currentOrchestrator = orch;
   orch
     .run(userPrompt, opts)
