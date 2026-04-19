@@ -84,6 +84,10 @@ uniform float u_maskDehaze[MAX_MASKS];
 uniform float u_maskVib[MAX_MASKS];
 uniform float u_maskSat[MAX_MASKS];
 
+// When > 0.5, tint the final color red proportional to the max mask weight
+// at that pixel — Lightroom Classic "Show Overlay" (O).
+uniform float u_showMaskOverlay;
+
 // ── Varyings ─────────────────────────────────────────────────────────────────
 in vec2 v_texCoord;
 out vec4 fragColor;
