@@ -20,13 +20,18 @@ const ACTOR_STYLE: Record<A2AActor, { label: string; color: string; avatar: stri
 
 type PanelMode = 'centered' | 'maximized' | 'minimized';
 
+const WIDTH_PX = 380;
+
 export function AgentConversationPanel() {
   const isOpen = useAgentStore((s) => s.isConversationOpen);
   const setOpen = useAgentStore((s) => s.setConversationOpen);
   const messages = useAgentStore((s) => s.a2aMessages);
-  const clear = useAgentStore((s) => s.clearA2A);
   const listRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const [mode, setMode] = useState<PanelMode>('centered');
+  // null = default anchored position (top-center); otherwise absolute px.
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const dragState = useRef<{ offsetX: number; offsetY: number } | null>(null);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
@@ -40,6 +45,54 @@ export function AgentConversationPanel() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [isOpen, setOpen]);
+
+  // Keep the dragged panel inside the viewport when the window resizes.
+  useEffect(() => {
+    if (!pos) return;
+    const clamp = () => {
+      const el = panelRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const maxX = Math.max(0, window.innerWidth - r.width);
+      const maxY = Math.max(0, window.innerHeight - r.height);
+      setPos((p) =>
+        p ? { x: Math.min(Math.max(0, p.x), maxX), y: Math.min(Math.max(0, p.y), maxY) } : p,
+      );
+    };
+    window.addEventListener('resize', clamp);
+    return () => window.removeEventListener('resize', clamp);
+  }, [pos]);
+
+  const startDrag = (e: React.MouseEvent) => {
+    // Ignore drags that start on buttons inside the header.
+    if ((e.target as HTMLElement).closest('button')) return;
+    if (mode === 'maximized') return;
+    const el = panelRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    dragState.current = { offsetX: e.clientX - r.left, offsetY: e.clientY - r.top };
+
+    // Pin the panel to absolute coords so CSS transforms don't fight us.
+    if (!pos) setPos({ x: r.left, y: r.top });
+
+    const onMove = (ev: MouseEvent) => {
+      const d = dragState.current;
+      if (!d) return;
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const nx = Math.min(Math.max(0, ev.clientX - d.offsetX), window.innerWidth - w);
+      const ny = Math.min(Math.max(0, ev.clientY - d.offsetY), window.innerHeight - h);
+      setPos({ x: nx, y: ny });
+    };
+    const onUp = () => {
+      dragState.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    e.preventDefault();
+  };
 
   if (!isOpen) return null;
 
@@ -64,43 +117,43 @@ export function AgentConversationPanel() {
     );
   }
 
-  const positionClass =
-    mode === 'maximized'
-      ? 'inset-8'
-      : 'left-1/2 -translate-x-1/2 bottom-6 w-[min(640px,90vw)] max-h-[70vh]';
+  // Maximized → fullscreen overlay. Otherwise use the dragged position if
+  // the user has moved the panel, else fall back to the top-center default.
+  const isMax = mode === 'maximized';
+  const positionClass = isMax ? 'inset-8' : pos ? '' : 'left-1/2 -translate-x-1/2 top-16';
+  const positionStyle: React.CSSProperties | undefined =
+    isMax || !pos ? undefined : { left: pos.x, top: pos.y, width: WIDTH_PX };
+  // Tailwind JIT can't interpolate template literals — keep the width class
+  // literal. WIDTH_PX is only used when pos is set (inline style below).
+  const sizeClass = isMax ? '' : pos ? 'max-h-[60vh]' : 'w-[min(380px,92vw)] max-h-[60vh]';
 
   return (
     <div
-      className={`fixed z-[60] bg-[#1a1a1a] border border-[#333] rounded-[8px] shadow-2xl flex flex-col ${positionClass}`}
+      ref={panelRef}
+      className={`fixed z-[60] bg-[#1a1a1a] border border-[#333] rounded-[8px] shadow-2xl flex flex-col ${positionClass} ${sizeClass}`}
+      style={positionStyle}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[#333] shrink-0">
+      {/* Header — drag handle */}
+      <div
+        onMouseDown={startDrag}
+        style={{ cursor: isMax ? 'default' : 'move' }}
+        className="flex items-center justify-between px-3 py-2 border-b border-[#333] shrink-0 select-none"
+      >
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-semibold text-white">Agent Conversation</span>
-          <div className="flex items-center gap-1">
-            <AgentDot actor="editor" />
-            <span className="text-[9px] text-[#666]">×</span>
-            <AgentDot actor="reviewer" />
-          </div>
-          {messages.length > 0 && (
-            <span className="text-[9px] text-[#555] ml-1">
-              {messages.length} message{messages.length === 1 ? '' : 's'}
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-0.5">
-          <button
-            onClick={() => clear()}
-            className="text-[9px] text-[#666] hover:text-[#aaa] transition-colors px-1.5 py-0.5"
-            title="Clear conversation"
-          >
-            Clear
-          </button>
           <IconButton title="Minimize" onClick={() => setMode('minimized')}>
             <path d="M2 8h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </IconButton>
           {mode === 'maximized' ? (
-            <IconButton title="Restore" onClick={() => setMode('centered')}>
+            <IconButton
+              title="Restore"
+              onClick={() => {
+                setMode('centered');
+                setPos(null);
+              }}
+            >
               <rect
                 x="2"
                 y="2"
@@ -156,6 +209,79 @@ export function AgentConversationPanel() {
         ) : (
           messages.map((m) => <MessageBubble key={m.id} message={m} />)
         )}
+        <ActivityIndicators />
+      </div>
+    </div>
+  );
+}
+
+function ActivityIndicators() {
+  const activity = useAgentStore((s) => s.a2aActivity);
+  const entries = Object.entries(activity).filter(([, v]) => v.isRunning || v.toolCount > 0);
+  if (entries.length === 0) return null;
+  return (
+    <>
+      {entries.map(([agentId, a]) => (
+        <ActivityBubble
+          key={agentId}
+          agentId={agentId as A2AActor}
+          toolCount={a.toolCount}
+          lastTool={a.lastTool}
+        />
+      ))}
+    </>
+  );
+}
+
+function ActivityBubble({
+  agentId,
+  toolCount,
+  lastTool,
+}: {
+  agentId: A2AActor;
+  toolCount: number;
+  lastTool: string | null;
+}) {
+  const s = ACTOR_STYLE[agentId] ?? ACTOR_STYLE.user;
+  const alignRight = agentId === 'user' || agentId === 'reviewer';
+  const prettyTool = lastTool?.replace(/^mcp__zenliro__/, '') ?? '';
+  const statusText =
+    toolCount === 0
+      ? 'thinking…'
+      : `working · ${toolCount} tool${toolCount === 1 ? '' : 's'}${prettyTool ? ` · ${prettyTool}` : ''}`;
+  return (
+    <div className={`flex gap-2 ${alignRight ? 'flex-row-reverse' : ''}`}>
+      <span
+        className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-semibold text-white mt-0.5"
+        style={{ background: s.color }}
+        title={s.label}
+      >
+        {s.avatar}
+      </span>
+      <div
+        className={`flex items-center gap-2 rounded-[8px] px-3 py-2 bg-[#222] text-[10px] text-[#aaa]`}
+        style={{ borderLeft: `2px solid ${s.color}` }}
+      >
+        <span className="flex gap-0.5">
+          <span
+            className="w-1 h-1 rounded-full bg-[#888] animate-bounce"
+            style={{ animationDelay: '0ms' }}
+          />
+          <span
+            className="w-1 h-1 rounded-full bg-[#888] animate-bounce"
+            style={{ animationDelay: '120ms' }}
+          />
+          <span
+            className="w-1 h-1 rounded-full bg-[#888] animate-bounce"
+            style={{ animationDelay: '240ms' }}
+          />
+        </span>
+        <span>
+          <span style={{ color: s.color }} className="font-medium">
+            {s.label}
+          </span>{' '}
+          {statusText}
+        </span>
       </div>
     </div>
   );
@@ -210,7 +336,7 @@ function MessageBubble({ message }: { message: A2AMessage }) {
   const alignRight = message.from === 'user' || message.from === 'reviewer';
 
   return (
-    <div className={`flex gap-2 ${alignRight ? 'flex-row-reverse' : ''}`}>
+    <div className={`flex gap-2 min-w-0 ${alignRight ? 'flex-row-reverse' : ''}`}>
       <span
         className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-semibold text-white mt-0.5"
         style={{ background: fromStyle.color }}
@@ -218,7 +344,9 @@ function MessageBubble({ message }: { message: A2AMessage }) {
       >
         {fromStyle.avatar}
       </span>
-      <div className={`flex flex-col ${alignRight ? 'items-end' : 'items-start'} max-w-[75%]`}>
+      <div
+        className={`flex flex-col min-w-0 max-w-[85%] ${alignRight ? 'items-end' : 'items-start'}`}
+      >
         <div className="flex items-center gap-1 text-[9px] text-[#666] mb-1">
           <span style={{ color: fromStyle.color }} className="font-medium">
             {fromStyle.label}
@@ -226,8 +354,8 @@ function MessageBubble({ message }: { message: A2AMessage }) {
           {message.iteration > 0 && <span>· iter {message.iteration}</span>}
         </div>
         <div
-          className="rounded-[8px] px-3 py-2 bg-[#222]"
-          style={{ borderLeft: `2px solid ${fromStyle.color}` }}
+          className="rounded-[8px] px-3 py-2 bg-[#222] max-w-full overflow-hidden break-words"
+          style={{ borderLeft: `2px solid ${fromStyle.color}`, overflowWrap: 'anywhere' }}
         >
           {message.content ? (
             <MarkdownText text={message.content} />

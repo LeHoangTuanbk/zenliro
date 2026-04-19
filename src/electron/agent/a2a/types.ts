@@ -32,6 +32,7 @@ export type RoomEnvelope = {
 export type OrchestratorEvent =
   | { type: 'session-started'; sessionId: string; agentIds: AgentId[] }
   | { type: 'agent-joined'; sessionId: string; agentId: AgentId; card: AgentCard }
+  | { type: 'agent-turn-started'; sessionId: string; agentId: AgentId; iteration: number }
   | { type: 'message'; sessionId: string; envelope: RoomEnvelope }
   | { type: 'artifact'; sessionId: string; fromAgent: AgentId; artifact: Artifact }
   | { type: 'task-status'; sessionId: string; agentId: AgentId; task: Task }

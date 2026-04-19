@@ -8,6 +8,7 @@ import type { A2AMessage, A2AActor } from '../store/agent-store';
 type OrchestratorEvent =
   | { type: 'session-started'; sessionId: string; agentIds: string[] }
   | { type: 'agent-joined'; sessionId: string; agentId: string; card: unknown }
+  | { type: 'agent-turn-started'; sessionId: string; agentId: string; iteration: number }
   | {
       type: 'message';
       sessionId: string;
@@ -42,8 +43,12 @@ function normaliseActor(id: string): A2AActor {
   return 'user';
 }
 
-// Subscribes to a2a-event IPC and keeps the agent store's a2aMessages in sync.
-// Also toggles isStreaming off / records a status message on session end.
+// Subscribes to:
+//  - agent:a2a-event: orchestrator lifecycle (session-started, message,
+//    session-ended) → fills `a2aMessages` in the store.
+//  - agent:a2a-stream: per-agent Claude CLI events (tool_use, text, done) →
+//    bumps the `a2aActivity` counter so the popup can render a live
+//    "Reviewer is analyzing…" indicator while the agent works.
 export function useA2AStream() {
   useEffect(() => {
     const api = window.electron?.agent;
@@ -56,10 +61,21 @@ export function useA2AStream() {
       switch (ev.type) {
         case 'session-started':
           store.setConversationOpen(true);
+          store.clearAllActivity();
+          break;
+
+        case 'agent-turn-started':
+          // Orchestrator is about to spawn this agent — flip its activity to
+          // running so the UI shows a "thinking…" bubble even before the first
+          // tool_use event arrives.
+          store.startActivity(ev.agentId);
           break;
 
         case 'message': {
           const env = ev.envelope;
+          // An agent just posted its final message — the activity indicator
+          // for that agent can stop (they're done working for this turn).
+          store.resetActivity(env.from);
           const msg: A2AMessage = {
             id: env.id,
             from: normaliseActor(env.from),
@@ -84,18 +100,29 @@ export function useA2AStream() {
             timestamp: Date.now(),
           };
           store.appendA2A(statusMsg);
+          store.clearAllActivity();
           useAgentStore.setState({ isStreaming: false });
           break;
         }
 
         default:
-          // agent-joined / artifact / task-status — not rendered yet
           break;
+      }
+    });
+
+    const offStream = api.onA2AStream?.((raw: { agentId: string; event: unknown }) => {
+      const store = useAgentStore.getState();
+      const ev = raw.event as { type: string; name?: string };
+      if (ev.type === 'tool_use' && ev.name) {
+        store.bumpActivity(raw.agentId, ev.name);
+      } else if (ev.type === 'done' || ev.type === 'error') {
+        store.resetActivity(raw.agentId);
       }
     });
 
     return () => {
       off?.();
+      offStream?.();
     };
   }, []);
 }

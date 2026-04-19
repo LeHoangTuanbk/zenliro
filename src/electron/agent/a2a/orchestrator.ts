@@ -26,7 +26,15 @@ import type { ParsedStreamEvent } from '../stream-parser.js';
 const log = createLogger('main/orchestrator');
 
 const MAX_ITERATIONS = 3;
-const APPROVED_RE = /APPROVED/i;
+// Verdict must be the very first token on the first line — no loose "APPROVED"
+// mentions in prose. Case-sensitive to prevent accidental matches.
+const APPROVED_PREFIX_RE = /^APPROVED\b/;
+
+// Minimum number of read tool calls the Reviewer must have made before we
+// trust an APPROVED verdict. The mandatory checklist has 10 items including
+// a sample_colors check for naturalness — 5 is a reasonable floor to force
+// real inspection without demanding the full checklist on trivial cases.
+const MIN_REVIEWER_TOOL_CALLS = 5;
 
 export type OrchestratorOptions = {
   model?: string;
@@ -79,6 +87,12 @@ export class EditorReviewerOrchestrator {
       this.room.advanceIteration();
 
       // ── Editor turn ────────────────────────────────────────────────
+      opts.onEvent({
+        type: 'agent-turn-started',
+        sessionId: this.room.sessionId,
+        agentId: 'editor',
+        iteration,
+      });
       const editorPrompt = buildEditorPrompt(userPrompt, iteration, editorFeedback);
       const editorRes = await this.editor.run(
         editorPrompt,
@@ -94,10 +108,23 @@ export class EditorReviewerOrchestrator {
       this.postMessage('editor', 'reviewer', editorMsg, opts);
 
       // ── Reviewer turn ──────────────────────────────────────────────
+      // Count tool_use events so we can enforce "Reviewer actually looked
+      // before approving". If the count is too low we override APPROVED
+      // back to REVISE and tell the Editor to expect more scrutiny next time.
+      opts.onEvent({
+        type: 'agent-turn-started',
+        sessionId: this.room.sessionId,
+        agentId: 'reviewer',
+        iteration,
+      });
+      let reviewerToolCalls = 0;
       const reviewerPrompt = buildReviewerPrompt(userPrompt, iteration, editorRes.finalText);
       const reviewerRes = await this.reviewer.run(
         reviewerPrompt,
-        (ev) => opts.onAgentStream('reviewer', ev),
+        (ev) => {
+          if (ev.type === 'tool_use') reviewerToolCalls += 1;
+          opts.onAgentStream('reviewer', ev);
+        },
         {
           model: opts.model,
           env: opts.env,
@@ -105,22 +132,31 @@ export class EditorReviewerOrchestrator {
       );
       if (this.cancelled) break;
 
-      const reviewerMsg = textMessage('agent', reviewerRes.finalText || '(no text output)');
+      const claimedApproved = this.isApproved(reviewerRes.finalText);
+      const verifiedApproved = claimedApproved && reviewerToolCalls >= MIN_REVIEWER_TOOL_CALLS;
+
+      // If Reviewer said APPROVED without inspecting enough, rewrite the
+      // forwarded message to make the rejection explicit so the Editor knows.
+      const reviewerTextForLog =
+        claimedApproved && !verifiedApproved
+          ? `REVISE. Score: 0/10.\n\n[orchestrator] Reviewer tried to approve without enough inspection (${reviewerToolCalls} tool call${reviewerToolCalls === 1 ? '' : 's'}, need >= ${MIN_REVIEWER_TOOL_CALLS}). Forcing revision. Their original note:\n\n${reviewerRes.finalText}`
+          : reviewerRes.finalText || '(no text output)';
+
+      const reviewerMsg = textMessage('agent', reviewerTextForLog);
       this.postMessage('reviewer', 'editor', reviewerMsg, opts);
 
-      // ── Verdict parsing ───────────────────────────────────────────
-      if (this.isApproved(reviewerRes.finalText)) {
+      if (verifiedApproved) {
         opts.onEvent({
           type: 'session-ended',
           sessionId: this.room.sessionId,
           reason: 'approved',
-          detail: `Approved after ${iteration} iteration(s).`,
+          detail: `Approved after ${iteration} iteration(s) (${reviewerToolCalls} inspection tool calls).`,
         });
         this.cleanup();
         return;
       }
 
-      editorFeedback = reviewerRes.finalText;
+      editorFeedback = reviewerTextForLog;
       iteration += 1;
     }
 
@@ -161,19 +197,15 @@ export class EditorReviewerOrchestrator {
 
   private isApproved(text: string): boolean {
     if (!text) return false;
-    // Look for APPROVED signal at the start or in a JSON block. Accept plain
-    // "APPROVED" or `{"verdict":"approved"}`.
-    if (APPROVED_RE.test(text.slice(0, 80))) return true;
-    try {
-      const match = text.match(/\{[\s\S]*\}/);
-      if (match) {
-        const obj = JSON.parse(match[0]);
-        if (obj?.verdict === 'approved' || obj?.approved === true) return true;
-      }
-    } catch {
-      /* ignore */
-    }
-    return false;
+    // Only accept verdict if it's the FIRST token on the first non-empty line.
+    // Prevents false positives from reviewers who mention "APPROVED" in prose
+    // while actually requesting revisions.
+    const firstLine = text
+      .split('\n')
+      .map((l) => l.trim())
+      .find((l) => l.length > 0);
+    if (!firstLine) return false;
+    return APPROVED_PREFIX_RE.test(firstLine);
   }
 }
 
@@ -203,7 +235,7 @@ function buildEditorPrompt(
 }
 
 function buildReviewerPrompt(userPrompt: string, iteration: number, editorText: string): string {
-  return `USER REQUEST (original):\n${userPrompt}\n\nEDITOR'S LATEST MESSAGE (iteration ${iteration}):\n${editorText}\n\nInspect the current photo state via the read-only MCP tools. Score the result 0-10. If score >= 7 and no major issues, respond with "APPROVED" on the first line followed by a short explanation. Otherwise, respond with a JSON verdict:\n{"verdict":"revise","score":N,"feedback":"...","specific_changes":[{"tool":"set_adjustments","param":"highlights","suggested_value":-25}]}`;
+  return `USER REQUEST (original):\n${userPrompt}\n\nEDITOR'S LATEST MESSAGE (iteration ${iteration}):\n${editorText}\n\nInspect the photo via the read-only MCP tools. Run the NATURALNESS GATE first: if the image looks fake (magenta/purple snow or clouds, neon foliage, plastic skin, dead-black shadows, halo glows, unnatural skies), that is an auto-REVISE regardless of score. Then run the rest of the checklist and score 0-10. Only APPROVE if score >= 9, no naturalness red flags, no >1% clipping, and the result matches the user's intent. Otherwise REVISE with 2-4 concrete parameter changes. Start line 1 with "APPROVED. Score: N/10." or "REVISE. Score: N/10." exactly.`;
 }
 
 let currentOrchestrator: EditorReviewerOrchestrator | null = null;
