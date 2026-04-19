@@ -10,6 +10,21 @@ import type { AgentCard, Message, Part, Task, Artifact } from '@a2a-js/sdk';
 
 export type { AgentCard, Message, Part, Task, Artifact };
 
+// Mirror of the SDK's TaskState string union (inlined because the SDK does
+// not export the type by name). Used for the Reviewer's structured verdict
+// so we parse state machinery rather than regex-matching English words like
+// "APPROVED" in a message that could be written in any language.
+export type TaskState =
+  | 'submitted'
+  | 'working'
+  | 'input-required'
+  | 'completed'
+  | 'canceled'
+  | 'failed'
+  | 'rejected'
+  | 'auth-required'
+  | 'unknown';
+
 // App-specific identifiers. These match the `agentId` fields we attach to
 // A2A Messages so the Room can route 1:1 or broadcast.
 export type AgentId = 'editor' | 'reviewer' | 'orchestrator';

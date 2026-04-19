@@ -22,13 +22,11 @@ import { EDITOR_ROLE, REVIEWER_ROLE } from './roles.js';
 import { RoleAgentManager } from './role-agent-manager.js';
 import type { AgentId, OrchestratorEvent, Message } from './types.js';
 import type { ParsedStreamEvent } from '../stream-parser.js';
+import { isApproved, parseReviewerVerdict, type ReviewerVerdict } from './verdict.js';
 
 const log = createLogger('main/orchestrator');
 
 const MAX_ITERATIONS = 3;
-// Verdict must be the very first token on the first line — no loose "APPROVED"
-// mentions in prose. Case-sensitive to prevent accidental matches.
-const APPROVED_PREFIX_RE = /^APPROVED\b/;
 
 // Minimum number of read tool calls the Reviewer must have made before we
 // trust an APPROVED verdict. The mandatory checklist has 10 items including
@@ -132,7 +130,8 @@ export class EditorReviewerOrchestrator {
       );
       if (this.cancelled) break;
 
-      const claimedApproved = this.isApproved(reviewerRes.finalText);
+      const verdict = parseReviewerVerdict(reviewerRes.finalText);
+      const claimedApproved = isApproved(verdict);
       // On the final iteration we relax the minimum — a claimed APPROVAL is
       // almost always better than forcing REVISE into max-iterations-end,
       // which ships whatever the Editor did last.
@@ -140,12 +139,21 @@ export class EditorReviewerOrchestrator {
       const requiredToolCalls = isFinalIteration ? 2 : MIN_REVIEWER_TOOL_CALLS;
       const verifiedApproved = claimedApproved && reviewerToolCalls >= requiredToolCalls;
 
-      // If Reviewer said APPROVED without inspecting enough, rewrite the
+      if (!verdict) {
+        log.warn(
+          `[reviewer] no parseable verdict JSON in reply; treating as REVISE. Text head: ${reviewerRes.finalText.slice(0, 120)}…`,
+        );
+      }
+
+      // If Reviewer said completed without inspecting enough, rewrite the
       // forwarded message to make the rejection explicit so the Editor knows.
-      const reviewerTextForLog =
-        claimedApproved && !verifiedApproved
-          ? `REVISE. Score: 0/10.\n\n[orchestrator] Reviewer tried to approve without enough inspection (${reviewerToolCalls} tool call${reviewerToolCalls === 1 ? '' : 's'}, need >= ${requiredToolCalls}). Forcing revision. Their original note:\n\n${reviewerRes.finalText}`
-          : reviewerRes.finalText || '(no text output)';
+      const reviewerTextForLog = this.buildReviewerLog(
+        reviewerRes.finalText,
+        verdict,
+        claimedApproved && !verifiedApproved,
+        reviewerToolCalls,
+        requiredToolCalls,
+      );
 
       const reviewerMsg = textMessage('agent', reviewerTextForLog);
       this.postMessage('reviewer', 'editor', reviewerMsg, opts);
@@ -155,7 +163,7 @@ export class EditorReviewerOrchestrator {
           type: 'session-ended',
           sessionId: this.room.sessionId,
           reason: 'approved',
-          detail: `Approved after ${iteration} iteration(s) (${reviewerToolCalls} inspection tool calls).`,
+          detail: `Approved after ${iteration} iteration(s) — verdict state=completed, score=${verdict?.score ?? 'n/a'}, ${reviewerToolCalls} inspection tool calls.`,
         });
         this.cleanup();
         return;
@@ -200,17 +208,25 @@ export class EditorReviewerOrchestrator {
     opts.onEvent({ type: 'message', sessionId: this.room.sessionId, envelope: env });
   }
 
-  private isApproved(text: string): boolean {
-    if (!text) return false;
-    // Only accept verdict if it's the FIRST token on the first non-empty line.
-    // Prevents false positives from reviewers who mention "APPROVED" in prose
-    // while actually requesting revisions.
-    const firstLine = text
-      .split('\n')
-      .map((l) => l.trim())
-      .find((l) => l.length > 0);
-    if (!firstLine) return false;
-    return APPROVED_PREFIX_RE.test(firstLine);
+  private buildReviewerLog(
+    finalText: string,
+    verdict: ReviewerVerdict | null,
+    demoteToRevise: boolean,
+    toolCalls: number,
+    requiredTools: number,
+  ): string {
+    const body = finalText || '(no text output)';
+    if (demoteToRevise) {
+      const forced = `\`\`\`json\n{"state":"input-required","score":0}\n\`\`\``;
+      return `[orchestrator] Reviewer tried to mark state=completed without enough inspection (${toolCalls} tool call${toolCalls === 1 ? '' : 's'}, need >= ${requiredTools}). Forcing revise.\n\n${forced}\n\nOriginal reviewer note:\n\n${body}`;
+    }
+    if (!verdict) {
+      // No structured verdict — append an explicit one so downstream logs and
+      // the Editor's next-iteration prompt show a clear state.
+      const forced = `\`\`\`json\n{"state":"input-required","score":0}\n\`\`\``;
+      return `[orchestrator] Reviewer did not emit a structured verdict block. Treating as revise.\n\n${forced}\n\n${body}`;
+    }
+    return body;
   }
 }
 
@@ -243,11 +259,19 @@ function buildEditorPrompt(
 function buildReviewerPrompt(userPrompt: string, iteration: number, editorText: string): string {
   const bar =
     iteration === 1
-      ? 'Iteration 1 bar: score >= 9 AND natural AND on-brief. Default REVISE.'
+      ? 'Iteration 1 bar: score >= 9 AND natural AND on-brief. Default to state="input-required".'
       : iteration === 2
-        ? 'Iteration 2 bar: score >= 7 AND natural AND on-brief. Stop nitpicking small preferences — approve if it is decent and natural.'
+        ? 'Iteration 2 bar: score >= 7 AND natural AND on-brief. Stop nitpicking small preferences — lean toward state="completed" if decent and natural.'
         : `Iteration ${iteration} (LAST) bar: score >= 6 AND natural AND roughly on-brief. Max-iterations ships whatever the Editor did last, which is worse than approving a decent result now.`;
-  return `USER REQUEST (original):\n${userPrompt}\n\nEDITOR'S LATEST MESSAGE (iteration ${iteration}):\n${editorText}\n\nInspect the photo via the read-only MCP tools. Run the NATURALNESS GATE first: magenta/purple snow or clouds, neon foliage, plastic skin, dead-black shadows, halo glows, unnatural skies → auto-REVISE regardless of score.\n\n${bar}\n\nIf revising, give AT MOST 3 concrete changes. Prefer REDUCING existing values toward 0 over adding new adjustments (a cast is almost always fixed by pulling back the value that caused it, not by counter-edits). Start line 1 with "APPROVED. Score: N/10." or "REVISE. Score: N/10." exactly.`;
+  return [
+    `USER REQUEST (original):\n${userPrompt}`,
+    `EDITOR'S LATEST MESSAGE (iteration ${iteration}):\n${editorText}`,
+    `Inspect the photo via the read-only MCP tools. Run the NATURALNESS GATE first: magenta/purple snow or clouds, neon foliage, plastic skin, dead-black shadows, halo glows, unnatural skies → set state="rejected" regardless of score.`,
+    bar,
+    `If revising, give AT MOST 3 concrete changes. Prefer REDUCING existing values toward 0 over adding new adjustments (a cast is almost always fixed by pulling back the value that caused it, not by counter-edits).`,
+    // Structured verdict contract — machine-readable, language-independent.
+    `RESPONSE FORMAT (REQUIRED): your feedback prose may be in any language, but you MUST end your reply with exactly one fenced JSON block using A2A TaskState vocabulary:\n\n\`\`\`json\n{"state":"completed|input-required|rejected","score":<0-10 integer>}\n\`\`\`\n\nSemantics: "completed" = approved, "input-required" = editor should revise, "rejected" = naturalness gate failed (hard reject). The orchestrator parses only this JSON block — prose alone (e.g. the word "APPROVED") is NOT sufficient.`,
+  ].join('\n\n');
 }
 
 let currentOrchestrator: EditorReviewerOrchestrator | null = null;

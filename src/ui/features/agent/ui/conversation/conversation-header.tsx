@@ -26,7 +26,7 @@ export function ConversationHeader({
       style={{ cursor: isMax ? 'default' : 'move' }}
       className="flex items-center justify-between px-3 py-2 border-b border-[#333] shrink-0 select-none"
     >
-      <span className="text-[11px] font-semibold text-white">Agent Conversation</span>
+      <span className="text-[11px] font-semibold text-white">Agent Room</span>
       <div className="flex items-center gap-0.5">
         <IconButton title="Minimize" onClick={onMinimize}>
           <path d="M2 8h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
