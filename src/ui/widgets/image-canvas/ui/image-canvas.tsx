@@ -34,8 +34,10 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
     ref,
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const { zoom, pan, isSpaceDown, isPanning, zoomRef, reset, handleMouseDown } =
-      useZoomPan(containerRef, externalZoomPan);
+    const { zoom, pan, isSpaceDown, isPanning, zoomRef, reset, handleMouseDown } = useZoomPan(
+      containerRef,
+      externalZoomPan,
+    );
 
     const { canvasRef, canvasDims, isLoading, handleOverlayAddSpot } = useWebGLCanvas(ref, {
       photoId,
@@ -60,6 +62,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
 
     return (
       <ImageCanvasView
+        photoId={photoId}
         containerRef={containerRef}
         canvasRef={canvasRef}
         canvasDims={canvasDims}

@@ -116,7 +116,8 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
       </defs>
 
       <g clipPath="url(#lmo-clip)">
-        {/* Perpendicular guide lines */}
+        {/* Perpendicular guide lines — LR Classic: start/end bright (~0.9),
+            middle dimmer (~0.4) to denote the 50% transition. */}
         {[startLine, midLine, endLine].map((l, i) => (
           <line
             key={i}
@@ -127,48 +128,43 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
             stroke="white"
             strokeWidth={1}
             strokeDasharray="4 3"
-            strokeOpacity={i === 1 ? 0.5 : 0.75}
+            strokeOpacity={i === 1 ? 0.4 : 0.9}
             pointerEvents="none"
           />
         ))}
 
-        {/* Center drag area (no click-through on center pin area) */}
-        <g style={{ cursor: 'grab' }} onMouseDown={(e) => startDrag(e, 'center')}>
-          <circle cx={px(mx)} cy={py(my)} r={PIN + 4} fill="transparent" />
-          <circle cx={px(mx)} cy={py(my)} r={PIN} fill="#4d9fec" stroke="black" strokeWidth={1.5} />
-        </g>
-
-        {/* Start pin (circle with cross) */}
+        {/* Start handle — hollow ring, LR Classic style. No "+" cross. */}
         <g style={{ cursor: 'move' }} onMouseDown={(e) => startDrag(e, 'start')}>
           <circle cx={px(data.x1)} cy={py(data.y1)} r={PIN + 4} fill="transparent" />
           <circle
             cx={px(data.x1)}
             cy={py(data.y1)}
-            r={PIN}
-            fill="white"
-            stroke="black"
+            r={PIN - 1}
+            fill="rgba(0,0,0,0.35)"
+            stroke="white"
             strokeWidth={1.5}
-          />
-          <path
-            d={`M${px(data.x1) - 3},${py(data.y1)} h6 M${px(data.x1)},${py(data.y1) - 3} v6`}
-            stroke="black"
-            strokeWidth={1.5}
-            pointerEvents="none"
           />
         </g>
 
-        {/* End pin (circle with dot = full weight) */}
+        {/* End handle — identical to start (no direction distinction). */}
         <g style={{ cursor: 'move' }} onMouseDown={(e) => startDrag(e, 'end')}>
           <circle cx={px(data.x2)} cy={py(data.y2)} r={PIN + 4} fill="transparent" />
           <circle
             cx={px(data.x2)}
             cy={py(data.y2)}
-            r={PIN}
-            fill="white"
-            stroke="black"
+            r={PIN - 1}
+            fill="rgba(0,0,0,0.35)"
+            stroke="white"
             strokeWidth={1.5}
           />
-          <circle cx={px(data.x2)} cy={py(data.y2)} r={3} fill="black" pointerEvents="none" />
+        </g>
+
+        {/* Center pin — bullseye look marks the mask anchor. Rendered last so
+            it sits above the handles if they overlap. */}
+        <g style={{ cursor: 'grab' }} onMouseDown={(e) => startDrag(e, 'center')}>
+          <circle cx={px(mx)} cy={py(my)} r={PIN + 4} fill="transparent" />
+          <circle cx={px(mx)} cy={py(my)} r={PIN} fill="#4d9fec" stroke="white" strokeWidth={1.5} />
+          <circle cx={px(mx)} cy={py(my)} r={2} fill="white" pointerEvents="none" />
         </g>
       </g>
 

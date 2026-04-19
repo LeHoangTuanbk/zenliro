@@ -30,15 +30,24 @@ type MaskStore = {
   // where each mask applies. Toggled with "O" (Lightroom Classic shortcut).
   showMaskOverlay: boolean;
 
+  // When set, the user clicked "+Add Linear/Radial" but hasn't placed the mask
+  // yet. A drag on the canvas creates the mask with that geometry. Mirrors
+  // Lightroom Classic's graduated / radial filter placement flow. Brush masks
+  // skip this flow — they're created empty and painted into.
+  pendingMaskType: 'linear' | 'radial' | null;
+
   // Selectors
   getMasks: (photoId: string) => Mask[];
   getSelected: (photoId: string) => Mask | null;
 
   // Mask lifecycle
   addMask: (photoId: string, type: Mask['mask']['type']) => string;
+  addLinearMaskAt: (photoId: string, data: LinearMaskData) => string;
+  addRadialMaskAt: (photoId: string, data: RadialMaskData) => string;
   removeMask: (photoId: string, maskId: string) => void;
   selectMask: (id: string | null) => void;
   toggleMask: (photoId: string, maskId: string) => void;
+  setPendingMaskType: (t: 'linear' | 'radial' | null) => void;
 
   // Brush
   addStroke: (photoId: string, maskId: string, stroke: BrushStroke) => void;
@@ -74,6 +83,7 @@ export const useMaskStore = create<MaskStore>((set, get) => ({
   brushOpacity: 100,
   brushErase: false,
   showMaskOverlay: true,
+  pendingMaskType: null,
 
   getMasks: (photoId) => get().masksByPhoto[photoId] ?? [],
 
@@ -109,6 +119,52 @@ export const useMaskStore = create<MaskStore>((set, get) => ({
     }));
     return id;
   },
+
+  addLinearMaskAt: (photoId, data) => {
+    const id = uid();
+    const count = (get().masksByPhoto[photoId] ?? []).length + 1;
+    const name = `Linear ${count}`;
+    const newMask: Mask = {
+      id,
+      name,
+      enabled: true,
+      mask: { type: 'linear', data },
+      adjustments: { ...DEFAULT_MASK_ADJUSTMENTS },
+    };
+    set((s) => ({
+      masksByPhoto: {
+        ...s.masksByPhoto,
+        [photoId]: [...(s.masksByPhoto[photoId] ?? []), newMask],
+      },
+      selectedMaskId: id,
+      pendingMaskType: null,
+    }));
+    return id;
+  },
+
+  addRadialMaskAt: (photoId, data) => {
+    const id = uid();
+    const count = (get().masksByPhoto[photoId] ?? []).length + 1;
+    const name = `Radial ${count}`;
+    const newMask: Mask = {
+      id,
+      name,
+      enabled: true,
+      mask: { type: 'radial', data },
+      adjustments: { ...DEFAULT_MASK_ADJUSTMENTS },
+    };
+    set((s) => ({
+      masksByPhoto: {
+        ...s.masksByPhoto,
+        [photoId]: [...(s.masksByPhoto[photoId] ?? []), newMask],
+      },
+      selectedMaskId: id,
+      pendingMaskType: null,
+    }));
+    return id;
+  },
+
+  setPendingMaskType: (t) => set({ pendingMaskType: t }),
 
   removeMask: (photoId, maskId) =>
     set((s) => {

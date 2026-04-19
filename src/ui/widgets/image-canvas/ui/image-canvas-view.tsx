@@ -2,6 +2,8 @@ import type { RefObject } from 'react';
 import { HealOverlay } from '@/features/develop/heal';
 import { CropOverlay } from '@/features/develop/crop';
 import { MaskOverlay } from '@/features/develop/mask/ui/mask-overlay';
+import { MaskPlacementOverlay } from '@/features/develop/mask/ui/mask-placement-overlay';
+import { useMaskStore } from '@/features/develop/mask';
 import { Spinner } from '@/shared/ui/base';
 import type {
   CropInteractionProps,
@@ -10,6 +12,7 @@ import type {
 } from '../store/types';
 
 type Props = {
+  photoId?: string | null;
   containerRef: RefObject<HTMLDivElement | null>;
   canvasRef: RefObject<HTMLCanvasElement | null>;
   canvasDims: { w: number; h: number };
@@ -31,6 +34,7 @@ type Props = {
 };
 
 export function ImageCanvasView({
+  photoId,
   containerRef,
   canvasRef,
   canvasDims,
@@ -53,6 +57,12 @@ export function ImageCanvasView({
   const cursor = isPanning ? 'grabbing' : isSpaceDown ? 'grab' : 'default';
   const noPointer = isSpaceDown ? { pointerEvents: 'none' as const } : undefined;
   const showLoading = isLoading || (hasSelection && !dataUrl);
+
+  const pendingMaskType = useMaskStore((s) => s.pendingMaskType);
+  // Placement mode can run even when no mask is selected (and therefore
+  // maskInteractionProps is undefined) — the user just clicked +Add Linear
+  // and we're waiting for the first drag. Need photoId directly.
+  const isPlacingMask = !!pendingMaskType && !!photoId && canvasDims.w > 0;
 
   return (
     <div
@@ -86,7 +96,7 @@ export function ImageCanvasView({
           />
         )}
 
-        {showMask && maskInteractionProps && (
+        {showMask && maskInteractionProps && !isPlacingMask && (
           <MaskOverlay
             interactionProps={maskInteractionProps}
             canvasW={canvasDims.w}
@@ -94,6 +104,10 @@ export function ImageCanvasView({
             zoom={zoom}
             disableInteraction={isSpaceDown}
           />
+        )}
+
+        {isPlacingMask && photoId && (
+          <MaskPlacementOverlay photoId={photoId} canvasW={canvasDims.w} canvasH={canvasDims.h} />
         )}
 
         {showHeal && (

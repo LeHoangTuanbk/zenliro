@@ -26,6 +26,7 @@ export function MaskPanel({ photoId }: Props) {
   const toggleMask = useMaskStore((s) => s.toggleMask);
   const setBrushErase = useMaskStore((s) => s.setBrushErase);
   const setShowMaskOverlay = useMaskStore((s) => s.setShowMaskOverlay);
+  const setPendingMaskType = useMaskStore((s) => s.setPendingMaskType);
 
   const toggleOverlay = useCallback(
     () => setShowMaskOverlay(!showMaskOverlay),
@@ -36,8 +37,14 @@ export function MaskPanel({ photoId }: Props) {
   if (!photoId) return null;
 
   const handleAdd = (type: (typeof MaskType)[keyof typeof MaskType]) => {
-    addMask(photoId, type);
     setShowAddMenu(false);
+    if (type === MaskType.Linear || type === MaskType.Radial) {
+      // Lightroom Classic flow: enter placement mode; the mask is created on
+      // the user's first drag over the canvas. See MaskPlacementOverlay.
+      setPendingMaskType(type);
+      return;
+    }
+    addMask(photoId, type);
   };
 
   return (
@@ -88,10 +95,18 @@ export function MaskPanel({ photoId }: Props) {
       ) : (
         <div className="flex flex-col">
           {masks.map((mask) => (
-            <button
+            <div
               key={mask.id}
+              role="button"
+              tabIndex={0}
               onClick={() => selectMask(mask.id === selectedMaskId ? null : mask.id)}
-              className={`flex items-center gap-2 px-3 py-1.5 text-left transition-colors border-b border-br-elevated ${
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  selectMask(mask.id === selectedMaskId ? null : mask.id);
+                }
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 text-left cursor-pointer select-none transition-colors border-b border-br-elevated ${
                 mask.id === selectedMaskId ? 'bg-[#2a3d50]' : 'hover:bg-white/5'
               }`}
             >
@@ -136,7 +151,7 @@ export function MaskPanel({ photoId }: Props) {
                   <path d="M2 2L8 8M8 2L2 8" stroke="currentColor" strokeWidth="1.5" fill="none" />
                 </svg>
               </button>
-            </button>
+            </div>
           ))}
         </div>
       )}
