@@ -13,7 +13,14 @@ Zenliro là công cụ xử lý ảnh và color grading trên desktop, dành cho
 
 ## Demo
 
-- Giao diện chính: ![main workspace](docs/releases/show-my-work/demo/main-workspace.png)
+- Giao diện chính:
+
+  Quản lý ảnh
+  ![main workspace 1](docs/releases/show-my-work/demo/main-workspace-1.png)
+
+  Không gian chỉnh sửa
+  ![main workspace 2](docs/releases/show-my-work/demo/main-workspace-2.png)
+
 - Chế độ so sánh: ![compare mode](docs/releases/show-my-work/demo/compare-mode.png)
 - Chỉnh sửa ảnh với nhiều Agent: ![multiple agents](docs/releases/show-my-work/demo/multi-agents-editor-reviewer.png)
 - Chỉnh sửa hàng loạt bằng AI: ![AI bulk edit](docs/releases/assets/bulk-edit-2.png)

@@ -13,7 +13,14 @@ Zenliro 是一款为注重氛围、色调与真实感的摄影师打造的桌面
 
 ## 演示
 
-- 主工作区：![main workspace](docs/releases/show-my-work/demo/main-workspace.png)
+- 主工作区：
+
+  照片管理
+  ![main workspace 1](docs/releases/show-my-work/demo/main-workspace-1.png)
+
+  编辑工作区
+  ![main workspace 2](docs/releases/show-my-work/demo/main-workspace-2.png)
+
 - 对比模式：![compare mode](docs/releases/show-my-work/demo/compare-mode.png)
 - 多 Agent 协同修图：![multiple agents](docs/releases/show-my-work/demo/multi-agents-editor-reviewer.png)
 - AI 批量编辑：![AI bulk edit](docs/releases/assets/bulk-edit-2.png)

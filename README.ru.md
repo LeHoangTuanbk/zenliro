@@ -13,7 +13,14 @@ Zenliro — это настольный инструмент для обрабо
 
 ## Демо
 
-- Основное рабочее пространство: ![main workspace](docs/releases/show-my-work/demo/main-workspace.png)
+- Основное рабочее пространство:
+
+  Управление фотографиями
+  ![main workspace 1](docs/releases/show-my-work/demo/main-workspace-1.png)
+
+  Рабочее пространство редактирования
+  ![main workspace 2](docs/releases/show-my-work/demo/main-workspace-2.png)
+
 - Режим сравнения: ![compare mode](docs/releases/show-my-work/demo/compare-mode.png)
 - Редактирование фото несколькими агентами: ![multiple agents](docs/releases/show-my-work/demo/multi-agents-editor-reviewer.png)
 - Пакетное редактирование AI: ![AI bulk edit](docs/releases/assets/bulk-edit-2.png)

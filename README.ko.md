@@ -13,7 +13,14 @@ Zenliro는 무드, 톤, 그리고 진정성을 중시하는 사진가를 위한 
 
 ## 데모
 
-- 메인 작업 공간: ![main workspace](docs/releases/show-my-work/demo/main-workspace.png)
+- 메인 작업 공간:
+
+  사진 관리
+  ![main workspace 1](docs/releases/show-my-work/demo/main-workspace-1.png)
+
+  편집 작업 공간
+  ![main workspace 2](docs/releases/show-my-work/demo/main-workspace-2.png)
+
 - 비교 모드: ![compare mode](docs/releases/show-my-work/demo/compare-mode.png)
 - 다중 Agent 사진 편집: ![multiple agents](docs/releases/show-my-work/demo/multi-agents-editor-reviewer.png)
 - AI 일괄 편집: ![AI bulk edit](docs/releases/assets/bulk-edit-2.png)

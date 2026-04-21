@@ -13,7 +13,14 @@ Zenliro is a desktop photo processing and color grading tool built for photograp
 
 ## Demo
 
-- Main workspace: ![main workspace](docs/releases/show-my-work/demo/main-workspace.png)
+- Main workspace:
+
+  Photo management
+  ![main workspace 1](docs/releases/show-my-work/demo/main-workspace-1.png)
+
+  Editing workspace
+  ![main workspace 2](docs/releases/show-my-work/demo/main-workspace-2.png)
+
 - Compare mode: ![compare mode](docs/releases/show-my-work/demo/compare-mode.png)
 - Multiple Agents photo editing: ![multiple agents](docs/releases/show-my-work/demo/multi-agents-editor-reviewer.png)
 - AI bulk Edit ![AI bulk edit](docs/releases/assets/bulk-edit-2.png)

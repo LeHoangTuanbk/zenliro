@@ -13,7 +13,14 @@ Zenliroは、ムード、トーン、オーセンティシティを大切にす�
 
 ## デモ
 
-- メインワークスペース: ![main workspace](docs/releases/show-my-work/demo/main-workspace.png)
+- メインワークスペース:
+
+  写真管理
+  ![main workspace 1](docs/releases/show-my-work/demo/main-workspace-1.png)
+
+  編集ワークスペース
+  ![main workspace 2](docs/releases/show-my-work/demo/main-workspace-2.png)
+
 - 比較モード: ![compare mode](docs/releases/show-my-work/demo/compare-mode.png)
 - 複数エージェントによる写真編集: ![multiple agents](docs/releases/show-my-work/demo/multi-agents-editor-reviewer.png)
 - AI一括編集: ![AI bulk edit](docs/releases/assets/bulk-edit-2.png)
