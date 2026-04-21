@@ -96,7 +96,7 @@ To use the AI photo editing feature, you need to download and install Claude Cod
 ## TODO
 
 - [ ] Fix bugs
-- [ ] Add better photo management features and more convenient shortcuts
+- [x] Add better photo management features and more convenient shortcuts
 - [ ] Optimize image processing performance
 - [ ] Improve Agent photo editing
 - [ ] Support multi-resolution pipeline

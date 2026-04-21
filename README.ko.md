@@ -13,8 +13,9 @@ Zenliro는 무드, 톤, 그리고 진정성을 중시하는 사진가를 위한 
 
 ## 데모
 
-- 메인 작업 공간: ![main workspace](docs/releases/assets/main-workspace.png)
-- 비교 모드: ![compare mode](docs/releases/assets/compare-mode.png)
+- 메인 작업 공간: ![main workspace](docs/releases/show-my-work/demo/main-workspace.png)
+- 비교 모드: ![compare mode](docs/releases/show-my-work/demo/compare-mode.png)
+- 다중 Agent 사진 편집: ![multiple agents](docs/releases/show-my-work/demo/multi-agents-editor-reviewer.png)
 - AI 일괄 편집: ![AI bulk edit](docs/releases/assets/bulk-edit-2.png)
 
 ---
@@ -34,7 +35,7 @@ Zenliro는 무드, 톤, 그리고 진정성을 중시하는 사진가를 위한 
 - **AI Agent** — Agent가 사진을 분석하고 조정을 계획하며 실시간으로 편집합니다. 마치 사진가가 컨트롤을 조작하듯 작업하는 모습을 지켜볼 수 있습니다. 참조 이미지의 스타일을 복사하거나 자율적으로 최상의 결과를 만들어낼 수 있습니다.
 - **AI 일괄 편집** — 여러 사진을 AI Agent에 맡겨 처리합니다. Agent가 자동으로 편집하고 완료되면 알려줍니다.
 - **비파괴 편집** — 완전한 undo/redo 히스토리. 원본 파일은 절대 건드리지 않습니다.
-- **스타일 프리셋** — 다양한 무드와 장르를 위한 20+ 큐레이션 룩.
+- **스타일 프리셋** — 다양한 무드와 장르를 위한 40+ 큐레이션 룩.
 - **WebGL 렌더링** — GPU 상에서 완전히 실시간 컬러 처리를 수행하는 자체 제작 셰이더.
 
 ---
@@ -95,7 +96,7 @@ AI 사진 편집 기능을 사용하려면, Claude Code 또는 Codex CLI, 혹은
 ## TODO
 
 - [ ] 버그 수정
-- [ ] 더 나은 사진 관리 기능 및 더 편리한 단축키 추가
+- [x] 더 나은 사진 관리 기능 및 더 편리한 단축키 추가
 - [ ] 이미지 처리 성능 최적화
 - [ ] Agent 사진 편집 개선
 - [ ] 멀티 해상도 파이프라인 지원
