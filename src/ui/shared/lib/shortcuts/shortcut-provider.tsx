@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { SHORTCUT_REGISTRY } from './shortcut-registry';
 import { useShortcutStore } from './shortcut-store';
 import { SCOPE_PRIORITY } from './shortcut-scope';
-import { isInputFocused } from './input-guard';
+import { isInputFocused, isNativeTextCommand } from './input-guard';
 import type { ShortcutEntry } from './shortcut-types';
 
 function matchesEvent(entry: ShortcutEntry, e: KeyboardEvent): boolean {
@@ -23,6 +23,8 @@ export function ShortcutProvider({ children }: { children: React.ReactNode }) {
     const handleKeyDown = (e: KeyboardEvent) => {
       const { activeScopes, actions } = useShortcutStore.getState();
       const inputFocused = isInputFocused(e);
+
+      if (inputFocused && isNativeTextCommand(e)) return;
 
       const sortedScopes = [...activeScopes].sort(
         (a, b) => SCOPE_PRIORITY.indexOf(b) - SCOPE_PRIORITY.indexOf(a),

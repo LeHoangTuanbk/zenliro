@@ -62,6 +62,7 @@ export function createMenu(mainWindow: BrowserWindow) {
         { role: 'cut' },
         { role: 'copy' },
         { role: 'paste' },
+        { role: 'selectAll' },
       ],
     },
 
