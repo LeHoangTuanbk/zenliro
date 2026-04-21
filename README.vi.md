@@ -13,8 +13,16 @@ Zenliro là công cụ xử lý ảnh và color grading trên desktop, dành cho
 
 ## Demo
 
-- Giao diện chính: ![main workspace](docs/releases/assets/main-workspace.png)
-- Chế độ so sánh: ![compare mode](docs/releases/assets/compare-mode.png)
+- Giao diện chính:
+
+  Quản lý ảnh
+  ![main workspace 1](docs/releases/show-my-work/demo/main-workspace-1.png)
+
+  Không gian chỉnh sửa
+  ![main workspace 2](docs/releases/show-my-work/demo/main-workspace-2.png)
+
+- Chế độ so sánh: ![compare mode](docs/releases/show-my-work/demo/compare-mode.png)
+- Chỉnh sửa ảnh với nhiều Agent: ![multiple agents](docs/releases/show-my-work/demo/multi-agents-editor-reviewer.png)
 - Chỉnh sửa hàng loạt bằng AI: ![AI bulk edit](docs/releases/assets/bulk-edit-2.png)
 
 ---
@@ -34,7 +42,7 @@ Zenliro là công cụ xử lý ảnh và color grading trên desktop, dành cho
 - **AI Agent** — Agent phân tích ảnh, lên kế hoạch chỉnh sửa và thực hiện theo thời gian thực. Xem nó làm việc như một nhiếp ảnh gia đang ngồi chỉnh ảnh. Có thể sao chép phong cách từ ảnh tham chiếu hoặc tự động tạo ra kết quả tốt nhất.
 - **Chỉnh sửa hàng loạt bằng AI** — Giao một loạt ảnh cho AI Agent xử lý. Agent sẽ tự động chỉnh sửa và thông báo khi hoàn thành.
 - **Non-destructive** — Lịch sử undo/redo đầy đủ. File gốc không bao giờ bị thay đổi.
-- **Preset phong cách** — 20+ preset được chọn lọc cho các mood và thể loại khác nhau.
+- **Preset phong cách** — 40+ preset được chọn lọc cho các mood và thể loại khác nhau.
 - **Render bằng WebGL** — Shader tự viết cho xử lý màu sắc real-time hoàn toàn trên GPU.
 
 ---
@@ -95,7 +103,7 @@ xattr -cr /Applications/Zenliro.app
 ## TODO
 
 - [ ] Sửa lỗi
-- [ ] Thêm tính năng quản lý ảnh tốt hơn và phím tắt tiện lợi hơn
+- [x] Thêm tính năng quản lý ảnh tốt hơn và phím tắt tiện lợi hơn
 - [ ] Tối ưu hiệu suất xử lý ảnh
 - [ ] Cải thiện Agent chỉnh sửa ảnh
 - [ ] Hỗ trợ pipeline đa độ phân giải

@@ -13,8 +13,16 @@ Zenliro 是一款为注重氛围、色调与真实感的摄影师打造的桌面
 
 ## 演示
 
-- 主工作区：![main workspace](docs/releases/assets/main-workspace.png)
-- 对比模式：![compare mode](docs/releases/assets/compare-mode.png)
+- 主工作区：
+
+  照片管理
+  ![main workspace 1](docs/releases/show-my-work/demo/main-workspace-1.png)
+
+  编辑工作区
+  ![main workspace 2](docs/releases/show-my-work/demo/main-workspace-2.png)
+
+- 对比模式：![compare mode](docs/releases/show-my-work/demo/compare-mode.png)
+- 多 Agent 协同修图：![multiple agents](docs/releases/show-my-work/demo/multi-agents-editor-reviewer.png)
 - AI 批量编辑：![AI bulk edit](docs/releases/assets/bulk-edit-2.png)
 
 ---
@@ -34,7 +42,7 @@ Zenliro 是一款为注重氛围、色调与真实感的摄影师打造的桌面
 - **AI Agent** — Agent 分析你的照片，规划调整，并实时进行编辑。观察它如同摄影师在操作控制面板一样工作。可以复制参考图的风格，或自主打造最佳效果。
 - **AI 批量编辑** — 将一批照片交给 AI Agent 处理。Agent 会自动编辑并在完成后通知你。
 - **非破坏性** — 完整的撤销/重做历史。原始文件永不被修改。
-- **风格预设** — 针对不同氛围和类型精选的 20+ 风格预设。
+- **风格预设** — 针对不同氛围和类型精选的 40+ 风格预设。
 - **WebGL 渲染** — 自写着色器，完全在 GPU 上进行实时色彩处理。
 
 ---
@@ -95,7 +103,7 @@ xattr -cr /Applications/Zenliro.app
 ## TODO
 
 - [ ] 修复 bug
-- [ ] 添加更好的照片管理功能与更便捷的快捷键
+- [x] 添加更好的照片管理功能与更便捷的快捷键
 - [ ] 优化图像处理性能
 - [ ] 改进 Agent 照片编辑
 - [ ] 支持多分辨率管线

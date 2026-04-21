@@ -99,3 +99,25 @@
   width: 2px;
   background: linear-gradient(to bottom, #c084fc, transparent);
 }
+
+/* "Enhance, not alter" tagline */
+.tagline {
+  background: linear-gradient(90deg, #c084fc 0%, #f2f2f2 35%, #f2f2f2 65%, #f59e0b 100%);
+  background-size: 200% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: tagline-shimmer 8s ease-in-out infinite;
+  filter: drop-shadow(0 0 12px rgba(192, 132, 252, 0.15));
+}
+
+@keyframes tagline-shimmer {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}

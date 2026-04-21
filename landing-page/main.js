@@ -44,3 +44,44 @@ function openMobileMenu() {
 
 mobileMenuBtn?.addEventListener('click', openMobileMenu);
 mobileMenuClose?.addEventListener('click', closeMobileMenu);
+
+// GitHub stats (stars + total downloads) in nav
+const GH_REPO = 'LeHoangTuanbk/zenliro';
+
+function formatCount(n) {
+  if (n >= 1000) {
+    return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '') + 'k';
+  }
+  return String(n);
+}
+
+async function loadGitHubStats() {
+  try {
+    const [repoRes, releasesRes] = await Promise.all([
+      fetch(`https://api.github.com/repos/${GH_REPO}`),
+      fetch(`https://api.github.com/repos/${GH_REPO}/releases?per_page=100`),
+    ]);
+
+    if (repoRes.ok) {
+      const { stargazers_count } = await repoRes.json();
+      const starsEl = document.getElementById('gh-stars');
+      if (starsEl && typeof stargazers_count === 'number') {
+        starsEl.textContent = formatCount(stargazers_count);
+      }
+    }
+
+    if (releasesRes.ok) {
+      const releases = await releasesRes.json();
+      const total = releases.reduce(
+        (sum, r) => sum + (r.assets || []).reduce((s, a) => s + (a.download_count || 0), 0),
+        0,
+      );
+      const dlEl = document.getElementById('gh-downloads');
+      if (dlEl) dlEl.textContent = formatCount(total);
+    }
+  } catch {
+    // leave placeholders if offline or rate-limited
+  }
+}
+
+loadGitHubStats();

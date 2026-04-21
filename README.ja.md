@@ -13,8 +13,16 @@ Zenliroは、ムード、トーン、オーセンティシティを大切にす�
 
 ## デモ
 
-- メインワークスペース: ![main workspace](docs/releases/assets/main-workspace.png)
-- 比較モード: ![compare mode](docs/releases/assets/compare-mode.png)
+- メインワークスペース:
+
+  写真管理
+  ![main workspace 1](docs/releases/show-my-work/demo/main-workspace-1.png)
+
+  編集ワークスペース
+  ![main workspace 2](docs/releases/show-my-work/demo/main-workspace-2.png)
+
+- 比較モード: ![compare mode](docs/releases/show-my-work/demo/compare-mode.png)
+- 複数エージェントによる写真編集: ![multiple agents](docs/releases/show-my-work/demo/multi-agents-editor-reviewer.png)
 - AI一括編集: ![AI bulk edit](docs/releases/assets/bulk-edit-2.png)
 
 ---
@@ -34,7 +42,7 @@ Zenliroは、ムード、トーン、オーセンティシティを大切にす�
 - **AIエージェント** — エージェントが写真を分析し、調整を計画し、リアルタイムで編集。まるでフォトグラファーが操作しているかのように作業を見守れます。参照画像のスタイルをコピーしたり、自律的に最高の仕上がりを作り出すことができます。
 - **AIによる一括編集** — 複数の写真をAIエージェントに割り当てて処理。エージェントが自動的に編集し、完了時に通知します。
 - **非破壊編集** — 完全なundo/redo履歴。元のファイルは一切変更されません。
-- **スタイルプリセット** — さまざまなムードやジャンルに対応する20以上の厳選されたルック。
+- **スタイルプリセット** — さまざまなムードやジャンルに対応する40以上の厳選されたルック。
 - **WebGLレンダリング** — GPU上で完全にリアルタイムのカラー処理を行うカスタムシェーダー。
 
 ---
@@ -95,7 +103,7 @@ AI写真編集機能を使用するには、Claude CodeまたはCodex CLI、あ�
 ## TODO
 
 - [ ] バグ修正
-- [ ] より良い写真管理機能と便利なショートカットの追加
+- [x] より良い写真管理機能と便利なショートカットの追加
 - [ ] 画像処理パフォーマンスの最適化
 - [ ] エージェントによる写真編集の改善
 - [ ] マルチ解像度パイプラインのサポート
