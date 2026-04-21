@@ -50,6 +50,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
       healInteractionProps,
       cropInteractionProps,
       confirmedCropState,
+      isMaskToolActive: !!maskInteractionProps,
       onImageLoaded,
       containerRef,
       zoomRef,

@@ -39,6 +39,7 @@ type Params = {
   healInteractionProps?: HealInteractionProps;
   cropInteractionProps?: CropInteractionProps;
   confirmedCropState?: CropState | null;
+  isMaskToolActive: boolean;
   onImageLoaded?: (w: number, h: number) => void;
   containerRef: RefObject<HTMLElement | null>;
   zoomRef: RefObject<number>;
@@ -57,6 +58,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     healInteractionProps,
     cropInteractionProps,
     confirmedCropState,
+    isMaskToolActive,
     onImageLoaded,
     containerRef,
     zoomRef,
@@ -609,11 +611,14 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   }, [masks, renderToCanvas]);
 
   // ── Show Mask Overlay (LR Classic "O") ────────────────────────────────
+  // Only tint when the mask tool is active — switching to Edit/Heal/Crop
+  // should auto-hide the red overlay without clobbering the user's toggle
+  // preference, so the state comes back on return to the mask tool.
   const showMaskOverlay = useMaskStore((s) => s.showMaskOverlay);
   useEffect(() => {
-    rendererRef.current?.setShowMaskOverlay(showMaskOverlay);
+    rendererRef.current?.setShowMaskOverlay(showMaskOverlay && isMaskToolActive);
     renderToCanvas();
-  }, [showMaskOverlay, renderToCanvas]);
+  }, [showMaskOverlay, isMaskToolActive, renderToCanvas]);
 
   // ── Heal: add spot with auto-source ─────────────────────────────────────
   // During a stroke, the first spot runs auto-source; subsequent spots in the
