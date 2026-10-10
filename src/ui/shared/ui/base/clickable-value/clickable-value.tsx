@@ -60,12 +60,14 @@ export function ClickableValue({
 
   const nudge = useCallback(
     (dir: 1 | -1, large: boolean) => {
+      const parsed = parseFloat(draft);
+      const base = isNaN(parsed) ? value : parsed;
       const delta = step * (large ? SHIFT_STEP_MULT : 1) * dir;
-      const next = clampStep(value + delta, min, max, step);
+      const next = clampStep(base + delta, min, max, step);
       onChange(next);
       setDraft(fmt(next, decimals));
     },
-    [value, min, max, step, decimals, onChange],
+    [draft, value, min, max, step, decimals, onChange],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
