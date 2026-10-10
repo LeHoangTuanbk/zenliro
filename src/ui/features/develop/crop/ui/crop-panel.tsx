@@ -1,6 +1,6 @@
 import { useCropStore } from '../store/crop-store';
 import { ASPECT_RATIOS, type AspectRatioPreset } from '../store/types';
-import { BrButton, BrIconButton } from '@/shared/ui/base';
+import { BrButton, BrIconButton, ClickableValue } from '@/shared/ui/base';
 
 interface CropPanelProps {
   photoId: string | null;
@@ -9,32 +9,63 @@ interface CropPanelProps {
 }
 
 const IconCCW = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
     <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
     <path d="M3 3v5h5" />
   </svg>
 );
 const IconCW = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
     <path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
     <path d="M21 3v5h-5" />
   </svg>
 );
 const IconFlipH = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
     <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3" />
     <path d="M16 3h3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-3" />
     <line x1="12" y1="20" x2="12" y2="4" />
   </svg>
 );
 const IconFlipV = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+  >
     <path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v3" />
     <path d="M21 16v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3" />
     <line x1="4" y1="12" x2="20" y2="12" />
   </svg>
 );
-
 
 export function CropPanel({ photoId, imageAspect, onDone }: CropPanelProps) {
   const store = useCropStore();
@@ -68,7 +99,9 @@ export function CropPanel({ photoId, imageAspect, onDone }: CropPanelProps) {
             <BrButton onClick={() => store.resetCrop(photoId!)}>Reset</BrButton>
           )}
           {hasPhoto && onDone && (
-            <BrButton variant="primary" onClick={onDone}>Done</BrButton>
+            <BrButton variant="primary" onClick={onDone}>
+              Done
+            </BrButton>
           )}
         </div>
       </div>
@@ -123,7 +156,13 @@ export function CropPanel({ photoId, imageAspect, onDone }: CropPanelProps) {
               Straighten
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-br-muted w-[48px] flex-shrink-0">Angle</span>
+              <span
+                className="text-[10px] text-br-muted w-[48px] flex-shrink-0"
+                title="Double-click to reset"
+                onDoubleClick={() => set({ rotation: 0 })}
+              >
+                Angle
+              </span>
               <input
                 type="range"
                 min={-45}
@@ -131,17 +170,19 @@ export function CropPanel({ photoId, imageAspect, onDone }: CropPanelProps) {
                 step={0.1}
                 value={cropState.rotation}
                 onChange={(e) => set({ rotation: parseFloat(e.target.value) })}
+                onDoubleClick={() => set({ rotation: 0 })}
                 className="flex-1 h-[3px] cursor-pointer"
                 style={{ accentColor: 'var(--color-br-accent)' }}
               />
-              <span
-                className="text-[10px] text-br-muted w-10 text-right tabular-nums"
-                title="Double-click to reset"
-                onDoubleClick={() => set({ rotation: 0 })}
-              >
-                {cropState.rotation > 0 ? '+' : ''}
-                {cropState.rotation.toFixed(1)}°
-              </span>
+              <ClickableValue
+                value={cropState.rotation}
+                min={-45}
+                max={45}
+                decimals={1}
+                step={0.1}
+                onChange={(v) => set({ rotation: v })}
+                className="w-10"
+              />
             </div>
           </div>
 
@@ -151,10 +192,32 @@ export function CropPanel({ photoId, imageAspect, onDone }: CropPanelProps) {
               Rotate & Flip
             </div>
             <div className="flex items-center gap-1.5">
-              <BrIconButton title="Rotate 90° CCW" onClick={() => set({ rotationSteps: cropState.rotationSteps - 1 })}><IconCCW /></BrIconButton>
-              <BrIconButton title="Rotate 90° CW" onClick={() => set({ rotationSteps: cropState.rotationSteps + 1 })}><IconCW /></BrIconButton>
-              <BrIconButton title="Flip Horizontal" active={cropState.flipH} onClick={() => set({ flipH: !cropState.flipH })}><IconFlipH /></BrIconButton>
-              <BrIconButton title="Flip Vertical" active={cropState.flipV} onClick={() => set({ flipV: !cropState.flipV })}><IconFlipV /></BrIconButton>
+              <BrIconButton
+                title="Rotate 90° CCW"
+                onClick={() => set({ rotationSteps: cropState.rotationSteps - 1 })}
+              >
+                <IconCCW />
+              </BrIconButton>
+              <BrIconButton
+                title="Rotate 90° CW"
+                onClick={() => set({ rotationSteps: cropState.rotationSteps + 1 })}
+              >
+                <IconCW />
+              </BrIconButton>
+              <BrIconButton
+                title="Flip Horizontal"
+                active={cropState.flipH}
+                onClick={() => set({ flipH: !cropState.flipH })}
+              >
+                <IconFlipH />
+              </BrIconButton>
+              <BrIconButton
+                title="Flip Vertical"
+                active={cropState.flipV}
+                onClick={() => set({ flipV: !cropState.flipV })}
+              >
+                <IconFlipV />
+              </BrIconButton>
             </div>
           </div>
         </>
