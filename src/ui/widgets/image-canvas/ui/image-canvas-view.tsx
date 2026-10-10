@@ -139,6 +139,8 @@ export function ImageCanvasView({
             onSelectSpot={healInteractionProps!.onSelectSpot}
             onDeleteSpot={healInteractionProps!.onDeleteSpot}
             onBrushSizeChange={healInteractionProps!.onBrushSizeChange}
+            cropState={confirmedCropState}
+            imgAspect={imgAspect}
             style={noPointer}
           />
         )}

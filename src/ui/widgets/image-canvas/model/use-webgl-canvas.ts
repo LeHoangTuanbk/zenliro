@@ -27,7 +27,7 @@ import {
 import { viewCropState, viewSourceSize } from '../lib/crop-view';
 import { isRawMimeType, decodeRawToCanvas } from '@shared/lib/raw';
 import type { CropInteractionProps, HealInteractionProps, ImageCanvasHandle } from '../store/types';
-import type { CropState } from '@/features/develop/crop';
+import { displayWidthInImageWidths, type CropState } from '@/features/develop/crop';
 
 type Params = {
   photoId?: string | null;
@@ -629,7 +629,10 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       if (!src || !imgData) return;
       const { brushSizePx, activeMode, feather, opacity, onSpotAdded } = healInteractionProps;
       const { width: w, height: h } = src;
-      const storedBrushRadius = brushSizePx / (canvasDims.w * zoomRef.current);
+      // Radius is stored as a fraction of the original image width, not the cropped view.
+      const storedBrushRadius =
+        (brushSizePx / (canvasDims.w * zoomRef.current)) *
+        displayWidthInImageWidths(confirmedCropState, w / h);
       const radiusPx = Math.max(1, Math.round(storedBrushRadius * w));
 
       let srcNormX: number;
@@ -672,7 +675,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
         strokeId,
       });
     },
-    [healInteractionProps, canvasDims.w, zoomRef],
+    [healInteractionProps, canvasDims.w, zoomRef, confirmedCropState],
   );
 
   // Re-fit canvas when container resizes (e.g. entering/leaving compare mode)

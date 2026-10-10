@@ -89,7 +89,7 @@ void main() {
   color = applyColorGrading(color);
 
   // ── 11. LOCAL ADJUSTMENTS (MASKS) ──────────────────────────────────
-  // Brush/linear/radial are stored in original-image UV (see crop-uv.ts).
+  // Brush/linear/radial are stored in original-image UV (see crop/lib/crop-uv.ts).
   float maskOverlayW = 0.0;
   for (int mi = 0; mi < MAX_MASKS; mi++) {
     if (mi >= u_maskCount || u_maskType[mi] == 0) continue;

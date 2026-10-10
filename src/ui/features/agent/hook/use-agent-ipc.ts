@@ -12,7 +12,7 @@ import {
 } from '@features/develop/edit/effects/model/effects-store';
 import { useHealStore } from '@features/develop/heal/store/heal-store';
 import { useMaskStore, linearScreenToImage, radialScreenToImage } from '@/features/develop/mask';
-import { useCropStore } from '@features/develop/crop/store/crop-store';
+import { displayWidthInImageWidths, screenToBrushUv, useCropStore } from '@/features/develop/crop';
 import { useHistoryStore } from '@features/develop/history';
 import { captureSnapshot } from '@features/develop/history/lib/snapshot';
 import { computeHistogram } from '@features/histogram/lib/compute-histogram';
@@ -734,14 +734,22 @@ export function useAgentIpc(
         };
         if (!p || !photoId) return respond(req.requestId, null);
 
+        // Agent sees the cropped render; spots are stored in original-image UV.
+        const crop = useCropStore.getState().getCrop(photoId);
+        const imgAspect =
+          selected?.width && selected?.height ? selected.width / selected.height : 1;
+        const dst = screenToBrushUv({ x: p.dstX, y: p.dstY }, crop, imgAspect);
+        const src = screenToBrushUv({ x: p.srcX, y: p.srcY }, crop, imgAspect);
+        const radius = p.radius * displayWidthInImageWidths(crop, imgAspect);
+
         const spotId = `spot-${Date.now()}`;
         withHistory(photoId, `${p.mode} spot`, () => {
           useHealStore.getState().addSpot(photoId, {
             id: spotId,
             mode: p.mode,
-            dst: { x: p.dstX, y: p.dstY },
-            src: { x: p.srcX, y: p.srcY },
-            radius: p.radius,
+            dst,
+            src,
+            radius,
             feather: p.feather ?? 50,
             opacity: p.opacity ?? 100,
           });

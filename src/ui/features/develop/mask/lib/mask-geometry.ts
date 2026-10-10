@@ -1,6 +1,6 @@
 import type { CropState } from '@/features/develop/crop/store/types';
 import type { LinearMaskData, RadialMaskData } from '../store/types';
-import { brushToScreenUv, displayAspect, screenToBrushUv, type Uv } from './crop-uv';
+import { brushToScreenUv, displayAspect, screenToBrushUv, type Uv } from '@/features/develop/crop';
 
 type Crop = CropState | null | undefined;
 

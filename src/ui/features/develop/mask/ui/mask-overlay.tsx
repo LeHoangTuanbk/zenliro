@@ -3,7 +3,11 @@ import type { MaskInteractionProps } from '@widgets/image-canvas/store/types';
 import type { CropState } from '@/features/develop/crop/store/types';
 import type { BrushStroke, BrushPoint } from '../store/types';
 import { useMaskStore } from '../store/mask-store';
-import { brushToScreenUv, displayWidthInImageWidths, screenToBrushUv } from '../lib/crop-uv';
+import {
+  brushToScreenUv,
+  displayWidthInImageWidths,
+  screenToBrushUv,
+} from '@/features/develop/crop';
 import { LinearMaskOverlay } from './linear-mask-overlay';
 import { RadialMaskOverlay } from './radial-mask-overlay';
 

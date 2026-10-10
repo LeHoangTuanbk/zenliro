@@ -1,5 +1,5 @@
-import type { CropState } from '@/features/develop/crop/store/types';
-import { DEFAULT_CROP_STATE } from '@/features/develop/crop/store/types';
+import type { CropState } from '../store/types';
+import { DEFAULT_CROP_STATE } from '../store/types';
 
 export type Uv = { x: number; y: number };
 
