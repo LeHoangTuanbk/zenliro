@@ -5,6 +5,7 @@ import crypto from 'crypto';
 import { validateEventFrame } from './utils.js';
 import { isHeic, convertHeicToJpeg } from './libs/heic-converter.js';
 import { createLogger } from './logger/index.js';
+import { writeJsonFile } from './libs/write-json-file.js';
 
 const log = createLogger('main/catalog');
 
@@ -77,10 +78,10 @@ export function registerCatalogHandlers() {
     }
   });
 
-  ipcMain.handle('catalog:save', (event, data: unknown) => {
+  ipcMain.handle('catalog:save', async (event, data: unknown) => {
     validateEventFrame(event.senderFrame!);
     try {
-      fs.writeFileSync(catalogPath, JSON.stringify(data, null, 2), 'utf-8');
+      await writeJsonFile(catalogPath, data);
       log.info('Catalog saved');
       return true;
     } catch (err) {

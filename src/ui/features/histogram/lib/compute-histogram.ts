@@ -35,14 +35,15 @@ export function computeHistogram(
 
   if (width && height) {
     const totalPixels = width * height;
-    const step = totalPixels > maxSamples
-      ? Math.max(1, Math.ceil(Math.sqrt(totalPixels / maxSamples)))
-      : 1;
+    const step =
+      totalPixels > maxSamples ? Math.max(1, Math.ceil(Math.sqrt(totalPixels / maxSamples))) : 1;
 
     for (let y = 0; y < height; y += step) {
-      const rowOffset = (y * width) * 4;
+      const rowOffset = y * width * 4;
       for (let x = 0; x < width; x += step) {
         const idx = rowOffset + x * 4;
+        // Fully transparent = outside the image (e.g. straighten corners).
+        if (data[idx + 3] === 0) continue;
         r[data[idx]]++;
         g[data[idx + 1]]++;
         b[data[idx + 2]]++;
@@ -127,9 +128,7 @@ async function histogramFromSource(
 
 function getHistogramTargetSize(sourceWidth: number, sourceHeight: number) {
   const maxEdge = Math.max(sourceWidth, sourceHeight);
-  const scale = maxEdge > GPU_HISTOGRAM_MAX_EDGE
-    ? GPU_HISTOGRAM_MAX_EDGE / maxEdge
-    : 1;
+  const scale = maxEdge > GPU_HISTOGRAM_MAX_EDGE ? GPU_HISTOGRAM_MAX_EDGE / maxEdge : 1;
 
   return {
     width: Math.max(1, Math.round(sourceWidth * scale)),
@@ -164,7 +163,16 @@ function renderPixelsWithWebGL(
   const state = getHistogramWebGLState();
   if (!state) return null;
 
-  const { canvas, gl, program, positionBuffer, texCoordBuffer, texture, positionLocation, texCoordLocation } = state;
+  const {
+    canvas,
+    gl,
+    program,
+    positionBuffer,
+    texCoordBuffer,
+    texture,
+    positionLocation,
+    texCoordLocation,
+  } = state;
 
   canvas.width = width;
   canvas.height = height;
@@ -204,24 +212,29 @@ function getHistogramWebGLState(): HistogramWebGLState | null {
   }
 
   const canvas = document.createElement('canvas');
-  const gl = canvas.getContext('webgl2', {
-    antialias: false,
-    alpha: true,
-    premultipliedAlpha: false,
-    preserveDrawingBuffer: true,
-  }) ?? canvas.getContext('webgl', {
-    antialias: false,
-    alpha: true,
-    premultipliedAlpha: false,
-    preserveDrawingBuffer: true,
-  });
+  const gl =
+    canvas.getContext('webgl2', {
+      antialias: false,
+      alpha: true,
+      premultipliedAlpha: false,
+      preserveDrawingBuffer: true,
+    }) ??
+    canvas.getContext('webgl', {
+      antialias: false,
+      alpha: true,
+      premultipliedAlpha: false,
+      preserveDrawingBuffer: true,
+    });
 
   if (!gl) {
     histogramWebGLState = null;
     return null;
   }
 
-  const vertexShader = createShader(gl, gl.VERTEX_SHADER, `
+  const vertexShader = createShader(
+    gl,
+    gl.VERTEX_SHADER,
+    `
     attribute vec2 a_position;
     attribute vec2 a_texCoord;
     varying vec2 v_texCoord;
@@ -230,8 +243,12 @@ function getHistogramWebGLState(): HistogramWebGLState | null {
       gl_Position = vec4(a_position, 0.0, 1.0);
       v_texCoord = a_texCoord;
     }
-  `);
-  const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, `
+  `,
+  );
+  const fragmentShader = createShader(
+    gl,
+    gl.FRAGMENT_SHADER,
+    `
     precision mediump float;
     varying vec2 v_texCoord;
     uniform sampler2D u_image;
@@ -239,7 +256,8 @@ function getHistogramWebGLState(): HistogramWebGLState | null {
     void main() {
       gl_FragColor = texture2D(u_image, v_texCoord);
     }
-  `);
+  `,
+  );
 
   if (!vertexShader || !fragmentShader) {
     histogramWebGLState = null;
@@ -270,28 +288,10 @@ function getHistogramWebGLState(): HistogramWebGLState | null {
   }
 
   gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array([
-      -1, -1,
-      1, -1,
-      -1, 1,
-      1, 1,
-    ]),
-    gl.STATIC_DRAW,
-  );
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array([
-      0, 0,
-      1, 0,
-      0, 1,
-      1, 1,
-    ]),
-    gl.STATIC_DRAW,
-  );
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1, 1, 1]), gl.STATIC_DRAW);
 
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);

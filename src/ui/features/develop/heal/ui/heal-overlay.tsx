@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useShortcut } from '@shared/lib/shortcuts';
+import {
+  brushToScreenUv,
+  displayWidthInImageWidths,
+  screenToBrushUv,
+  type CropState,
+} from '@/features/develop/crop';
 import type { HealMode, HealSpot, ToolOverlayMode } from '../store/types';
 
 interface DragState {
@@ -22,6 +28,9 @@ export interface HealOverlayProps {
   onSelectSpot: (id: string | null) => void;
   onDeleteSpot: (id: string) => void;
   onBrushSizeChange: (px: number) => void;
+  /** Confirmed crop — spots live in original-image UV, the canvas shows the cropped view. */
+  cropState?: CropState | null;
+  imgAspect: number;
   style?: React.CSSProperties;
 }
 
@@ -44,6 +53,8 @@ export function HealOverlay({
   onSelectSpot,
   onDeleteSpot,
   onBrushSizeChange,
+  cropState,
+  imgAspect,
   style,
 }: HealOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -51,16 +62,26 @@ export function HealOverlay({
   const dragRef = useRef<DragState>({ type: 'idle' });
   const isDraggingRef = useRef(false);
 
-  // Canvas → normalized
+  // Canvas → spot UV (original image)
   const toNorm = useCallback(
-    (cx: number, cy: number) => ({ x: cx / canvasWidth, y: cy / canvasHeight }),
-    [canvasWidth, canvasHeight],
+    (cx: number, cy: number) =>
+      screenToBrushUv({ x: cx / canvasWidth, y: cy / canvasHeight }, cropState, imgAspect),
+    [canvasWidth, canvasHeight, cropState, imgAspect],
   );
 
-  // Normalized → canvas
+  // Spot UV (original image) → canvas
   const toCanvas = useCallback(
-    (nx: number, ny: number) => ({ x: nx * canvasWidth, y: ny * canvasHeight }),
-    [canvasWidth, canvasHeight],
+    (nx: number, ny: number) => {
+      const s = brushToScreenUv({ x: nx, y: ny }, cropState, imgAspect);
+      return { x: s.x * canvasWidth, y: s.y * canvasHeight };
+    },
+    [canvasWidth, canvasHeight, cropState, imgAspect],
+  );
+
+  // Spot radius is a fraction of the original image width.
+  const radiusToCanvas = useCallback(
+    (radius: number) => (radius / displayWidthInImageWidths(cropState, imgAspect)) * canvasWidth,
+    [canvasWidth, cropState, imgAspect],
   );
 
   // ── Draw ──────────────────────────────────────────────────────────────────
@@ -103,7 +124,7 @@ export function HealOverlay({
 
       const dst = toCanvas(spot.dst.x, spot.dst.y);
       const src = toCanvas(spot.src.x, spot.src.y);
-      const r = spot.radius * canvasWidth;
+      const r = radiusToCanvas(spot.radius);
       const col = isSelected ? '#4d9fec' : '#ffffff';
       const lw = (isSelected ? 2 : 1.5) * invZ;
 
@@ -181,6 +202,7 @@ export function HealOverlay({
     canvasWidth,
     canvasHeight,
     toCanvas,
+    radiusToCanvas,
     toolOverlay,
   ]);
 
@@ -217,7 +239,7 @@ export function HealOverlay({
       for (let i = spots.length - 1; i >= 0; i--) {
         const spot = spots[i];
         const dst = toCanvas(spot.dst.x, spot.dst.y);
-        const r = spot.radius * canvasWidth;
+        const r = radiusToCanvas(spot.radius);
         consider(spot, 'dst', dst.x, dst.y, r);
         if (spot.mode !== 'fill') {
           const src = toCanvas(spot.src.x, spot.src.y);
@@ -226,7 +248,7 @@ export function HealOverlay({
       }
       return best as { spot: HealSpot; part: 'dst' | 'src' } | null;
     },
-    [spots, toCanvas, canvasWidth, zoom],
+    [spots, toCanvas, radiusToCanvas, zoom],
   );
 
   // ── Canvas position helper ────────────────────────────────────────────────

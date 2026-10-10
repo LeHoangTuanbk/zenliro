@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useAdjustmentsStore } from '@/features/develop/edit/store/adjustments-store';
 import {
   histogramFromDataUrl,
   histogramFromArrayBuffer,
@@ -20,18 +19,17 @@ export function useHistogram(
   imageBuffer: ArrayBuffer | null,
   imageMimeType: string | null,
   canvasRef: RefObject<ImageCanvasHandle | null>,
+  isCropEditing: boolean,
 ) {
-  const adjustments = useAdjustmentsStore((s) => s.adjustments);
   const useThumbnailHistogram = activeView === 'library' && !!thumbnailDataUrl;
   const [liveHistogram, setLiveHistogram] = useState<HistogramData | null>(null);
 
   const histogramQuery = useQuery({
     queryKey: ['photo-histogram', selectedId, useThumbnailHistogram ? 'thumbnail' : 'full'],
-    queryFn: () => (
+    queryFn: () =>
       useThumbnailHistogram
         ? histogramFromDataUrl(thumbnailDataUrl!)
-        : histogramFromArrayBuffer(imageBuffer!, imageMimeType ?? 'image/jpeg')
-    ),
+        : histogramFromArrayBuffer(imageBuffer!, imageMimeType ?? 'image/jpeg'),
     enabled: !!selectedId && (useThumbnailHistogram || !!imageBuffer),
     placeholderData: (previousData) => previousData,
     staleTime: Infinity,
@@ -47,38 +45,51 @@ export function useHistogram(
     gcTime: 30 * 60_000,
   });
 
-  // Debounced live histogram from canvas pixels (reacts to adjustment changes + image load)
+  // Debounced live histogram from canvas pixels, refreshed after every render
+  // (any edit, crop, mask…). Skipped while the crop tool shows the full,
+  // uncropped image so the histogram keeps reflecting the cropped result.
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const skipRef = useRef(false);
   useEffect(() => {
-    if (activeView !== 'develop') return;
+    skipRef.current = activeView !== 'develop' || isCropEditing;
+  }, [activeView, isCropEditing]);
+
+  const handleCanvasRendered = useCallback(() => {
+    if (skipRef.current) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
+      if (skipRef.current) return;
       const pixels = canvasRef.current?.getRenderedPixels();
       if (pixels) {
         setLiveHistogram(computeHistogram(pixels.data, pixels.width, pixels.height));
       }
     }, HISTOGRAM_DEBOUNCE_MS);
-    return () => {
+  }, [canvasRef]);
+
+  useEffect(
+    () => () => {
       if (timerRef.current) clearTimeout(timerRef.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adjustments, selectedId, activeView, imageBuffer]);
+    },
+    [],
+  );
 
   // Clear live histogram when switching photos
-  const prevPhotoRef = useRef(selectedId);
-  if (selectedId !== prevPhotoRef.current) {
-    prevPhotoRef.current = selectedId;
+  const [prevPhotoId, setPrevPhotoId] = useState(selectedId);
+  if (selectedId !== prevPhotoId) {
+    setPrevPhotoId(selectedId);
     setLiveHistogram(null);
   }
 
   // In develop view: prefer live canvas histogram, fallback to query
   // In library view: always use query (thumbnail-based)
-  const histogramData = activeView === 'develop'
-    ? (liveHistogram ?? histogramQuery.data ?? null)
-    : (histogramQuery.data ?? null);
+  const histogramData =
+    activeView === 'develop'
+      ? (liveHistogram ?? histogramQuery.data ?? null)
+      : (histogramQuery.data ?? null);
 
   return {
     histogramData: histogramData as HistogramData | null,
     exifData: (exifQuery.data ?? null) as PhotoExif | null,
+    handleCanvasRendered,
   };
 }

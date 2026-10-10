@@ -1,18 +1,43 @@
 import { useRef, useState, useEffect } from 'react';
+import type { CropState } from '@/features/develop/crop/store/types';
 import type { RadialMaskData } from '../store/types';
+import { radialImageToScreen, radialScreenToImage } from '../lib/mask-geometry';
 
 type DragMode = 'move' | 'resizeN' | 'resizeS' | 'resizeE' | 'resizeW';
-type DragState = { mode: DragMode; ox: number; oy: number; orig: RadialMaskData };
+// Geometry captured at drag start, in overlay pixels.
+type DragState = {
+  mode: DragMode;
+  ox: number;
+  oy: number;
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+};
 
 type Props = {
+  /** Stored in original-image UV; may extend beyond the visible crop. */
   data: RadialMaskData;
   canvasW: number;
   canvasH: number;
+  cropState?: CropState | null;
+  imgAspect: number;
   onUpdate: (data: RadialMaskData) => void;
   disableInteraction?: boolean;
 };
 
-export function RadialMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInteraction }: Props) {
+const HANDLE = 6;
+const MIN_RADIUS_PX = 4;
+
+export function RadialMaskOverlay({
+  data,
+  canvasW,
+  canvasH,
+  cropState,
+  imgAspect,
+  onUpdate,
+  disableInteraction,
+}: Props) {
   const [showHint, setShowHint] = useState(true);
   const dragRef = useRef<DragState | null>(null);
 
@@ -21,36 +46,55 @@ export function RadialMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
     return () => clearTimeout(t);
   }, []);
 
-  const px = (nx: number) => nx * canvasW;
-  const py = (ny: number) => ny * canvasH;
-  const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+  const screen = radialImageToScreen(data, cropState, imgAspect);
+  const cx = screen.cx * canvasW;
+  const cy = screen.cy * canvasH;
+  const rx = screen.rx * canvasW;
+  const ry = screen.ry * canvasH;
+  const angleRad = (screen.angle * Math.PI) / 180;
+  // Ellipse axes in overlay pixels: u = major (rx), v = minor (ry).
+  const u = { x: Math.cos(angleRad), y: Math.sin(angleRad) };
+  const v = { x: -Math.sin(angleRad), y: Math.cos(angleRad) };
+
+  const commit = (ncx: number, ncy: number, nrx: number, nry: number) =>
+    onUpdate(
+      radialScreenToImage(
+        {
+          cx: ncx / canvasW,
+          cy: ncy / canvasH,
+          rx: Math.max(MIN_RADIUS_PX, nrx) / canvasW,
+          ry: Math.max(MIN_RADIUS_PX, nry) / canvasH,
+          angle: screen.angle,
+        },
+        data,
+        cropState,
+        imgAspect,
+      ),
+    );
 
   const startDrag = (e: React.MouseEvent, mode: DragMode) => {
     e.stopPropagation();
     e.preventDefault();
     setShowHint(false);
 
-    dragRef.current = { mode, ox: e.clientX, oy: e.clientY, orig: { ...data } };
+    // Convert client deltas to overlay pixels so dragging is zoom-independent.
+    const rect = (e.currentTarget as SVGElement).closest('svg')!.getBoundingClientRect();
+    const sx = canvasW / (rect.width || canvasW);
+    const sy = canvasH / (rect.height || canvasH);
+    dragRef.current = { mode, ox: e.clientX, oy: e.clientY, cx, cy, rx, ry };
 
     const handleMove = (me: MouseEvent) => {
       const d = dragRef.current;
       if (!d) return;
-      const ddx = (me.clientX - d.ox) / canvasW;
-      const ddy = (me.clientY - d.oy) / canvasH;
-
-      if (d.mode === 'move') {
-        onUpdate({ ...d.orig, cx: clamp01(d.orig.cx + ddx), cy: clamp01(d.orig.cy + ddy) });
-      } else if (d.mode === 'resizeE' || d.mode === 'resizeW') {
-        onUpdate({
-          ...d.orig,
-          rx: Math.max(0.01, d.orig.rx + (d.mode === 'resizeE' ? ddx : -ddx)),
-        });
-      } else if (d.mode === 'resizeS' || d.mode === 'resizeN') {
-        onUpdate({
-          ...d.orig,
-          ry: Math.max(0.01, d.orig.ry + (d.mode === 'resizeS' ? ddy : -ddy)),
-        });
-      }
+      const dx = (me.clientX - d.ox) * sx;
+      const dy = (me.clientY - d.oy) * sy;
+      const alongU = dx * u.x + dy * u.y;
+      const alongV = dx * v.x + dy * v.y;
+      if (d.mode === 'move') commit(d.cx + dx, d.cy + dy, d.rx, d.ry);
+      else if (d.mode === 'resizeE') commit(d.cx, d.cy, d.rx + alongU, d.ry);
+      else if (d.mode === 'resizeW') commit(d.cx, d.cy, d.rx - alongU, d.ry);
+      else if (d.mode === 'resizeS') commit(d.cx, d.cy, d.rx, d.ry + alongV);
+      else commit(d.cx, d.cy, d.rx, d.ry - alongV);
     };
 
     const handleUp = () => {
@@ -63,19 +107,13 @@ export function RadialMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
     window.addEventListener('mouseup', handleUp);
   };
 
-  const cx = px(data.cx);
-  const cy = py(data.cy);
-  const rx = data.rx * canvasW;
-  const ry = data.ry * canvasH;
-  const HANDLE = 6;
-
-  // Edge handle positions
   const handles: { id: DragMode; x: number; y: number }[] = [
-    { id: 'resizeN', x: cx, y: cy - ry },
-    { id: 'resizeS', x: cx, y: cy + ry },
-    { id: 'resizeE', x: cx + rx, y: cy },
-    { id: 'resizeW', x: cx - rx, y: cy },
+    { id: 'resizeN', x: cx - v.x * ry, y: cy - v.y * ry },
+    { id: 'resizeS', x: cx + v.x * ry, y: cy + v.y * ry },
+    { id: 'resizeE', x: cx + u.x * rx, y: cy + u.y * rx },
+    { id: 'resizeW', x: cx - u.x * rx, y: cy - u.y * rx },
   ];
+  const ellipseTransform = `rotate(${screen.angle} ${cx} ${cy})`;
 
   return (
     <svg
@@ -84,12 +122,12 @@ export function RadialMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
       height={canvasH}
       style={{ pointerEvents: 'none' }}
     >
-      {/* Ellipse outline */}
       <ellipse
         cx={cx}
         cy={cy}
         rx={rx}
         ry={ry}
+        transform={ellipseTransform}
         fill="none"
         stroke="white"
         strokeWidth={1.5}
@@ -98,12 +136,12 @@ export function RadialMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
         pointerEvents="none"
       />
 
-      {/* Inner soft edge ring */}
       <ellipse
         cx={cx}
         cy={cy}
         rx={rx * (1 - data.feather)}
         ry={ry * (1 - data.feather)}
+        transform={ellipseTransform}
         fill="none"
         stroke="white"
         strokeWidth={1}
@@ -112,7 +150,6 @@ export function RadialMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
         pointerEvents="none"
       />
 
-      {/* Center pin */}
       <g
         style={{ cursor: 'grab', pointerEvents: disableInteraction ? 'none' : 'auto' }}
         onMouseDown={(e) => startDrag(e, 'move')}
@@ -121,12 +158,11 @@ export function RadialMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
         <circle cx={cx} cy={cy} r={HANDLE} fill="#4d9fec" stroke="black" strokeWidth={1.5} />
       </g>
 
-      {/* Edge handles */}
       {handles.map(({ id, x, y }) => (
         <g
           key={id}
           style={{
-            cursor: id.includes('N') || id.includes('S') ? 'ns-resize' : 'ew-resize',
+            cursor: id === 'resizeN' || id === 'resizeS' ? 'ns-resize' : 'ew-resize',
             pointerEvents: disableInteraction ? 'none' : 'auto',
           }}
           onMouseDown={(e) => startDrag(e, id)}
@@ -145,7 +181,6 @@ export function RadialMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
         </g>
       ))}
 
-      {/* Hint */}
       {showHint && (
         <g>
           <rect

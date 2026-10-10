@@ -20,9 +20,10 @@ void main() {
   // ── 1. CROP & ROTATE ──────────────────────────────────────────────
   vec2 imageUV = u_cropOrigin + uv * u_cropSize;
 
-  // Fine rotation (straighten) around crop center
+  // Fine rotation (straighten) around the image center — the crop rect is
+  // axis-aligned in this rotated view, same as the Crop tool shows it.
   if (u_rotation != 0.0) {
-    vec2 center = u_cropOrigin + u_cropSize * 0.5;
+    vec2 center = vec2(0.5);
     vec2 d = imageUV - center;
     float aspect = (u_rotSteps % 2 == 1) ? (1.0 / u_imgAspect) : u_imgAspect;
     d.x *= aspect;
@@ -46,9 +47,9 @@ void main() {
     else if (s == 3) imageUV = vec2(tmp.y, 1.0 - tmp.x);
   }
 
-  // Out-of-bounds: dark grey background
+  // Out-of-bounds: transparent, so the histogram can skip these pixels.
   if (imageUV.x < 0.0 || imageUV.x > 1.0 || imageUV.y < 0.0 || imageUV.y > 1.0) {
-    fragColor = vec4(0.078, 0.078, 0.078, 1.0);
+    fragColor = vec4(0.0);
     return;
   }
 
@@ -67,9 +68,11 @@ void main() {
   color = applyContrast(color);
 
   // ── 6. CLARITY / TEXTURE / DEHAZE ──────────────────────────────────
-  color = applyClarity(color, v_texCoord);
-  color = applyTexture(color, v_texCoord);
-  color = applyDehaze(color, imageUV, v_texCoord);
+  // Blur textures are rendered at full-image resolution, so they must be
+  // sampled in image UV, not display UV.
+  color = applyClarity(color, imageUV);
+  color = applyTexture(color, imageUV);
+  color = applyDehaze(color, imageUV, imageUV);
 
   // ── 7. TONE CURVE ──────────────────────────────────────────────────
   color = clamp(color, 0.0, 1.0);
@@ -86,12 +89,13 @@ void main() {
   color = applyColorGrading(color);
 
   // ── 11. LOCAL ADJUSTMENTS (MASKS) ──────────────────────────────────
+  // Brush/linear/radial are stored in original-image UV (see crop/lib/crop-uv.ts).
   float maskOverlayW = 0.0;
   for (int mi = 0; mi < MAX_MASKS; mi++) {
     if (mi >= u_maskCount || u_maskType[mi] == 0) continue;
     float mw = sampleMaskWeight(mi, imageUV);
     if (mw > 0.001) {
-      vec3 localColor = applyLocalAdj(color, imageUV, v_texCoord, mi);
+      vec3 localColor = applyLocalAdj(color, imageUV, imageUV, mi);
       color = mix(color, clamp(localColor, 0.0, 1.0), mw);
       maskOverlayW = max(maskOverlayW, mw);
     }

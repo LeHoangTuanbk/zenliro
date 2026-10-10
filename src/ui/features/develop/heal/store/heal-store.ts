@@ -12,7 +12,7 @@ type HealState = {
   toolOverlay: ToolOverlayMode;
 };
 
-interface HealActions {
+type HealActions = {
   getSpots(photoId: string): HealSpot[];
   addSpot(photoId: string, spot: HealSpot): void;
   addSpots(photoId: string, spots: HealSpot[]): void;
@@ -29,7 +29,10 @@ interface HealActions {
   setSelectedSpotId(id: string | null): void;
   setPreviewOriginal(v: boolean): void;
   setToolOverlay(mode: ToolOverlayMode): void;
-}
+};
+
+/** Shared empty list so selectors return a stable reference. */
+export const NO_SPOTS: HealSpot[] = [];
 
 export const useHealStore = create<HealState & HealActions>((set, get) => ({
   spotsByPhoto: {},
@@ -41,7 +44,7 @@ export const useHealStore = create<HealState & HealActions>((set, get) => ({
   previewOriginal: false,
   toolOverlay: 'auto',
 
-  getSpots: (photoId) => get().spotsByPhoto[photoId] ?? [],
+  getSpots: (photoId) => get().spotsByPhoto[photoId] ?? NO_SPOTS,
 
   addSpot: (photoId, spot) =>
     set((s) => ({

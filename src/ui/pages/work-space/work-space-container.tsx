@@ -62,13 +62,14 @@ export function WorkSpaceContainer() {
     selected ? { id: selected.id, filePath: selected.filePath } : null,
   );
 
-  const { histogramData, exifData } = useHistogram(
+  const { histogramData, exifData, handleCanvasRendered } = useHistogram(
     activeView,
     selectedId,
     selected?.thumbnailDataUrl || null,
     selectedResource.imageBuffer,
     selectedResource.imageMimeType,
     canvasRef,
+    activeTool === ActiveTool.Crop,
   );
   const { healInteractionProps, healSpots, previewOriginal } = useHealInteraction(
     activeTool,
@@ -150,6 +151,7 @@ export function WorkSpaceContainer() {
       onImport={handleImport}
       onExport={handleExport}
       onImageLoaded={handleImageLoaded}
+      onCanvasRendered={handleCanvasRendered}
       onSelectId={setSelectedId}
       onOpenDevelop={openDevelop}
       onDelete={handleDelete}

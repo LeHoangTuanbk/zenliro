@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShortcut } from '@shared/lib/shortcuts';
 import type { CropRect, CropState } from '../store/types';
-
-type DragHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'move' | null;
+import { constrainCrop, cropBounds } from '../lib/constrain-crop';
+import { dragRect, type DragHandle as Handle } from '../lib/drag-rect';
+type DragHandle = Handle | null;
 
 interface DragState {
   handle: DragHandle;
@@ -48,15 +49,30 @@ export function CropOverlay({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef<DragState | null>(null);
   const [cursor, setCursor] = useState('crosshair');
+  // Live rect while dragging; committed once on mouse-up so history/auto-save
+  // don't snapshot mid-drag (one history step per drag, like Lightroom).
+  const [draftRect, setDraftRect] = useState<CropRect | null>(null);
+  const draftRef = useRef<CropRect | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const rect = draftRect ?? cropState.rect;
+
+  // The canvas shows the straightened image's bounding box, not just the original frame.
+  const bounds = useMemo(() => cropBounds(cropState, imageAspect), [cropState, imageAspect]);
 
   // ── Coordinate helpers ──────────────────────────────────────────────────
   const toCanvas = useCallback(
-    (nx: number, ny: number) => ({ x: nx * canvasWidth, y: ny * canvasHeight }),
-    [canvasWidth, canvasHeight],
+    (nx: number, ny: number) => ({
+      x: ((nx - bounds.x) / bounds.w) * canvasWidth,
+      y: ((ny - bounds.y) / bounds.h) * canvasHeight,
+    }),
+    [bounds, canvasWidth, canvasHeight],
   );
   const toNorm = useCallback(
-    (cx: number, cy: number) => ({ x: cx / canvasWidth, y: cy / canvasHeight }),
-    [canvasWidth, canvasHeight],
+    (cx: number, cy: number) => ({
+      x: bounds.x + (cx / canvasWidth) * bounds.w,
+      y: bounds.y + (cy / canvasHeight) * bounds.h,
+    }),
+    [bounds, canvasWidth, canvasHeight],
   );
 
   // ── Draw ────────────────────────────────────────────────────────────────
@@ -69,7 +85,6 @@ export function CropOverlay({
     ctx.setTransform(zoom, 0, 0, zoom, 0, 0);
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-    const { rect } = cropState;
     const tl = toCanvas(rect.x, rect.y);
     const br = toCanvas(rect.x + rect.w, rect.y + rect.h);
     const rw = br.x - tl.x;
@@ -131,12 +146,11 @@ export function CropOverlay({
     for (const [mx, my] of mids) {
       ctx.fillRect(mx - hs, my - hs, hs * 2, hs * 2);
     }
-  }, [cropState, zoom, canvasWidth, canvasHeight, toCanvas]);
+  }, [rect, zoom, canvasWidth, canvasHeight, toCanvas]);
 
   // ── Hit detection ───────────────────────────────────────────────────────
   const findHandle = useCallback(
     (cx: number, cy: number): DragHandle => {
-      const { rect } = cropState;
       const tl = toCanvas(rect.x, rect.y);
       const br = toCanvas(rect.x + rect.w, rect.y + rect.h);
       const mid = { x: (tl.x + br.x) / 2, y: (tl.y + br.y) / 2 };
@@ -155,25 +169,28 @@ export function CropOverlay({
       if (cx >= tl.x && cx <= br.x && cy >= tl.y && cy <= br.y) return 'move';
       return null;
     },
-    [cropState, toCanvas, zoom],
+    [rect, toCanvas, zoom],
   );
 
   // ── Pos helper ──────────────────────────────────────────────────────────
   const getPos = (e: React.MouseEvent | MouseEvent) => {
-    const rect = canvasRef.current!.getBoundingClientRect();
-    const sx = canvasWidth / rect.width;
-    const sy = canvasHeight / rect.height;
-    return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
+    const box = canvasRef.current!.getBoundingClientRect();
+    const sx = canvasWidth / box.width;
+    const sy = canvasHeight / box.height;
+    return { x: (e.clientX - box.left) * sx, y: (e.clientY - box.top) * sy };
   };
 
-  // ── Clamp rect inside [0,1] ─────────────────────────────────────────────
+  // ── Clamp rect inside the work area ─────────────────────────────────────
   const clampRect = (r: CropRect): CropRect => {
-    const minW = 20 / canvasWidth;
-    const minH = 20 / canvasHeight;
-    const x = Math.max(0, Math.min(1 - Math.max(r.w, minW), r.x));
-    const y = Math.max(0, Math.min(1 - Math.max(r.h, minH), r.y));
-    const w = Math.max(minW, Math.min(1 - x, r.w));
-    const h = Math.max(minH, Math.min(1 - y, r.h));
+    const b = bounds;
+    const minW = (20 / canvasWidth) * b.w;
+    const minH = (20 / canvasHeight) * b.h;
+    const right = b.x + b.w;
+    const bottom = b.y + b.h;
+    const x = Math.max(b.x, Math.min(right - Math.max(r.w, minW), r.x));
+    const y = Math.max(b.y, Math.min(bottom - Math.max(r.h, minH), r.y));
+    const w = Math.max(minW, Math.min(right - x, r.w));
+    const h = Math.max(minH, Math.min(bottom - y, r.h));
     return { x, y, w, h };
   };
 
@@ -186,7 +203,7 @@ export function CropOverlay({
     dragRef.current = {
       handle,
       startMouse: normPos,
-      startRect: { ...cropState.rect },
+      startRect: { ...rect },
     };
   };
 
@@ -199,65 +216,31 @@ export function CropOverlay({
       const norm = toNorm(pos.x, pos.y);
       const dx = norm.x - drag.startMouse.x;
       const dy = norm.y - drag.startMouse.y;
-      const { startRect: sr } = drag;
-
-      const r: CropRect = { ...sr };
-
-      const aspect = cropState.lockAspect
-        ? (sr.w * imageAspect) / (sr.h * imageAspect) // = sr.w / sr.h
-        : null;
-
-      switch (drag.handle) {
-        case 'move':
-          r.x = sr.x + dx;
-          r.y = sr.y + dy;
-          break;
-        case 'nw':
-          r.x = sr.x + dx;
-          r.w = sr.w - dx;
-          r.y = sr.y + dy;
-          r.h = sr.h - dy;
-          if (aspect) r.h = r.w / aspect;
-          break;
-        case 'ne':
-          r.w = sr.w + dx;
-          r.y = sr.y + dy;
-          r.h = sr.h - dy;
-          if (aspect) r.h = r.w / aspect;
-          break;
-        case 'se':
-          r.w = sr.w + dx;
-          r.h = sr.h + dy;
-          if (aspect) r.h = r.w / aspect;
-          break;
-        case 'sw':
-          r.x = sr.x + dx;
-          r.w = sr.w - dx;
-          r.h = sr.h + dy;
-          if (aspect) r.h = r.w / aspect;
-          break;
-        // Edge handles: only affect their own axis — no aspect enforcement
-        case 'n':
-          r.y = sr.y + dy;
-          r.h = sr.h - dy;
-          break;
-        case 's':
-          r.h = sr.h + dy;
-          break;
-        case 'e':
-          r.w = sr.w + dx;
-          break;
-        case 'w':
-          r.x = sr.x + dx;
-          r.w = sr.w - dx;
-          break;
+      const sr = drag.startRect;
+      const r = dragRect(drag.handle, sr, dx, dy, cropState.lockAspect);
+      const base = draftRef.current ?? sr;
+      draftRef.current = constrainCrop(
+        { ...cropState, rect: base },
+        { ...cropState, rect: clampRect(r) },
+        imageAspect,
+      ).rect;
+      // High-rate mice fire several moves per frame — repaint once per frame.
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = null;
+          setDraftRect(draftRef.current);
+        });
       }
-
-      onChange({ rect: clampRect(r) });
     };
 
     const onUp = () => {
       dragRef.current = null;
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      const committed = draftRef.current;
+      draftRef.current = null;
+      setDraftRect(null);
+      if (committed) onChange({ rect: committed });
     };
 
     window.addEventListener('mousemove', onMove);
@@ -265,6 +248,8 @@ export function CropOverlay({
     return () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cropState, toNorm, imageAspect, onChange, canvasWidth, canvasHeight]);

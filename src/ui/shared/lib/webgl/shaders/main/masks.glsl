@@ -11,19 +11,28 @@ float sampleBrushTex(int slot, vec2 uv) {
   return paint * (1.0 - erase);
 }
 
+// `uv` is original-image UV (Y-up). Linear/radial geometry is stored Y-down
+// and evaluated in image-pixel space (x scaled by aspect) so shapes stay
+// undistorted under crop, straighten and 90° rotation.
+vec2 toImagePx(vec2 uvYDown) {
+  return vec2(uvYDown.x * u_imgAspect, uvYDown.y);
+}
+
 float sampleMaskWeight(int slot, vec2 uv) {
   int t = u_maskType[slot];
   if (t == 1) {
     return sampleBrushTex(slot, uv);
   }
+  vec2 q = toImagePx(vec2(uv.x, 1.0 - uv.y));
   if (t == 2) {
     vec4 l = u_maskLinear[slot];
-    vec4 lf = vec4(l.x, 1.0 - l.y, l.z, 1.0 - l.w);
+    vec2 p1 = toImagePx(l.xy);
+    vec2 p2 = toImagePx(l.zw);
     float feath = max(u_maskLinearFeather[slot], 0.001);
-    vec2 dir = lf.zw - lf.xy;
-    float len2 = length(dir);
-    if (len2 < 0.0001) return 0.0;
-    float proj = dot(uv - lf.xy, dir / len2) / len2;
+    vec2 dir = p2 - p1;
+    float len2 = dot(dir, dir);
+    if (len2 < 1e-8) return 0.0;
+    float proj = dot(q - p1, dir) / len2;
     float hw = feath * 0.5;
     return 1.0 - clamp((proj - (0.5 - hw)) / (2.0 * hw), 0.0, 1.0);
   }
@@ -31,11 +40,11 @@ float sampleMaskWeight(int slot, vec2 uv) {
     vec4 r = u_maskRadial[slot];
     vec3 rp = u_maskRadialParams[slot];
     float ang = rp.x * PI / 180.0;
-    vec2 center = vec2(r.x, 1.0 - r.y);
-    vec2 d2 = uv - center;
+    vec2 d2 = q - toImagePx(r.xy);
     float cosA = cos(ang), sinA = sin(ang);
     vec2 rd = vec2(cosA * d2.x + sinA * d2.y, -sinA * d2.x + cosA * d2.y);
-    float dist2 = length(rd / max(r.zw, vec2(0.0001)));
+    vec2 radii = max(vec2(r.z * u_imgAspect, r.w), vec2(0.0001));
+    float dist2 = length(rd / radii);
     float feath2 = max(rp.y, 0.001);
     float w2 = 1.0 - smoothstep(1.0 - feath2, 1.0, dist2);
     return rp.z > 0.5 ? 1.0 - w2 : w2;

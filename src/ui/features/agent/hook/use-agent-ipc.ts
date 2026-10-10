@@ -11,8 +11,8 @@ import {
   type EffectsState,
 } from '@features/develop/edit/effects/model/effects-store';
 import { useHealStore } from '@features/develop/heal/store/heal-store';
-import { useMaskStore } from '@/features/develop/mask';
-import { useCropStore } from '@features/develop/crop/store/crop-store';
+import { useMaskStore, linearScreenToImage, radialScreenToImage } from '@/features/develop/mask';
+import { displayWidthInImageWidths, screenToBrushUv, useCropStore } from '@/features/develop/crop';
 import { useHistoryStore } from '@features/develop/history';
 import { captureSnapshot } from '@features/develop/history/lib/snapshot';
 import { computeHistogram } from '@features/histogram/lib/compute-histogram';
@@ -734,14 +734,22 @@ export function useAgentIpc(
         };
         if (!p || !photoId) return respond(req.requestId, null);
 
+        // Agent sees the cropped render; spots are stored in original-image UV.
+        const crop = useCropStore.getState().getCrop(photoId);
+        const imgAspect =
+          selected?.width && selected?.height ? selected.width / selected.height : 1;
+        const dst = screenToBrushUv({ x: p.dstX, y: p.dstY }, crop, imgAspect);
+        const src = screenToBrushUv({ x: p.srcX, y: p.srcY }, crop, imgAspect);
+        const radius = p.radius * displayWidthInImageWidths(crop, imgAspect);
+
         const spotId = `spot-${Date.now()}`;
         withHistory(photoId, `${p.mode} spot`, () => {
           useHealStore.getState().addSpot(photoId, {
             id: spotId,
             mode: p.mode,
-            dst: { x: p.dstX, y: p.dstY },
-            src: { x: p.srcX, y: p.srcY },
-            radius: p.radius,
+            dst,
+            src,
+            radius,
             feather: p.feather ?? 50,
             opacity: p.opacity ?? 100,
           });
@@ -778,29 +786,39 @@ export function useAgentIpc(
         };
         if (!p || !photoId) return respond(req.requestId, null);
 
+        // The agent sees the cropped render, so its coordinates are relative to
+        // the visible area; masks are stored in original-image UV.
+        const crop = useCropStore.getState().getCrop(photoId);
+        const imgAspect =
+          selected?.width && selected?.height ? selected.width / selected.height : 1;
+
         let maskId: string;
         withHistory(photoId, `Add ${p.type} mask`, () => {
           maskId = useMaskStore.getState().addMask(photoId, p.type);
-          // Set custom geometry if provided
-          if (p.type === 'linear' && (p.x1 !== undefined || p.y1 !== undefined)) {
-            useMaskStore.getState().setLinearData(photoId, maskId, {
+          if (p.type === 'linear') {
+            const screen = {
               x1: p.x1 ?? 0.5,
               y1: p.y1 ?? 0.2,
               x2: p.x2 ?? 0.5,
               y2: p.y2 ?? 0.8,
               feather: p.feather ?? 0.3,
-            });
+            };
+            useMaskStore
+              .getState()
+              .setLinearData(photoId, maskId, linearScreenToImage(screen, crop, imgAspect));
           }
-          if (p.type === 'radial' && (p.cx !== undefined || p.cy !== undefined)) {
-            useMaskStore.getState().setRadialData(photoId, maskId, {
+          if (p.type === 'radial') {
+            const ellipse = {
               cx: p.cx ?? 0.5,
               cy: p.cy ?? 0.5,
               rx: p.rx ?? 0.25,
               ry: p.ry ?? 0.2,
               angle: p.angle ?? 0,
-              feather: p.feather ?? 0.3,
-              invert: p.invert ?? false,
-            });
+            };
+            const base = { feather: p.feather ?? 0.3, invert: p.invert ?? false };
+            useMaskStore
+              .getState()
+              .setRadialData(photoId, maskId, radialScreenToImage(ellipse, base, crop, imgAspect));
           }
         });
         useAgentStore.getState().showActionToast(`Added ${p.type} mask`);
@@ -884,7 +902,9 @@ export function useAgentIpc(
             patch.aspectPreset = p.aspectPreset;
             patch.lockAspect = p.aspectPreset !== 'free';
           }
-          useCropStore.getState().setCrop(photoId, patch);
+          const imgAspect =
+            selected?.width && selected?.height ? selected.width / selected.height : undefined;
+          useCropStore.getState().setCrop(photoId, patch, imgAspect);
         });
         useAgentStore.getState().showActionToast('Crop/Rotate applied');
         respond(req.requestId, { ok: true });

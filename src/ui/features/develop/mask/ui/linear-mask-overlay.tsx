@@ -1,18 +1,32 @@
 import { useRef, useState, useEffect } from 'react';
+import type { CropState } from '@/features/develop/crop/store/types';
 import type { LinearMaskData } from '../store/types';
+import { linearImageToScreen, linearScreenToImage } from '../lib/mask-geometry';
 
 type DragMode = 'create' | 'start' | 'end' | 'center';
+// `orig` is in overlay space (fractions of the visible area).
 type DragState = { mode: DragMode; ox: number; oy: number; orig: LinearMaskData };
 
 type Props = {
+  /** Stored in original-image UV; may extend beyond the visible crop. */
   data: LinearMaskData;
   canvasW: number;
   canvasH: number;
+  cropState?: CropState | null;
+  imgAspect: number;
   onUpdate: (data: LinearMaskData) => void;
   disableInteraction?: boolean;
 };
 
-export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInteraction }: Props) {
+export function LinearMaskOverlay({
+  data: imageData,
+  canvasW,
+  canvasH,
+  cropState,
+  imgAspect,
+  onUpdate,
+  disableInteraction,
+}: Props) {
   const [showHint, setShowHint] = useState(true);
   const dragRef = useRef<DragState | null>(null);
 
@@ -21,26 +35,29 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
     return () => clearTimeout(t);
   }, []);
 
-  const toNorm = (ex: number, ey: number) => ({ x: ex / canvasW, y: ey / canvasH });
+  const data = linearImageToScreen(imageData, cropState, imgAspect);
+  const commit = (screen: LinearMaskData) =>
+    onUpdate(linearScreenToImage(screen, cropState, imgAspect));
+
   const px = (nx: number) => nx * canvasW;
   const py = (ny: number) => ny * canvasH;
-  const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 
   const mx = (data.x1 + data.x2) / 2;
   const my = (data.y1 + data.y2) / 2;
 
-  // Perpendicular direction to gradient line
-  const gdx = data.x2 - data.x1;
-  const gdy = data.y2 - data.y1;
+  // Perpendicular direction in pixel space (matches the aspect-correct shader).
+  const gdx = px(data.x2) - px(data.x1);
+  const gdy = py(data.y2) - py(data.y1);
   const glen = Math.hypot(gdx, gdy) || 0.001;
-  const perpX = (-gdy / glen) * 1.5; // extend 1.5x past canvas
-  const perpY = (gdx / glen) * 1.5;
+  const reach = Math.hypot(canvasW, canvasH) * 1.5;
+  const perpX = (-gdy / glen) * reach;
+  const perpY = (gdx / glen) * reach;
 
   const perpLine = (nx: number, ny: number) => ({
-    x1: px(nx + perpX),
-    y1: py(ny + perpY),
-    x2: px(nx - perpX),
-    y2: py(ny - perpY),
+    x1: px(nx) + perpX,
+    y1: py(ny) + perpY,
+    x2: px(nx) - perpX,
+    y2: py(ny) - perpY,
   });
 
   const startLine = perpLine(data.x1, data.y1);
@@ -51,14 +68,16 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
     e.stopPropagation();
     e.preventDefault();
     setShowHint(false);
+    // Measured against the on-screen rect so it stays correct at any zoom.
     const rect = (e.currentTarget as SVGElement).closest('svg')!.getBoundingClientRect();
-    const ox = e.clientX - rect.left;
-    const oy = e.clientY - rect.top;
+    const rectW = rect.width || canvasW;
+    const rectH = rect.height || canvasH;
 
     if (mode === 'create') {
-      const { x, y } = toNorm(ox, oy);
+      const x = (e.clientX - rect.left) / rectW;
+      const y = (e.clientY - rect.top) / rectH;
       const fresh: LinearMaskData = { x1: x, y1: y, x2: x, y2: y, feather: data.feather };
-      onUpdate(fresh);
+      commit(fresh);
       dragRef.current = { mode, ox: e.clientX, oy: e.clientY, orig: fresh };
     } else {
       dragRef.current = { mode, ox: e.clientX, oy: e.clientY, orig: { ...data } };
@@ -67,19 +86,19 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
     const handleMove = (me: MouseEvent) => {
       const d = dragRef.current;
       if (!d) return;
-      const ddx = (me.clientX - d.ox) / canvasW;
-      const ddy = (me.clientY - d.oy) / canvasH;
+      const ddx = (me.clientX - d.ox) / rectW;
+      const ddy = (me.clientY - d.oy) / rectH;
       if (d.mode === 'create' || d.mode === 'end') {
-        onUpdate({ ...d.orig, x2: clamp01(d.orig.x2 + ddx), y2: clamp01(d.orig.y2 + ddy) });
+        commit({ ...d.orig, x2: d.orig.x2 + ddx, y2: d.orig.y2 + ddy });
       } else if (d.mode === 'start') {
-        onUpdate({ ...d.orig, x1: clamp01(d.orig.x1 + ddx), y1: clamp01(d.orig.y1 + ddy) });
+        commit({ ...d.orig, x1: d.orig.x1 + ddx, y1: d.orig.y1 + ddy });
       } else if (d.mode === 'center') {
-        onUpdate({
+        commit({
           ...d.orig,
-          x1: clamp01(d.orig.x1 + ddx),
-          y1: clamp01(d.orig.y1 + ddy),
-          x2: clamp01(d.orig.x2 + ddx),
-          y2: clamp01(d.orig.y2 + ddy),
+          x1: d.orig.x1 + ddx,
+          y1: d.orig.y1 + ddy,
+          x2: d.orig.x2 + ddx,
+          y2: d.orig.y2 + ddy,
         });
       }
     };
@@ -132,7 +151,10 @@ export function LinearMaskOverlay({ data, canvasW, canvasH, onUpdate, disableInt
             pointerEvents="none"
           />
         ))}
+      </g>
 
+      {/* Handles are not clipped: endpoints may sit outside the crop frame. */}
+      <g>
         {/* Start handle — hollow ring, LR Classic style. No "+" cross. */}
         <g style={{ cursor: 'move' }} onMouseDown={(e) => startDrag(e, 'start')}>
           <circle cx={px(data.x1)} cy={py(data.y1)} r={PIN + 4} fill="transparent" />

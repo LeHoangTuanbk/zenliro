@@ -82,7 +82,13 @@ function diffMasks(prev: EditSnapshot, next: EditSnapshot): DiffResult {
       if (type === 'brush') {
         const prevStrokes = pm.mask.type === 'brush' ? pm.mask.strokes.length : 0;
         const nextStrokes = nm.mask.strokes.length;
-        const action = nextStrokes > prevStrokes ? 'Paint' : 'Erase';
+        let action = 'Edit';
+        if (nextStrokes > prevStrokes) {
+          const added = nm.mask.strokes[nextStrokes - 1];
+          action = added?.erase ? 'Erase' : 'Paint';
+        } else if (nextStrokes < prevStrokes) {
+          action = 'Clear';
+        }
         return { label: `${nm.name}: ${action}`, details: `${nextStrokes} strokes` };
       }
       return { label: `${nm.name}: Move`, details: `Type: ${type}` };
