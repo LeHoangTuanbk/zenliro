@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { useHealStore } from '../store/heal-store';
+import { NO_SPOTS, useHealStore } from '../store/heal-store';
 import type { HealSpot, ToolOverlayMode } from '../store/types';
 import { useShortcut } from '@shared/lib/shortcuts';
 
@@ -131,7 +131,7 @@ export function HealPanel({ photoId }: HealPanelProps) {
     setToolOverlay,
   } = useHealStore();
 
-  const spots = photoId ? getSpots(photoId) : [];
+  const spots = photoId ? getSpots(photoId) : NO_SPOTS;
   const hasPhoto = !!photoId;
   const groups = useMemo(() => groupSpots(spots), [spots]);
 

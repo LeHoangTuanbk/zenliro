@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useCropStore } from '@/features/develop/crop/store/crop-store';
+import { DEFAULT_CROP_STATE, type CropState } from '@/features/develop/crop/store/types';
 import { ActiveTool } from '@features/develop/const';
 
 export function useCropInteraction(
@@ -7,8 +8,11 @@ export function useCropInteraction(
   selectedId: string | null,
   imageAspect: number,
 ) {
-  const cropStore = useCropStore();
-  const cropState = selectedId ? cropStore.getCrop(selectedId) : null;
+  const storedCrop = useCropStore((s) => (selectedId ? s.cropByPhoto[selectedId] : undefined));
+  const cropState = useMemo(
+    () => (selectedId ? (storedCrop ?? DEFAULT_CROP_STATE) : null),
+    [selectedId, storedCrop],
+  );
 
   const cropInteractionProps = useMemo(() => {
     if (activeTool !== ActiveTool.Crop || !selectedId || !cropState) return undefined;
@@ -16,9 +20,9 @@ export function useCropInteraction(
     return {
       cropState,
       imageAspect,
-      onChange: (patch: Partial<typeof cropState>) => cropStore.setCrop(pid, patch, imageAspect),
+      onChange: (patch: Partial<CropState>) =>
+        useCropStore.getState().setCrop(pid, patch, imageAspect),
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool, selectedId, cropState, imageAspect]);
 
   return { cropInteractionProps, cropState };

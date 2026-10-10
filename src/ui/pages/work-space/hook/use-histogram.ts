@@ -74,9 +74,9 @@ export function useHistogram(
   );
 
   // Clear live histogram when switching photos
-  const prevPhotoRef = useRef(selectedId);
-  if (selectedId !== prevPhotoRef.current) {
-    prevPhotoRef.current = selectedId;
+  const [prevPhotoId, setPrevPhotoId] = useState(selectedId);
+  if (selectedId !== prevPhotoId) {
+    setPrevPhotoId(selectedId);
     setLiveHistogram(null);
   }
 

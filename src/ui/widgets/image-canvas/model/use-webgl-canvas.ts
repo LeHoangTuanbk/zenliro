@@ -71,6 +71,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   onRenderedRef.current = onRendered;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const lastViewKeyRef = useRef<string | null>(null);
   const rendererRef = useRef<WebGLRenderer | null>(null);
   const originalImgRef = useRef<HTMLCanvasElement | null>(null);
   const imageDataRef = useRef<ImageData | null>(null);
@@ -417,6 +418,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     const { w: effectiveW, h: effectiveH } = viewSourceSize(view, imgW, imgH);
 
     // Resize canvas to fit rotated dimensions
+    let resized = false;
     if (effectiveW > 0 && effectiveH > 0) {
       const dpr = window.devicePixelRatio || 1;
       const cw = container.clientWidth || 800;
@@ -432,8 +434,14 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
         canvas.style.width = `${cssW}px`;
         canvas.style.height = `${cssH}px`;
         setCanvasDims({ w: cssW, h: cssH });
+        resized = true;
       }
     }
+
+    // While editing, the view ignores the crop rect — dragging the frame needs no re-render.
+    const viewKey = JSON.stringify([view, imgW, imgH]);
+    if (!resized && viewKey === lastViewKeyRef.current) return;
+    lastViewKeyRef.current = viewKey;
 
     renderer.setCropState(view);
     renderToCanvas();

@@ -20,6 +20,30 @@ function toLocal(f: Frame, dx: number, dy: number) {
   return { x: f.cos * dx + f.sin * dy, y: -f.sin * dx + f.cos * dy };
 }
 
+function fromLocal(f: Frame, qx: number, qy: number) {
+  return { x: f.cos * qx - f.sin * qy, y: f.sin * qx + f.cos * qy };
+}
+
+/**
+ * Same-size rect closest to `r` that fits. Valid centers form a rectangle in the image's
+ * local axes, so clamping there slides smoothly along slanted edges.
+ */
+function slideInside(f: Frame, r: CropRect): CropRect {
+  const hx = (r.w * f.a) / 2;
+  const hy = r.h / 2;
+  const reach = toLocal(f, hx, hy);
+  const reach2 = toLocal(f, hx, -hy);
+  const limX = Math.max(0, f.a / 2 - Math.max(Math.abs(reach.x), Math.abs(reach2.x)));
+  const limY = Math.max(0, 0.5 - Math.max(Math.abs(reach.y), Math.abs(reach2.y)));
+  const c = toLocal(f, (r.x + r.w / 2 - 0.5) * f.a, r.y + r.h / 2 - 0.5);
+  const d = fromLocal(
+    f,
+    Math.max(-limX, Math.min(limX, c.x)),
+    Math.max(-limY, Math.min(limY, c.y)),
+  );
+  return { ...r, x: 0.5 + d.x / f.a - r.w / 2, y: 0.5 + d.y - r.h / 2 };
+}
+
 /** Largest k such that `|a + k·b| ≤ limit`. */
 function axisLimit(a: number, b: number, limit: number) {
   if (Math.abs(a) > limit + EPS) return 0;
@@ -136,8 +160,5 @@ export function constrainCrop(prev: CropState, next: CropState, imgAspect: numbe
   const from = prev.rect;
   const to = next.rect;
   const isMove = Math.abs(from.w - to.w) < EPS && Math.abs(from.h - to.h) < EPS;
-  if (!isMove) return { ...next, rect: advance(f, from, to) };
-
-  const slidX = advance(f, from, { ...from, x: to.x });
-  return { ...next, rect: advance(f, slidX, { ...slidX, y: to.y }) };
+  return { ...next, rect: isMove ? slideInside(f, to) : advance(f, from, to) };
 }

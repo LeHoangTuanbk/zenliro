@@ -4,6 +4,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { validateEventFrame } from './utils.js';
 import { createLogger } from './logger/index.js';
+import { writeJsonFile } from './libs/write-json-file.js';
 
 const log = createLogger('main/history');
 
@@ -34,11 +35,10 @@ export function registerHistoryHandlers() {
     }
   });
 
-  ipcMain.handle('history:save', (event, photoId: string, data: unknown) => {
+  ipcMain.handle('history:save', async (event, photoId: string, data: unknown) => {
     validateEventFrame(event.senderFrame!);
     try {
-      const filePath = getHistoryPath(photoId);
-      fs.writeFileSync(filePath, JSON.stringify(data), 'utf-8');
+      await writeJsonFile(getHistoryPath(photoId), data);
       return true;
     } catch (err) {
       log.error('Failed to save history', err);

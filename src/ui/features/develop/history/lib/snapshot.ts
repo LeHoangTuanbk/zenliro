@@ -9,6 +9,18 @@ import { useHealStore } from '@features/develop/heal/store/heal-store';
 import { useMaskStore } from '@/features/develop/mask';
 import type { EditSnapshot } from '../store/types';
 
+// Masks can hold thousands of brush strokes. Stores update immutably, so an unchanged
+// source array means the previous clone can be shared — snapshots are never mutated.
+const sharedClones = new WeakMap<object, unknown>();
+
+function cloneShared<T extends object>(source: T): T {
+  const cached = sharedClones.get(source) as T | undefined;
+  if (cached) return cached;
+  const clone = structuredClone(source);
+  sharedClones.set(source, clone);
+  return clone;
+}
+
 export function captureSnapshot(photoId: string): EditSnapshot {
   const adj = useAdjustmentsStore.getState();
   const curve = useToneCurveStore.getState();
@@ -19,7 +31,7 @@ export function captureSnapshot(photoId: string): EditSnapshot {
   const healSpots = useHealStore.getState().getSpots(photoId);
   const masks = useMaskStore.getState().getMasks(photoId);
 
-  return structuredClone({
+  const snapshot = structuredClone({
     adjustments: adj.adjustments,
     toneCurve: { points: curve.points, parametric: curve.parametric },
     colorMixer: { hue: mixer.hue, saturation: mixer.saturation, luminance: mixer.luminance },
@@ -41,9 +53,8 @@ export function captureSnapshot(photoId: string): EditSnapshot {
       grainRoughness: effects.grainRoughness,
     },
     crop,
-    healSpots,
-    masks,
   });
+  return { ...snapshot, healSpots: cloneShared(healSpots), masks: cloneShared(masks) };
 }
 
 export function applySnapshot(photoId: string, snapshot: EditSnapshot) {
