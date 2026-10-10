@@ -73,7 +73,7 @@ export function CropPanel({ photoId, imageAspect, onDone }: CropPanelProps) {
   const hasPhoto = !!photoId && !!cropState;
 
   const set = (patch: Parameters<typeof store.setCrop>[1]) => {
-    if (photoId) store.setCrop(photoId, patch);
+    if (photoId) store.setCrop(photoId, patch, imageAspect);
   };
 
   const isDefault = cropState
@@ -184,6 +184,16 @@ export function CropPanel({ photoId, imageAspect, onDone }: CropPanelProps) {
                 className="w-10"
               />
             </div>
+            <label className="mt-2.5 flex w-fit items-center gap-1.5 text-[10px] text-br-muted cursor-pointer hover:text-br-text transition-colors">
+              <input
+                type="checkbox"
+                className="w-[13px] h-[13px] cursor-pointer shrink-0"
+                style={{ accentColor: 'var(--color-br-accent)' }}
+                checked={cropState.constrainToImage}
+                onChange={(e) => set({ constrainToImage: e.target.checked })}
+              />
+              Constrain to Image
+            </label>
           </div>
 
           {/* Rotate & Flip */}

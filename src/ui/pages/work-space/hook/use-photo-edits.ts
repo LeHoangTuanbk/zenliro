@@ -66,8 +66,12 @@ function captureEdits(photoId: string): PhotoEdits {
             w: cropState.rect.w,
             h: cropState.rect.h,
             angle: cropState.rotation,
+            rotationSteps: cropState.rotationSteps,
+            flipH: cropState.flipH,
+            flipV: cropState.flipV,
             aspectPreset: cropState.aspectPreset,
             lockAspect: cropState.lockAspect,
+            constrainToImage: cropState.constrainToImage,
           },
         }
       : {}),
@@ -107,11 +111,12 @@ function applyEdits(photoId: string, edits: PhotoEdits) {
     useCropStore.getState().setCrop(photoId, {
       rect: { x: edits.crop.x, y: edits.crop.y, w: edits.crop.w, h: edits.crop.h },
       rotation: edits.crop.angle,
-      rotationSteps: 0,
-      flipH: false,
-      flipV: false,
+      rotationSteps: edits.crop.rotationSteps ?? 0,
+      flipH: edits.crop.flipH ?? false,
+      flipV: edits.crop.flipV ?? false,
       aspectPreset: edits.crop.aspectPreset as never,
       lockAspect: edits.crop.lockAspect,
+      constrainToImage: edits.crop.constrainToImage ?? true,
     });
   }
 

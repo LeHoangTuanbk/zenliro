@@ -70,6 +70,7 @@ export type WorkSpaceViewProps = {
   onImport: () => void;
   onExport: (settings: ExportSettings) => Promise<void>;
   onImageLoaded: (w: number, h: number) => void;
+  onCanvasRendered: () => void;
   onSelectId: (id: string) => void;
   onOpenDevelop: (id: string) => void;
   onDelete: (id: string) => void;
@@ -109,6 +110,7 @@ export function WorkSpaceView({
   onImport,
   onExport,
   onImageLoaded,
+  onCanvasRendered,
   onSelectId,
   onOpenDevelop,
   onDelete,
@@ -286,6 +288,7 @@ export function WorkSpaceView({
                 confirmedCropState={activeTool !== ActiveTool.Crop ? cropState : null}
                 externalZoomPan={isCompareMode ? externalZoomPan : undefined}
                 onImageLoaded={onImageLoaded}
+                onRendered={onCanvasRendered}
               />
 
               {/* AI Agent overlays — hidden in compare mode */}

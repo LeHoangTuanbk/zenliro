@@ -16,7 +16,7 @@ export function useCropInteraction(
     return {
       cropState,
       imageAspect,
-      onChange: (patch: Partial<typeof cropState>) => cropStore.setCrop(pid, patch),
+      onChange: (patch: Partial<typeof cropState>) => cropStore.setCrop(pid, patch, imageAspect),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTool, selectedId, cropState, imageAspect]);

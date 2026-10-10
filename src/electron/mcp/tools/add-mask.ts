@@ -9,7 +9,7 @@ export function registerAddMask(server: McpServer) {
     {
       title: 'Add Mask',
       description:
-        'Creates a new local adjustment mask. Types: linear (gradient), radial (ellipse). Returns the mask ID for setting adjustments.',
+        'Creates a new local adjustment mask. Types: linear (gradient), radial (ellipse). Coordinates are 0–1 relative to the currently visible (cropped) image, the same frame as screenshots/analysis tools. Returns the mask ID for setting adjustments.',
       inputSchema: {
         type: z.enum(['linear', 'radial']).describe('Mask type'),
         // Linear params

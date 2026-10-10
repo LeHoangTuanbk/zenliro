@@ -24,6 +24,7 @@ import {
   drawBitmapWithOrientation,
   readExifOrientation,
 } from '../lib/image-utils';
+import { viewCropState, viewSourceSize } from '../lib/crop-view';
 import { isRawMimeType, decodeRawToCanvas } from '@shared/lib/raw';
 import type { CropInteractionProps, HealInteractionProps, ImageCanvasHandle } from '../store/types';
 import type { CropState } from '@/features/develop/crop';
@@ -41,6 +42,7 @@ type Params = {
   confirmedCropState?: CropState | null;
   isMaskToolActive: boolean;
   onImageLoaded?: (w: number, h: number) => void;
+  onRendered?: () => void;
   containerRef: RefObject<HTMLElement | null>;
   zoomRef: RefObject<number>;
   onResetView: () => void;
@@ -60,10 +62,13 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     confirmedCropState,
     isMaskToolActive,
     onImageLoaded,
+    onRendered,
     containerRef,
     zoomRef,
     onResetView,
   } = params;
+  const onRenderedRef = useRef(onRendered);
+  onRenderedRef.current = onRendered;
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<WebGLRenderer | null>(null);
@@ -88,6 +93,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
   const uploadedStrokesRef = useRef<Map<string, number>>(new Map()); // maskId → count uploaded
   const prevSlotMaskIdsRef = useRef<(string | null)[]>([null, null, null, null]);
   const [canvasDims, setCanvasDims] = useState({ w: 0, h: 0 });
+  const [imgAspect, setImgAspect] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const adjustments = useAdjustmentsStore((s) => s.adjustments);
   const toneCurvePoints = useToneCurveStore((s) => s.points);
@@ -196,6 +202,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       if (!canvas || !renderer || !originalImgRef.current) return;
       try {
         renderer.render(canvas, useAdjustmentsStore.getState().adjustments);
+        onRenderedRef.current?.();
       } catch (err) {
         log.error('Render error', err);
       }
@@ -269,6 +276,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     if (!canvas || !container || !renderer) return;
 
     onImageLoaded?.(imgW, imgH);
+    setImgAspect(imgH > 0 ? imgW / imgH : 1);
     log.info(`Image loaded: ${imgW}x${imgH}`);
 
     // Prepare refs before touching the canvas (no visual change yet)
@@ -403,18 +411,10 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     const container = containerRef.current;
     if (!renderer || !canvas || !container) return;
 
-    // Determine effective dimensions for canvas sizing
-    const cropState = cropInteractionProps?.cropState ?? confirmedCropState;
-    const steps = cropState?.rotationSteps ?? 0;
-    const swap = steps % 2 !== 0;
     const imgW = renderer.imageWidth;
     const imgH = renderer.imageHeight;
-    // In crop-editing mode: show full image. In confirmed mode: use cropped dims.
-    const cropRect = !cropInteractionProps && confirmedCropState ? confirmedCropState.rect : null;
-    const baseW = cropRect ? imgW * cropRect.w : imgW;
-    const baseH = cropRect ? imgH * cropRect.h : imgH;
-    const effectiveW = swap ? baseH : baseW;
-    const effectiveH = swap ? baseW : baseH;
+    const view = viewCropState(cropInteractionProps?.cropState, confirmedCropState, imgW, imgH);
+    const { w: effectiveW, h: effectiveH } = viewSourceSize(view, imgW, imgH);
 
     // Resize canvas to fit rotated dimensions
     if (effectiveW > 0 && effectiveH > 0) {
@@ -435,20 +435,7 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
       }
     }
 
-    if (cropInteractionProps) {
-      const cs = cropInteractionProps.cropState;
-      const hasTransform = cs.flipH || cs.flipV || cs.rotationSteps !== 0 || cs.rotation !== 0;
-      renderer.setCropState(
-        hasTransform
-          ? {
-              ...cs,
-              rect: { x: 0, y: 0, w: 1, h: 1 },
-            }
-          : null,
-      );
-    } else {
-      renderer.setCropState(confirmedCropState ?? null);
-    }
+    renderer.setCropState(view);
     renderToCanvas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmedCropState, cropInteractionProps, renderToCanvas]);
@@ -706,16 +693,10 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     const container = containerRef.current;
     if (!renderer || !canvas || !container || !renderer.imageWidth) return;
 
-    const cropState = cropInteractionProps?.cropState ?? confirmedCropState;
-    const steps = cropState?.rotationSteps ?? 0;
-    const swap = steps % 2 !== 0;
     const imgW = renderer.imageWidth;
     const imgH = renderer.imageHeight;
-    const cropRect = !cropInteractionProps && confirmedCropState ? confirmedCropState.rect : null;
-    const baseW = cropRect ? imgW * cropRect.w : imgW;
-    const baseH = cropRect ? imgH * cropRect.h : imgH;
-    const effectiveW = swap ? baseH : baseW;
-    const effectiveH = swap ? baseW : baseH;
+    const view = viewCropState(cropInteractionProps?.cropState, confirmedCropState, imgW, imgH);
+    const { w: effectiveW, h: effectiveH } = viewSourceSize(view, imgW, imgH);
 
     if (effectiveW > 0 && effectiveH > 0) {
       const dpr = window.devicePixelRatio || 1;
@@ -736,5 +717,5 @@ export function useWebGLCanvas(ref: ForwardedRef<ImageCanvasHandle>, params: Par
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [containerSize]);
 
-  return { canvasRef, canvasDims, isLoading, handleOverlayAddSpot };
+  return { canvasRef, canvasDims, isLoading, handleOverlayAddSpot, imgAspect };
 }

@@ -87,8 +87,12 @@ type PhotoEdits = {
     w: number;
     h: number;
     angle: number;
+    rotationSteps?: number;
+    flipH?: boolean;
+    flipV?: boolean;
     aspectPreset: string;
     lockAspect: boolean;
+    constrainToImage?: boolean;
   };
   masks?: Array<{
     id: string;

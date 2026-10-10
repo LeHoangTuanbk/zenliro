@@ -30,6 +30,7 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
       hideOverlay = false,
       externalZoomPan,
       onImageLoaded,
+      onRendered,
     },
     ref,
   ) => {
@@ -39,23 +40,27 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
       externalZoomPan,
     );
 
-    const { canvasRef, canvasDims, isLoading, handleOverlayAddSpot } = useWebGLCanvas(ref, {
-      photoId,
-      dataUrl,
-      imageBuffer,
-      imageMimeType,
-      orientation,
-      masks,
-      healSpots,
-      healInteractionProps,
-      cropInteractionProps,
-      confirmedCropState,
-      isMaskToolActive: !!maskInteractionProps,
-      onImageLoaded,
-      containerRef,
-      zoomRef,
-      onResetView: reset,
-    });
+    const { canvasRef, canvasDims, isLoading, handleOverlayAddSpot, imgAspect } = useWebGLCanvas(
+      ref,
+      {
+        photoId,
+        dataUrl,
+        imageBuffer,
+        imageMimeType,
+        orientation,
+        masks,
+        healSpots,
+        healInteractionProps,
+        cropInteractionProps,
+        confirmedCropState,
+        isMaskToolActive: !!maskInteractionProps,
+        onImageLoaded,
+        onRendered,
+        containerRef,
+        zoomRef,
+        onResetView: reset,
+      },
+    );
 
     const showHeal = !!healInteractionProps && canvasDims.w > 0 && !hideOverlay;
     const showCrop = !!cropInteractionProps && canvasDims.w > 0;
@@ -80,6 +85,8 @@ export const ImageCanvas = forwardRef<ImageCanvasHandle, ImageCanvasProps>(
         healInteractionProps={healInteractionProps}
         maskInteractionProps={maskInteractionProps}
         cropInteractionProps={cropInteractionProps}
+        confirmedCropState={confirmedCropState}
+        imgAspect={imgAspect}
         onMouseDown={handleMouseDown}
         onAddSpot={handleOverlayAddSpot}
       />

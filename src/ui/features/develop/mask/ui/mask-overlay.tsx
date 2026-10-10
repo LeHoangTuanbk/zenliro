@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { MaskInteractionProps } from '@widgets/image-canvas/store/types';
+import type { CropState } from '@/features/develop/crop/store/types';
 import type { BrushStroke, BrushPoint } from '../store/types';
 import { useMaskStore } from '../store/mask-store';
+import { brushToScreenUv, displayWidthInImageWidths, screenToBrushUv } from '../lib/crop-uv';
 import { LinearMaskOverlay } from './linear-mask-overlay';
 import { RadialMaskOverlay } from './radial-mask-overlay';
 
@@ -10,6 +12,8 @@ type Props = {
   canvasW: number;
   canvasH: number;
   zoom: number;
+  cropState?: CropState | null;
+  imgAspect: number;
   /**
    * When true, the overlay's interactive layer becomes `pointer-events: none`
    * so that space-drag (pan) and wheel-zoom can pass through to the image
@@ -46,28 +50,34 @@ function drawStrokesOnCtx(
   strokes: BrushStroke[],
   canvasW: number,
   canvasH: number,
+  cropState: CropState | null | undefined,
+  imgAspect: number,
 ) {
   ctx.save();
   // Skip redrawing the opening dot of a stroke when it coincides with the
   // closing dot of the previous stroke. Each mousemove emits a new 2-point
   // stroke [prev, cur], and `source-over` compositing stacks alpha at the
   // shared endpoint — visible as a bumpy seam at every joint.
+  // Stroke size is a fraction of the original image width.
+  const visibleW = Math.max(1e-6, displayWidthInImageWidths(cropState, imgAspect));
   let lastPt: BrushPoint | null = null;
   for (const stroke of strokes) {
     if (stroke.points.length === 0) continue;
-    const sizePx = stroke.size * canvasW;
+    const sizePx = (stroke.size / visibleW) * canvasW;
     for (let i = 0; i < stroke.points.length; i++) {
       const p = stroke.points[i];
-      const px = p.x * canvasW,
-        py = p.y * canvasH;
+      const screen = brushToScreenUv(p, cropState, imgAspect);
+      const px = screen.x * canvasW;
+      const py = screen.y * canvasH;
       const skipDot = i === 0 && lastPt !== null && lastPt.x === p.x && lastPt.y === p.y;
       if (!skipDot) {
         paintDotOnCtx(ctx, px, py, sizePx, stroke.feather, stroke.opacity, stroke.erase);
       }
       if (i > 0) {
         const prev = stroke.points[i - 1];
-        const ppx = prev.x * canvasW,
-          ppy = prev.y * canvasH;
+        const prevScreen = brushToScreenUv(prev, cropState, imgAspect);
+        const ppx = prevScreen.x * canvasW;
+        const ppy = prevScreen.y * canvasH;
         const dist = Math.hypot(px - ppx, py - ppy);
         const steps = Math.max(1, Math.floor(dist / (sizePx * 0.2)));
         for (let s = 1; s < steps; s++) {
@@ -96,12 +106,16 @@ function BrushOverlay({
   canvasW,
   canvasH,
   zoom,
+  cropState,
+  imgAspect,
   disableInteraction,
 }: {
   interactionProps: Extract<MaskInteractionProps, { maskType: 'brush' }>;
   canvasW: number;
   canvasH: number;
   zoom: number;
+  cropState?: CropState | null;
+  imgAspect: number;
   disableInteraction?: boolean;
 }) {
   const strokesRef = useRef<HTMLCanvasElement>(null);
@@ -135,10 +149,10 @@ function BrushOverlay({
     const ctx = canvas.getContext('2d')!;
     ctx.setTransform(zoom, 0, 0, zoom, 0, 0);
     ctx.clearRect(0, 0, canvasW, canvasH);
-    drawStrokesOnCtx(ctx, strokes, canvasW, canvasH);
+    drawStrokesOnCtx(ctx, strokes, canvasW, canvasH, cropState, imgAspect);
     prevStrokesLenRef.current = strokes.length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMaskId, canvasW, canvasH, zoom]);
+  }, [selectedMaskId, canvasW, canvasH, zoom, cropState, imgAspect]);
 
   useEffect(() => {
     const canvas = strokesRef.current;
@@ -147,13 +161,20 @@ function BrushOverlay({
     ctx.setTransform(zoom, 0, 0, zoom, 0, 0);
     if (strokes.length < prevStrokesLenRef.current) {
       ctx.clearRect(0, 0, canvasW, canvasH);
-      drawStrokesOnCtx(ctx, strokes, canvasW, canvasH);
+      drawStrokesOnCtx(ctx, strokes, canvasW, canvasH, cropState, imgAspect);
       prevStrokesLenRef.current = strokes.length;
     } else if (strokes.length > prevStrokesLenRef.current) {
-      drawStrokesOnCtx(ctx, strokes.slice(prevStrokesLenRef.current), canvasW, canvasH);
+      drawStrokesOnCtx(
+        ctx,
+        strokes.slice(prevStrokesLenRef.current),
+        canvasW,
+        canvasH,
+        cropState,
+        imgAspect,
+      );
       prevStrokesLenRef.current = strokes.length;
     }
-  }, [strokes, canvasW, canvasH, zoom]);
+  }, [strokes, canvasW, canvasH, zoom, cropState, imgAspect]);
 
   // Clear the cursor ring on window blur so an alt-tab / focus loss doesn't
   // leave a stale ring frozen over the mask.
@@ -172,13 +193,15 @@ function BrushOverlay({
     return () => window.removeEventListener('blur', onBlur);
   }, [canvasW, canvasH, zoom]);
 
-  const canvasToNorm = (cx: number, cy: number): BrushPoint => ({
+  const screenToNorm = (cx: number, cy: number): BrushPoint => ({
     x: cx / canvasW,
     y: cy / canvasH,
   });
+  const toBrushPoint = (screen: BrushPoint): BrushPoint =>
+    screenToBrushUv(screen, cropState, imgAspect);
   const makeStroke = (points: BrushPoint[]): BrushStroke => ({
     points,
-    size: brushSizePx / zoom / canvasW,
+    size: (brushSizePx / zoom / canvasW) * displayWidthInImageWidths(cropState, imgAspect),
     feather: brushFeather / 100,
     opacity: brushOpacity / 100,
     erase: brushErase,
@@ -203,9 +226,9 @@ function BrushOverlay({
     isDrawingRef.current = true;
     setIsPainting(true);
     const p = eventToCanvas(e);
-    const norm = canvasToNorm(p.x, p.y);
-    lastPointRef.current = norm;
-    onStrokeAdded(makeStroke([norm]));
+    const brush = toBrushPoint(screenToNorm(p.x, p.y));
+    lastPointRef.current = brush;
+    onStrokeAdded(makeStroke([brush]));
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -231,10 +254,10 @@ function BrushOverlay({
       ctx.stroke();
     }
     if (!isDrawingRef.current) return;
-    const norm = canvasToNorm(x, y);
+    const brush = toBrushPoint(screenToNorm(x, y));
     const prev = lastPointRef.current;
-    lastPointRef.current = norm;
-    onStrokeAdded(makeStroke(prev ? [prev, norm] : [norm]));
+    lastPointRef.current = brush;
+    onStrokeAdded(makeStroke(prev ? [prev, brush] : [brush]));
   };
 
   const clearCursor = () => {
@@ -319,6 +342,8 @@ export function MaskOverlay({
   canvasW,
   canvasH,
   zoom,
+  cropState,
+  imgAspect,
   disableInteraction,
 }: Props) {
   if (interactionProps.maskType === 'linear') {
@@ -327,6 +352,8 @@ export function MaskOverlay({
         data={interactionProps.linearData}
         canvasW={canvasW}
         canvasH={canvasH}
+        cropState={cropState}
+        imgAspect={imgAspect}
         onUpdate={interactionProps.onUpdate}
         disableInteraction={disableInteraction}
       />
@@ -338,6 +365,8 @@ export function MaskOverlay({
         data={interactionProps.radialData}
         canvasW={canvasW}
         canvasH={canvasH}
+        cropState={cropState}
+        imgAspect={imgAspect}
         onUpdate={interactionProps.onUpdate}
         disableInteraction={disableInteraction}
       />
@@ -349,6 +378,8 @@ export function MaskOverlay({
       canvasW={canvasW}
       canvasH={canvasH}
       zoom={zoom}
+      cropState={cropState}
+      imgAspect={imgAspect}
       disableInteraction={disableInteraction}
     />
   );

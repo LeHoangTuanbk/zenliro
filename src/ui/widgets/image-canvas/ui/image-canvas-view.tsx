@@ -5,6 +5,7 @@ import { MaskOverlay } from '@/features/develop/mask/ui/mask-overlay';
 import { MaskPlacementOverlay } from '@/features/develop/mask/ui/mask-placement-overlay';
 import { useMaskStore } from '@/features/develop/mask';
 import { Spinner } from '@/shared/ui/base';
+import type { CropState } from '@/features/develop/crop';
 import type {
   CropInteractionProps,
   HealInteractionProps,
@@ -29,6 +30,8 @@ type Props = {
   healInteractionProps?: HealInteractionProps;
   maskInteractionProps?: MaskInteractionProps;
   cropInteractionProps?: CropInteractionProps;
+  confirmedCropState?: CropState | null;
+  imgAspect: number;
   onMouseDown: (e: React.MouseEvent<HTMLDivElement>) => void;
   onAddSpot: (normX: number, normY: number, strokeId?: string) => void;
 };
@@ -51,6 +54,8 @@ export function ImageCanvasView({
   healInteractionProps,
   maskInteractionProps,
   cropInteractionProps,
+  confirmedCropState,
+  imgAspect,
   onMouseDown,
   onAddSpot,
 }: Props) {
@@ -102,12 +107,20 @@ export function ImageCanvasView({
             canvasW={canvasDims.w}
             canvasH={canvasDims.h}
             zoom={zoom}
+            cropState={confirmedCropState}
+            imgAspect={imgAspect}
             disableInteraction={isSpaceDown}
           />
         )}
 
         {isPlacingMask && photoId && (
-          <MaskPlacementOverlay photoId={photoId} canvasW={canvasDims.w} canvasH={canvasDims.h} />
+          <MaskPlacementOverlay
+            photoId={photoId}
+            canvasW={canvasDims.w}
+            canvasH={canvasDims.h}
+            cropState={confirmedCropState}
+            imgAspect={imgAspect}
+          />
         )}
 
         {showHeal && (

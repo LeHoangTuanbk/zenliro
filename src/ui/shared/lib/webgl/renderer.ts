@@ -688,11 +688,12 @@ export class WebGLRenderer {
       opts;
     const srcW = image instanceof HTMLImageElement ? image.naturalWidth : image.width;
     const srcH = image instanceof HTMLImageElement ? image.naturalHeight : image.height;
-    const cropW = crop ? Math.round(srcW * crop.rect.w) : srcW;
-    const cropH = crop ? Math.round(srcH * crop.rect.h) : srcH;
+    // The crop rect lives in rotated-image space (after 90° steps).
     const stepsOdd = crop ? Math.abs(crop.rotationSteps % 2) === 1 : false;
-    const outW = targetW ?? (stepsOdd ? cropH : cropW);
-    const outH = targetH ?? (stepsOdd ? cropW : cropH);
+    const rotW = stepsOdd ? srcH : srcW;
+    const rotH = stepsOdd ? srcW : srcH;
+    const outW = targetW ?? (crop ? Math.round(rotW * crop.rect.w) : rotW);
+    const outH = targetH ?? (crop ? Math.round(rotH * crop.rect.h) : rotH);
 
     const canvas = document.createElement('canvas');
     canvas.width = outW;
@@ -771,8 +772,26 @@ export class WebGLRenderer {
       );
     }
     renderer.render(canvas, adjustments);
-    const dataUrl = canvas.toDataURL(mimeType, quality);
+    const dataUrl = (mimeType === JPEG_MIME ? flattenOnWhite(canvas) : canvas).toDataURL(
+      mimeType,
+      quality,
+    );
     renderer.dispose();
     return dataUrl;
   }
+}
+
+const JPEG_MIME = 'image/jpeg';
+
+/** Blank (transparent) straighten corners would encode as black in JPEG; Lightroom fills them white. */
+function flattenOnWhite(source: HTMLCanvasElement): HTMLCanvasElement {
+  const out = document.createElement('canvas');
+  out.width = source.width;
+  out.height = source.height;
+  const ctx = out.getContext('2d');
+  if (!ctx) return source;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, out.width, out.height);
+  ctx.drawImage(source, 0, 0);
+  return out;
 }

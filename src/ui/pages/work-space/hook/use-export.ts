@@ -18,8 +18,13 @@ export function useExport(
         return;
       }
       try {
-        const w = selected.width || 2000;
-        const h = selected.height || 2000;
+        const crop = selectedId ? useCropStore.getState().getCrop(selectedId) : null;
+        const srcW = selected.width || 2000;
+        const srcH = selected.height || 2000;
+        // Resize from the cropped (and 90°-rotated) output size, not the original.
+        const stepsOdd = crop ? Math.abs(crop.rotationSteps % 2) === 1 : false;
+        const w = (stepsOdd ? srcH : srcW) * (crop?.rect.w ?? 1);
+        const h = (stepsOdd ? srcW : srcH) * (crop?.rect.h ?? 1);
         let exportW: number | undefined, exportH: number | undefined;
         if (settings.resizeToFit) {
           const d = settings.resizeDimension;
@@ -39,7 +44,6 @@ export function useExport(
             exportW = Math.round(w * (d / h));
           }
         }
-        const crop = selectedId ? useCropStore.getState().getCrop(selectedId) : null;
         const dataUrl = canvasRef.current.getExportDataUrl(
           settings.format,
           settings.quality / 100,

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useShortcut } from '@shared/lib/shortcuts';
 import type { CropRect, CropState } from '../store/types';
+import { cropBounds } from '../lib/constrain-crop';
 
 type DragHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'move' | null;
 
@@ -49,14 +50,23 @@ export function CropOverlay({
   const dragRef = useRef<DragState | null>(null);
   const [cursor, setCursor] = useState('crosshair');
 
+  // The canvas shows the straightened image's bounding box, not just the original frame.
+  const bounds = useMemo(() => cropBounds(cropState, imageAspect), [cropState, imageAspect]);
+
   // ── Coordinate helpers ──────────────────────────────────────────────────
   const toCanvas = useCallback(
-    (nx: number, ny: number) => ({ x: nx * canvasWidth, y: ny * canvasHeight }),
-    [canvasWidth, canvasHeight],
+    (nx: number, ny: number) => ({
+      x: ((nx - bounds.x) / bounds.w) * canvasWidth,
+      y: ((ny - bounds.y) / bounds.h) * canvasHeight,
+    }),
+    [bounds, canvasWidth, canvasHeight],
   );
   const toNorm = useCallback(
-    (cx: number, cy: number) => ({ x: cx / canvasWidth, y: cy / canvasHeight }),
-    [canvasWidth, canvasHeight],
+    (cx: number, cy: number) => ({
+      x: bounds.x + (cx / canvasWidth) * bounds.w,
+      y: bounds.y + (cy / canvasHeight) * bounds.h,
+    }),
+    [bounds, canvasWidth, canvasHeight],
   );
 
   // ── Draw ────────────────────────────────────────────────────────────────
@@ -166,14 +176,17 @@ export function CropOverlay({
     return { x: (e.clientX - rect.left) * sx, y: (e.clientY - rect.top) * sy };
   };
 
-  // ── Clamp rect inside [0,1] ─────────────────────────────────────────────
+  // ── Clamp rect inside the work area ─────────────────────────────────────
   const clampRect = (r: CropRect): CropRect => {
-    const minW = 20 / canvasWidth;
-    const minH = 20 / canvasHeight;
-    const x = Math.max(0, Math.min(1 - Math.max(r.w, minW), r.x));
-    const y = Math.max(0, Math.min(1 - Math.max(r.h, minH), r.y));
-    const w = Math.max(minW, Math.min(1 - x, r.w));
-    const h = Math.max(minH, Math.min(1 - y, r.h));
+    const b = bounds;
+    const minW = (20 / canvasWidth) * b.w;
+    const minH = (20 / canvasHeight) * b.h;
+    const right = b.x + b.w;
+    const bottom = b.y + b.h;
+    const x = Math.max(b.x, Math.min(right - Math.max(r.w, minW), r.x));
+    const y = Math.max(b.y, Math.min(bottom - Math.max(r.h, minH), r.y));
+    const w = Math.max(minW, Math.min(right - x, r.w));
+    const h = Math.max(minH, Math.min(bottom - y, r.h));
     return { x, y, w, h };
   };
 

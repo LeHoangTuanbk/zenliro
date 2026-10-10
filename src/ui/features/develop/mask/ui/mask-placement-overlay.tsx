@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CropState } from '@/features/develop/crop/store/types';
 import { useMaskStore } from '../store/mask-store';
+import { linearScreenToImage, radialScreenToImage } from '../lib/mask-geometry';
 
 type Props = {
   photoId: string;
   canvasW: number;
   canvasH: number;
+  cropState?: CropState | null;
+  imgAspect: number;
 };
 
 // Lightroom Classic parity: when the user clicks "+Add Linear" or "+Add
 // Radial" in the mask panel, the mask is NOT created immediately. Instead we
 // enter a placement mode — a crosshair cursor follows the mouse, and the
 // first drag over the canvas defines the mask geometry. Escape cancels.
-export function MaskPlacementOverlay({ photoId, canvasW, canvasH }: Props) {
+export function MaskPlacementOverlay({ photoId, canvasW, canvasH, cropState, imgAspect }: Props) {
   const pendingMaskType = useMaskStore((s) => s.pendingMaskType);
   const setPendingMaskType = useMaskStore((s) => s.setPendingMaskType);
   const addLinearMaskAt = useMaskStore((s) => s.addLinearMaskAt);
@@ -68,23 +72,29 @@ export function MaskPlacementOverlay({ photoId, canvasW, canvasH }: Props) {
         return;
       }
 
+      // Drag is in overlay space; masks are stored in original-image UV.
       if (pendingMaskType === 'linear') {
-        addLinearMaskAt(photoId, { x1: a.x, y1: a.y, x2: b.x, y2: b.y, feather: 0.3 });
+        addLinearMaskAt(
+          photoId,
+          linearScreenToImage(
+            { x1: a.x, y1: a.y, x2: b.x, y2: b.y, feather: 0.3 },
+            cropState,
+            imgAspect,
+          ),
+        );
       } else {
         // Radial: center = midpoint, rx/ry = half-extent of drag bounds.
-        const cx = (a.x + b.x) / 2;
-        const cy = (a.y + b.y) / 2;
-        const rx = Math.max(0.02, Math.abs(b.x - a.x) / 2);
-        const ry = Math.max(0.02, Math.abs(b.y - a.y) / 2);
-        addRadialMaskAt(photoId, {
-          cx,
-          cy,
-          rx,
-          ry,
+        const ellipse = {
+          cx: (a.x + b.x) / 2,
+          cy: (a.y + b.y) / 2,
+          rx: Math.max(0.02, Math.abs(b.x - a.x) / 2),
+          ry: Math.max(0.02, Math.abs(b.y - a.y) / 2),
           angle: 0,
-          feather: 0.3,
-          invert: false,
-        });
+        };
+        addRadialMaskAt(
+          photoId,
+          radialScreenToImage(ellipse, { feather: 0.3, invert: false }, cropState, imgAspect),
+        );
       }
       setDrag(null);
     };
