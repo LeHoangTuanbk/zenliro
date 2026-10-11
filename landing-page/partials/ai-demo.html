@@ -1,90 +1,81 @@
-<section id="ai-agent" class="py-32 px-6 bg-br-surface">
-  <div class="max-w-5xl mx-auto">
-    <div class="text-center mb-16 fade-in">
-      <p class="text-sm text-br-accent font-medium tracking-wide uppercase mb-3">AI Agent</p>
-      <h2 class="text-3xl sm:text-4xl font-bold tracking-tight">Let AI edit like a photographer</h2>
-      <p class="text-br-muted mt-4 max-w-lg mx-auto">
+<section id="ai-agent" class="bg-br-surface px-6 py-32">
+  <div class="mx-auto max-w-5xl">
+    <div class="fade-in mb-12 text-center">
+      <p class="mb-3 text-sm font-medium uppercase tracking-wide text-br-accent">AI Agent</p>
+      <h2 class="text-3xl font-bold tracking-tight sm:text-4xl">Let AI edit like a photographer</h2>
+      <p class="mx-auto mt-4 max-w-lg text-br-muted">
         Describe a mood or style. The agent analyzes your photo, builds a plan, and applies
         adjustments in real-time.
       </p>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-      <!-- Timeline steps -->
-      <div class="fade-in">
-        <div class="space-y-8">
-          <div class="flex gap-4">
-            <div
-              class="flex-shrink-0 w-10 h-10 rounded-full bg-br-accent/15 flex items-center justify-center text-br-accent font-semibold text-sm"
-            >
-              1
-            </div>
-            <div>
-              <h4 class="font-semibold mb-1">Describe your vision</h4>
-              <p class="text-sm text-br-muted leading-relaxed">
-                "Create a vivid autumn look — warm tones, golden highlights, rich shadows."
-              </p>
-            </div>
-          </div>
-
-          <div class="flex gap-4">
-            <div
-              class="flex-shrink-0 w-10 h-10 rounded-full bg-br-accent/15 flex items-center justify-center text-br-accent font-semibold text-sm"
-            >
-              2
-            </div>
-            <div>
-              <h4 class="font-semibold mb-1">AI analyzes the photo</h4>
-              <p class="text-sm text-br-muted leading-relaxed">
-                Evaluates exposure, color balance, histogram distribution, and content to build the
-                optimal editing plan.
-              </p>
-            </div>
-          </div>
-
-          <div class="flex gap-4">
-            <div
-              class="flex-shrink-0 w-10 h-10 rounded-full bg-br-accent/15 flex items-center justify-center text-br-accent font-semibold text-sm"
-            >
-              3
-            </div>
-            <div>
-              <h4 class="font-semibold mb-1">Watch it work</h4>
-              <p class="text-sm text-br-muted leading-relaxed">
-                Sliders move in real-time as the agent applies white balance, tone curve, color
-                mixer, and grading adjustments.
-              </p>
-            </div>
-          </div>
-
-          <div class="flex gap-4">
-            <div
-              class="flex-shrink-0 w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center text-green-400 font-semibold text-sm"
-            >
-              4
-            </div>
-            <div>
-              <h4 class="font-semibold mb-1">Review & refine</h4>
-              <p class="text-sm text-br-muted leading-relaxed">
-                Compare before/after, undo any step, or ask the agent to adjust further. You stay in
-                control.
-              </p>
-            </div>
-          </div>
-        </div>
+    <div
+      class="fade-in mx-auto max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-[#0a0a0a]"
+    >
+      <div class="border-b border-white/10 px-5 py-4 sm:px-6">
+        <p class="mb-2 text-[11px] uppercase tracking-wide text-br-muted">You</p>
+        <p class="text-base leading-relaxed text-br-text sm:text-lg">
+          “Create a vivid autumn look: warm tones, golden highlights, rich shadows.”
+        </p>
       </div>
 
-      <!-- AI agent screenshot -->
-      <div class="fade-in">
-        <div class="window-frame">
-          <div class="window-dots"><span></span><span></span><span></span></div>
-          <img
-            src="./assets/agent-flow.webp"
-            alt="AI Agent analyzing and editing a photo in Zenliro"
-            class="w-full block"
-            loading="lazy"
-          />
-        </div>
+      <div class="px-5 py-5 sm:px-6">
+        <p class="mb-5 text-[11px] uppercase tracking-wide text-br-accent">Agent</p>
+        <ol class="agent-trace">
+          <li>
+            <span class="agent-step">1</span>
+            <div>
+              <h4 class="mb-1 font-semibold">Describe your vision</h4>
+              <p class="text-sm leading-relaxed text-br-muted">
+                Say the mood. The agent takes it from there.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span class="agent-step">2</span>
+            <div>
+              <h4 class="mb-1 font-semibold">AI analyzes the photo</h4>
+              <p class="text-sm leading-relaxed text-br-muted">
+                Exposure, color balance, and the histogram shape the plan.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span class="agent-step">3</span>
+            <div>
+              <h4 class="mb-1 font-semibold">Watch it work</h4>
+              <p class="mb-3 text-sm leading-relaxed text-br-muted">
+                Sliders move as white balance, tone, and color land.
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <span class="rounded-full border border-white/10 px-3 py-1 text-xs text-br-muted"
+                  >Temp +4</span
+                >
+                <span class="rounded-full border border-white/10 px-3 py-1 text-xs text-br-muted"
+                  >Exposure +0.11</span
+                >
+                <span class="rounded-full border border-white/10 px-3 py-1 text-xs text-br-muted"
+                  >Highlights −8</span
+                >
+                <span class="rounded-full border border-white/10 px-3 py-1 text-xs text-br-muted"
+                  >Shadows +22</span
+                >
+                <span class="rounded-full border border-white/10 px-3 py-1 text-xs text-br-muted"
+                  >Texture +6</span
+                >
+              </div>
+            </div>
+          </li>
+          <li>
+            <span class="agent-step is-done">4</span>
+            <div>
+              <h4 class="mb-1 font-semibold">Review &amp; refine</h4>
+              <p class="text-sm leading-relaxed text-br-muted">
+                Compare, undo a step, or ask for another pass.
+              </p>
+            </div>
+          </li>
+        </ol>
       </div>
     </div>
   </div>
