@@ -8,7 +8,15 @@
     class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-8 py-4 sm:py-5 bg-[#111]/90 backdrop-blur-md border-b border-white/8"
   >
     <a href="/" class="flex items-center gap-2 text-xl sm:text-2xl font-bold tracking-tight">
-      <img src="./assets/app-icon.png" alt="" class="h-7 w-7 shrink-0 sm:h-8 sm:w-8" />
+      <img
+        src="./assets/app-icon-64.png"
+        srcset="./assets/app-icon-64.png 64w, ./assets/app-icon-128.png 128w"
+        sizes="32px"
+        width="32"
+        height="32"
+        alt=""
+        class="h-7 w-7 shrink-0 sm:h-8 sm:w-8"
+      />
       <span class="wordmark">Zenliro</span>
     </a>
 
@@ -171,9 +179,14 @@
     <div class="window-frame mt-12 w-full">
       <div class="window-dots"><span></span><span></span><span></span></div>
       <img
-        src="./assets/agent-flow.webp"
+        src="./assets/agent-flow-1024.webp"
+        srcset="./assets/agent-flow-1024.webp 1024w, ./assets/agent-flow-2048.webp 2048w"
+        sizes="(min-width: 64rem) 1024px, calc(100vw - 2rem)"
+        width="1024"
+        height="639"
         alt="Zenliro Develop workspace with the AI Agent editing a portrait"
         class="block w-full"
+        fetchpriority="high"
       />
     </div>
   </div>

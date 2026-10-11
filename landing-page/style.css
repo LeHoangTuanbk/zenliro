@@ -1,5 +1,13 @@
 @import 'tailwindcss';
 
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('./fonts/inter-latin.woff2') format('woff2');
+}
+
 @theme {
   --font-sans: 'Inter', system-ui, sans-serif;
   --color-br-bg: #0a0a0a;
